@@ -1,0 +1,25 @@
+{
+  "name": "kosing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic financial math (DCF and friends). A TypeScript port of the invest workbench.",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "node --import tsx --test 'src/**/*.test.ts'",
+    "test:watch": "node --import tsx --test --watch 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "fix": "biome check --write .",
+    "check": "npm run typecheck && npm run lint && npm test",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
+    "@types/node": "^22.20.1",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}
