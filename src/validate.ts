@@ -9,23 +9,23 @@ export type NonNegativeNumber = number & { readonly [nonNegativeBrand]: true };
 
 export type ValidationError =
   | {
-      readonly kind: "not_positive";
+      readonly kind: "notPositive";
       readonly name: string;
       readonly value: number;
     }
   | {
-      readonly kind: "not_non_negative";
+      readonly kind: "notNonNegative";
       readonly name: string;
       readonly value: number;
     }
   | {
-      readonly kind: "wrong_length";
+      readonly kind: "wrongLength";
       readonly name: string;
       readonly actual: number;
       readonly expected: number;
     };
 
-export function requirePositive(
+export function parsePositiveNumber(
   value: number,
   name: string,
 ): Result<PositiveNumber, ValidationError> {
@@ -33,10 +33,10 @@ export function requirePositive(
     return ok(value as PositiveNumber);
   }
 
-  return err({ kind: "not_positive", name, value });
+  return err({ kind: "notPositive", name, value });
 }
 
-export function requireNonNegative(
+export function parseNonNegativeNumber(
   value: number,
   name: string,
 ): Result<NonNegativeNumber, ValidationError> {
@@ -44,10 +44,10 @@ export function requireNonNegative(
     return ok(value as NonNegativeNumber);
   }
 
-  return err({ kind: "not_non_negative", name, value });
+  return err({ kind: "notNonNegative", name, value });
 }
 
-export function requirePathLength(
+export function parsePathLength(
   path: readonly number[],
   expected: number,
   name: string,
@@ -56,5 +56,5 @@ export function requirePathLength(
     return ok(path);
   }
 
-  return err({ kind: "wrong_length", name, actual: path.length, expected });
+  return err({ kind: "wrongLength", name, actual: path.length, expected });
 }

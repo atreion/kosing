@@ -3,43 +3,43 @@ import { test } from "node:test";
 import {
   type NonNegativeNumber,
   type PositiveNumber,
-  requireNonNegative,
-  requirePathLength,
-  requirePositive,
+  parseNonNegativeNumber,
+  parsePathLength,
+  parsePositiveNumber,
 } from "./validate.ts";
 
 function takesPositiveNumber(_n: PositiveNumber): void {}
 function takesNonNegativeNumber(_n: NonNegativeNumber): void {}
 
-test("positive number is positive", () => {
-  const actual = requirePositive(1, "foo");
+test("positive number is a PositiveNumber", () => {
+  const actual = parsePositiveNumber(1, "beta");
   const expected = { ok: true, value: 1 };
   assert.deepEqual(actual, expected);
 });
 
-test("zero is not positive", () => {
-  const actual = requirePositive(0, "foo");
+test("zero is not a PositiveNumber", () => {
+  const actual = parsePositiveNumber(0, "beta");
   const expected = {
     ok: false,
-    error: { kind: "not_positive", name: "foo", value: 0 },
+    error: { kind: "notPositive", name: "beta", value: 0 },
   };
   assert.deepEqual(actual, expected);
 });
 
-test("negative number is not positive", () => {
-  const actual = requirePositive(-1, "foo");
+test("negative number is not a PositiveNumber", () => {
+  const actual = parsePositiveNumber(-1, "beta");
   const expected = {
     ok: false,
-    error: { kind: "not_positive", name: "foo", value: -1 },
+    error: { kind: "notPositive", name: "beta", value: -1 },
   };
   assert.deepEqual(actual, expected);
 });
 
-test("NaN is not positive", () => {
-  const actual = requirePositive(NaN, "foo");
+test("NaN is not a PositiveNumber", () => {
+  const actual = parsePositiveNumber(NaN, "beta");
   const expected = {
     ok: false,
-    error: { kind: "not_positive", name: "foo", value: NaN },
+    error: { kind: "notPositive", name: "beta", value: NaN },
   };
   assert.deepEqual(actual, expected);
 });
@@ -49,32 +49,32 @@ test("plain number is not a PositiveNumber", () => {
   takesPositiveNumber(42);
 });
 
-test("non negative number is non-negative", () => {
-  const actual = requireNonNegative(1, "foo");
+test("positive number is a NonNegativeNumber", () => {
+  const actual = parseNonNegativeNumber(1, "riskFreeRate");
   const expected = { ok: true, value: 1 };
   assert.deepEqual(actual, expected);
 });
 
-test("zero is non-negative", () => {
-  const actual = requireNonNegative(0, "foo");
+test("zero is a NonNegativeNumber", () => {
+  const actual = parseNonNegativeNumber(0, "riskFreeRate");
   const expected = { ok: true, value: 0 };
   assert.deepEqual(actual, expected);
 });
 
-test("negative number is not non-negative", () => {
-  const actual = requireNonNegative(-1, "foo");
+test("negative number is not a NonNegativeNumber", () => {
+  const actual = parseNonNegativeNumber(-1, "riskFreeRate");
   const expected = {
     ok: false,
-    error: { kind: "not_non_negative", name: "foo", value: -1 },
+    error: { kind: "notNonNegative", name: "riskFreeRate", value: -1 },
   };
   assert.deepEqual(actual, expected);
 });
 
-test("NaN is not non-negative", () => {
-  const actual = requireNonNegative(NaN, "foo");
+test("NaN is not a NonNegativeNumber", () => {
+  const actual = parseNonNegativeNumber(NaN, "riskFreeRate");
   const expected = {
     ok: false,
-    error: { kind: "not_non_negative", name: "foo", value: NaN },
+    error: { kind: "notNonNegative", name: "riskFreeRate", value: NaN },
   };
   assert.deepEqual(actual, expected);
 });
@@ -84,32 +84,32 @@ test("plain number is not a NonNegativeNumber", () => {
   takesNonNegativeNumber(-3);
 });
 
-test("empty path is length zero", () => {
-  const actual = requirePathLength([], 0, "revenue_growth_path");
+test("empty path has length 0", () => {
+  const actual = parsePathLength([], 0, "revenueGrowthPath");
   const expected = { ok: true, value: [] };
   assert.deepEqual(actual, expected);
 });
 
 test("correct path length is ok", () => {
-  const actual = requirePathLength([0.1, 0.2, 0.3], 3, "revenue_growth_path");
+  const actual = parsePathLength([0.1, 0.2, 0.3], 3, "revenueGrowthPath");
   const expected = { ok: true, value: [0.1, 0.2, 0.3] };
   assert.deepEqual(actual, expected);
 });
 
 test("too short path is an error", () => {
-  const actual = requirePathLength([0.1, 0.2], 3, "revenue_growth_path");
+  const actual = parsePathLength([0.1, 0.2], 3, "revenueGrowthPath");
   const expected = {
     ok: false,
-    error: { kind: "wrong_length", name: "revenue_growth_path", actual: 2, expected: 3 },
+    error: { kind: "wrongLength", name: "revenueGrowthPath", actual: 2, expected: 3 },
   };
   assert.deepEqual(actual, expected);
 });
 
 test("too long path is an error", () => {
-  const actual = requirePathLength([0.1, 0.2, 0.3, 0.4], 3, "revenue_growth_path");
+  const actual = parsePathLength([0.1, 0.2, 0.3, 0.4], 3, "revenueGrowthPath");
   const expected = {
     ok: false,
-    error: { kind: "wrong_length", name: "revenue_growth_path", actual: 4, expected: 3 },
+    error: { kind: "wrongLength", name: "revenueGrowthPath", actual: 4, expected: 3 },
   };
   assert.deepEqual(actual, expected);
 });
