@@ -6,10 +6,13 @@ import {
   parseNonNegativeNumber,
   parsePathLength,
   parsePositiveNumber,
+  parseUnitInterval,
+  type UnitInterval,
 } from "./validate.ts";
 
 function takesPositiveNumber(_n: PositiveNumber): void {}
 function takesNonNegativeNumber(_n: NonNegativeNumber): void {}
+function takesUnitInterval(_n: UnitInterval): void {}
 
 test("positive number is a PositiveNumber", () => {
   const actual = parsePositiveNumber(1, "beta");
@@ -112,4 +115,52 @@ test("too long path is an error", () => {
     error: { kind: "wrongLength", name: "revenueGrowthPath", actual: 4, expected: 3 },
   };
   assert.deepEqual(actual, expected);
+});
+
+test("0 is a UnitInterval", () => {
+  const actual = parseUnitInterval(0, "taxRate");
+  const expected = { ok: true, value: 0 };
+  assert.deepEqual(actual, expected);
+});
+test("between 0 and 1 is a UnitInterval", () => {
+  const actual = parseUnitInterval(0.69, "taxRate");
+  const expected = { ok: true, value: 0.69 };
+  assert.deepEqual(actual, expected);
+});
+test("1 is a UnitInterval", () => {
+  const actual = parseUnitInterval(1, "taxRate");
+  const expected = { ok: true, value: 1 };
+  assert.deepEqual(actual, expected);
+});
+
+test("below 0 is not a UnitInterval", () => {
+  const actual = parseUnitInterval(-0.1, "taxRate");
+  const expected = {
+    ok: false,
+    error: { kind: "notUnitInterval", name: "taxRate", value: -0.1 },
+  };
+  assert.deepEqual(actual, expected);
+});
+
+test("above 1 is not a UnitInterval", () => {
+  const actual = parseUnitInterval(1.1, "taxRate");
+  const expected = {
+    ok: false,
+    error: { kind: "notUnitInterval", name: "taxRate", value: 1.1 },
+  };
+  assert.deepEqual(actual, expected);
+});
+
+test("NaN is not a UnitInterval", () => {
+  const actual = parseUnitInterval(NaN, "taxRate");
+  const expected = {
+    ok: false,
+    error: { kind: "notUnitInterval", name: "taxRate", value: NaN },
+  };
+  assert.deepEqual(actual, expected);
+});
+
+test("plain number is not a UnitInterval", () => {
+  // @ts-expect-error a plain number is not a NonNegativeNumber
+  takesUnitInterval(0.5);
 });

@@ -1,11 +1,11 @@
 import { err, ok, type Result } from "./result.ts";
 
-declare const positiveBrand: unique symbol;
-declare const nonNegativeBrand: unique symbol;
+declare const brand: unique symbol;
 
-export type PositiveNumber = number & { readonly [positiveBrand]: true };
-
-export type NonNegativeNumber = number & { readonly [nonNegativeBrand]: true };
+export type Brand<T, Name extends string> = T & { readonly [brand]: Name };
+export type PositiveNumber = Brand<number, "PositiveNumber">;
+export type NonNegativeNumber = Brand<number, "NonNegativeNumber">;
+export type UnitInterval = Brand<number, "UnitInterval">;
 
 export type ValidationError =
   | {
@@ -23,6 +23,11 @@ export type ValidationError =
       readonly name: string;
       readonly actual: number;
       readonly expected: number;
+    }
+  | {
+      readonly kind: "notUnitInterval";
+      readonly name: string;
+      readonly value: number;
     };
 
 export function parsePositiveNumber(
@@ -57,4 +62,15 @@ export function parsePathLength(
   }
 
   return err({ kind: "wrongLength", name, actual: path.length, expected });
+}
+
+export function parseUnitInterval(
+  value: number,
+  name: string,
+): Result<UnitInterval, ValidationError> {
+  if (value >= 0 && value <= 1) {
+    return ok(value as UnitInterval);
+  }
+
+  return err({ kind: "notUnitInterval", name, value });
 }
