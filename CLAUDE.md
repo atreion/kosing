@@ -20,3 +20,9 @@ CLI, database or report generation here.
 - Tests: Node's built-in `node:test` + `node:assert/strict`, files `*.test.ts`
   next to the code.
 - `npm run check` runs typecheck, Biome and tests. Run it before committing.
+
+## Git
+
+Solo project: commit directly on `main` (this overrides the global
+branch-and-PR rule). Local branches only for experiments, merged back with
+`--ff-only` or `--squash` and then deleted. No PRs required.
