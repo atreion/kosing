@@ -6,29 +6,32 @@ export type Brand<T, Name extends string> = T & { readonly [brand]: Name };
 export type PositiveNumber = Brand<number, "PositiveNumber">;
 export type NonNegativeNumber = Brand<number, "NonNegativeNumber">;
 export type UnitInterval = Brand<number, "UnitInterval">;
+export type PositiveInteger = Brand<number, "PositiveInteger">;
+
+type Named = { readonly name: string };
 
 export type ValidationError =
-  | {
+  | (Named & {
       readonly kind: "notPositive";
-      readonly name: string;
       readonly value: number;
-    }
-  | {
+    })
+  | (Named & {
       readonly kind: "notNonNegative";
-      readonly name: string;
       readonly value: number;
-    }
-  | {
+    })
+  | (Named & {
       readonly kind: "wrongLength";
-      readonly name: string;
       readonly actual: number;
       readonly expected: number;
-    }
-  | {
+    })
+  | (Named & {
       readonly kind: "notUnitInterval";
-      readonly name: string;
       readonly value: number;
-    };
+    })
+  | (Named & {
+      readonly kind: "notPositiveInteger";
+      readonly value: number;
+    });
 
 export function parsePositiveNumber(
   value: number,
@@ -73,4 +76,15 @@ export function parseUnitInterval(
   }
 
   return err({ kind: "notUnitInterval", name, value });
+}
+
+export function parsePositiveInteger(
+  value: number,
+  name: string,
+): Result<PositiveInteger, ValidationError> {
+  if (Number.isInteger(value) && value > 0) {
+    return ok(value as PositiveInteger);
+  }
+
+  return err({ kind: "notPositiveInteger", name, value });
 }

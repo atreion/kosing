@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   type NonNegativeNumber,
+  type PositiveInteger,
   type PositiveNumber,
   parseNonNegativeNumber,
   parsePathLength,
+  parsePositiveInteger,
   parsePositiveNumber,
   parseUnitInterval,
   type UnitInterval,
@@ -13,6 +15,7 @@ import {
 function takesPositiveNumber(_n: PositiveNumber): void {}
 function takesNonNegativeNumber(_n: NonNegativeNumber): void {}
 function takesUnitInterval(_n: UnitInterval): void {}
+function takesPositiveInteger(_n: PositiveInteger): void {}
 
 test("positive number is a PositiveNumber", () => {
   const actual = parsePositiveNumber(1, "beta");
@@ -163,4 +166,51 @@ test("NaN is not a UnitInterval", () => {
 test("plain number is not a UnitInterval", () => {
   // @ts-expect-error a plain number is not a NonNegativeNumber
   takesUnitInterval(0.5);
+});
+
+test("positive integer is a PositiveInteger", () => {
+  const actual = parsePositiveInteger(42, "explicitPeriodYears");
+  const expected = { ok: true, value: 42 };
+  assert.deepEqual(actual, expected);
+});
+
+test("non-integer is not a PositiveInteger", () => {
+  const actual = parsePositiveInteger(3.14, "explicitPeriodYears");
+  const expected = {
+    ok: false,
+    error: { kind: "notPositiveInteger", name: "explicitPeriodYears", value: 3.14 },
+  };
+  assert.deepEqual(actual, expected);
+});
+
+test("zero is not a PositiveInteger", () => {
+  const actual = parsePositiveInteger(0, "explicitPeriodYears");
+  const expected = {
+    ok: false,
+    error: { kind: "notPositiveInteger", name: "explicitPeriodYears", value: 0 },
+  };
+  assert.deepEqual(actual, expected);
+});
+
+test("negative integer is not a PositiveInteger", () => {
+  const actual = parsePositiveInteger(-9000, "explicitPeriodYears");
+  const expected = {
+    ok: false,
+    error: { kind: "notPositiveInteger", name: "explicitPeriodYears", value: -9000 },
+  };
+  assert.deepEqual(actual, expected);
+});
+
+test("NaN is not a PositiveInteger", () => {
+  const actual = parsePositiveInteger(NaN, "explicitPeriodYears");
+  const expected = {
+    ok: false,
+    error: { kind: "notPositiveInteger", name: "explicitPeriodYears", value: NaN },
+  };
+  assert.deepEqual(actual, expected);
+});
+
+test("plain integer is not a PositiveInteger", () => {
+  // @ts-expect-error a plain integer is not a PositiveInteger
+  takesPositiveInteger(13);
 });
