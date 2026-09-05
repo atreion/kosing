@@ -1,7 +1,21 @@
+/**
+ * Branded number types and the parsers that produce them.
+ *
+ * The `as` casts inside the parsers are the sanctioned exception to the
+ * project's no-cast rule: a brand can only be applied by asserting it, and
+ * each cast sits next to the check that justifies it.
+ */
+
 import { err, ok, type Result } from "./result.ts";
 
 declare const brand: unique symbol;
 
+/**
+ * Marks a primitive with a compile-time-only tag so that only a parser can
+ * produce it. The tag has no runtime representation. Arithmetic on a branded
+ * value yields a plain `number`, since the compiler cannot know whether the
+ * property survives.
+ */
 export type Brand<T, Name extends string> = T & { readonly [brand]: Name };
 export type PositiveNumber = Brand<number, "PositiveNumber">;
 export type NonNegativeNumber = Brand<number, "NonNegativeNumber">;
@@ -11,27 +25,27 @@ export type PositiveInteger = Brand<number, "PositiveInteger">;
 type Named = { readonly name: string };
 type Rejected<Kind extends string> = Named & { readonly kind: Kind; readonly value: number };
 
-export type NotPositive = Rejected<"notPositive">;
-export type NotNonNegative = Rejected<"notNonNegative">;
-export type NotUnitInterval = Rejected<"notUnitInterval">;
-export type NotPositiveInteger = Rejected<"notPositiveInteger">;
-export type WrongLength = Named & {
+export type NotPositiveError = Rejected<"notPositive">;
+export type NotNonNegativeError = Rejected<"notNonNegative">;
+export type NotUnitIntervalError = Rejected<"notUnitInterval">;
+export type NotPositiveIntegerError = Rejected<"notPositiveInteger">;
+export type WrongLengthError = Named & {
   readonly kind: "wrongLength";
   readonly actual: number;
   readonly expected: number;
 };
 
 export type ValidationError =
-  | NotPositive
-  | NotNonNegative
-  | NotUnitInterval
-  | NotPositiveInteger
-  | WrongLength;
+  | NotPositiveError
+  | NotNonNegativeError
+  | NotUnitIntervalError
+  | NotPositiveIntegerError
+  | WrongLengthError;
 
 export function parsePositiveNumber(
   value: number,
   name: string,
-): Result<PositiveNumber, NotPositive> {
+): Result<PositiveNumber, NotPositiveError> {
   if (value > 0) {
     return ok(value as PositiveNumber);
   }
@@ -42,7 +56,7 @@ export function parsePositiveNumber(
 export function parseNonNegativeNumber(
   value: number,
   name: string,
-): Result<NonNegativeNumber, NotNonNegative> {
+): Result<NonNegativeNumber, NotNonNegativeError> {
   if (value >= 0) {
     return ok(value as NonNegativeNumber);
   }
@@ -53,7 +67,7 @@ export function parseNonNegativeNumber(
 export function parseUnitInterval(
   value: number,
   name: string,
-): Result<UnitInterval, NotUnitInterval> {
+): Result<UnitInterval, NotUnitIntervalError> {
   if (value >= 0 && value <= 1) {
     return ok(value as UnitInterval);
   }
@@ -64,7 +78,7 @@ export function parseUnitInterval(
 export function parsePositiveInteger(
   value: number,
   name: string,
-): Result<PositiveInteger, NotPositiveInteger> {
+): Result<PositiveInteger, NotPositiveIntegerError> {
   if (Number.isInteger(value) && value > 0) {
     return ok(value as PositiveInteger);
   }
@@ -76,7 +90,7 @@ export function parsePathLength(
   path: readonly number[],
   expected: number,
   name: string,
-): Result<readonly number[], WrongLength> {
+): Result<readonly number[], WrongLengthError> {
   if (path.length === expected) {
     return ok(path);
   }
