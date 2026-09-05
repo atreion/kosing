@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  type NonNegativeInteger,
   type NonNegativeNumber,
   type PositiveInteger,
   type PositiveNumber,
+  parseNonNegativeInteger,
   parseNonNegativeNumber,
   parsePathLength,
   parsePositiveInteger,
@@ -17,6 +19,7 @@ function takesPositiveNumber(_n: PositiveNumber): void {}
 function takesNonNegativeNumber(_n: NonNegativeNumber): void {}
 function takesUnitInterval(_n: UnitInterval): void {}
 function takesPositiveInteger(_n: PositiveInteger): void {}
+function takesNonNegativeInteger(_n: NonNegativeInteger): void {}
 
 type ScalarCase = {
   readonly desc: string;
@@ -114,6 +117,28 @@ describe("parsePositiveInteger", () => {
   it("rejects a plain integer at compile time", () => {
     // @ts-expect-error a plain integer is not a PositiveInteger
     takesPositiveInteger(13);
+  });
+});
+
+describe("parseNonNegativeInteger", () => {
+  const field = "fadePeriodYears";
+  const cases: readonly ScalarCase[] = [
+    { desc: "accepts a positive integer", input: 1, expected: "ok" },
+    { desc: "accepts zero", input: 0, expected: "ok" },
+    { desc: "rejects a non-integer", input: 0.5, expected: "notNonNegativeInteger" },
+    { desc: "rejects a negative integer", input: -1, expected: "notNonNegativeInteger" },
+    { desc: "rejects NaN", input: NaN, expected: "notNonNegativeInteger" },
+  ];
+
+  for (const c of cases) {
+    it(c.desc, () => {
+      assert.deepEqual(parseNonNegativeInteger(c.input, field), expectedScalarResult(field, c));
+    });
+  }
+
+  it("rejects a plain integer at compile time", () => {
+    // @ts-expect-error a plain integer is not a NonNegativeInteger
+    takesNonNegativeInteger(0);
   });
 });
 

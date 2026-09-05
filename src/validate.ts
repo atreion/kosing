@@ -21,6 +21,7 @@ export type PositiveNumber = Brand<number, "PositiveNumber">;
 export type NonNegativeNumber = Brand<number, "NonNegativeNumber">;
 export type UnitInterval = Brand<number, "UnitInterval">;
 export type PositiveInteger = Brand<number, "PositiveInteger">;
+export type NonNegativeInteger = Brand<number, "NonNegativeInteger">;
 
 type Named = { readonly name: string };
 type Rejected<Kind extends string> = Named & { readonly kind: Kind; readonly value: number };
@@ -29,6 +30,7 @@ export type NotPositiveError = Rejected<"notPositive">;
 export type NotNonNegativeError = Rejected<"notNonNegative">;
 export type NotUnitIntervalError = Rejected<"notUnitInterval">;
 export type NotPositiveIntegerError = Rejected<"notPositiveInteger">;
+export type NotNonNegativeIntegerError = Rejected<"notNonNegativeInteger">;
 export type WrongLengthError = Named & {
   readonly kind: "wrongLength";
   readonly actual: number;
@@ -40,6 +42,7 @@ export type ValidationError =
   | NotNonNegativeError
   | NotUnitIntervalError
   | NotPositiveIntegerError
+  | NotNonNegativeIntegerError
   | WrongLengthError;
 
 export function parsePositiveNumber(
@@ -84,6 +87,17 @@ export function parsePositiveInteger(
   }
 
   return err({ kind: "notPositiveInteger", name, value });
+}
+
+export function parseNonNegativeInteger(
+  value: number,
+  name: string,
+): Result<NonNegativeInteger, NotNonNegativeIntegerError> {
+  if (Number.isInteger(value) && value >= 0) {
+    return ok(value as NonNegativeInteger);
+  }
+
+  return err({ kind: "notNonNegativeInteger", name, value });
 }
 
 export function parsePathLength(
