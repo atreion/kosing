@@ -1,3 +1,4 @@
+import { assertNever } from "./exhaustive.ts";
 import type {
   NonNegativeInteger,
   NonNegativeNumber,
@@ -18,11 +19,12 @@ export type DcfInputs = {
 };
 
 export type ExitMultipleBasis = "evEbit" | "evEbitda" | "evFcff";
+export type TerminalBasis = Pick<YearlyCashFlow, "ebit" | "ebitda" | "fcff">;
 
 export type TerminalValueMethod =
-  | { readonly method: "perpetuityGrowth"; readonly growthRate: number }
+  | { readonly kind: "perpetuityGrowth"; readonly growthRate: number }
   | {
-      readonly method: "exitMultiple";
+      readonly kind: "exitMultiple";
       readonly multiple: PositiveNumber;
       readonly basis: ExitMultipleBasis;
     };
@@ -124,4 +126,33 @@ export function projectCashFlows(
     previousRevenue = row.revenue;
   }
   return yearlyCashFlows;
+}
+
+function terminalBasisValue(finalYear: TerminalBasis, basis: ExitMultipleBasis): number {
+  switch (basis) {
+    case "evEbit":
+      return finalYear.ebit;
+    case "evEbitda":
+      return finalYear.ebitda;
+    case "evFcff":
+      return finalYear.fcff;
+    default:
+      return assertNever(basis);
+  }
+}
+
+export function terminalValue(
+  finalYear: TerminalBasis,
+  wacc: number,
+  method: TerminalValueMethod,
+): number {
+  const { fcff } = finalYear;
+  switch (method.kind) {
+    case "perpetuityGrowth":
+      return (fcff * (1 + method.growthRate)) / (wacc - method.growthRate);
+    case "exitMultiple":
+      return method.multiple * terminalBasisValue(finalYear, method.basis);
+    default:
+      return assertNever(method);
+  }
 }

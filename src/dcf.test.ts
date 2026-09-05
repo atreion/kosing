@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { type DcfAssumptions, type DcfInputs, projectCashFlows, projectYear } from "./dcf.ts";
-import { assertAllClose, unwrap } from "./test-utils.ts";
+import {
+  type DcfAssumptions,
+  type DcfInputs,
+  projectCashFlows,
+  projectYear,
+  type TerminalValueMethod,
+  terminalValue,
+} from "./dcf.ts";
+import { assertAllClose, assertClose, unwrap } from "./test-utils.ts";
 import {
   parseNonNegativeInteger,
   parseNonNegativeNumber,
@@ -75,7 +82,7 @@ describe("projectCashFlows", () => {
         },
       ],
       workingCapitalPercentOfRevenue: 0,
-      terminalValueMethod: { method: "perpetuityGrowth", growthRate: 0.025 },
+      terminalValueMethod: { kind: "perpetuityGrowth", growthRate: 0.025 },
     };
 
     const actual = projectCashFlows(inputs, assumptions);
@@ -86,4 +93,49 @@ describe("projectCashFlows", () => {
       expected,
     );
   });
+});
+
+type TerminalValueCase = {
+  readonly desc: string;
+  readonly method: TerminalValueMethod;
+  readonly expected: number;
+};
+
+describe("terminalValue", () => {
+  const multiple = unwrap(parsePositiveNumber(10, "multiple"));
+  const finalYear = { ebit: 300, ebitda: 340, fcff: 200 };
+  const wacc = 0.08;
+  const cases: readonly TerminalValueCase[] = [
+    {
+      desc: "perpetuity growth applies Gordon formula",
+      method: { kind: "perpetuityGrowth", growthRate: 0.02 },
+      expected: 3400,
+    },
+    {
+      desc: "zero growth reduces to fcff over wacc",
+      method: { kind: "perpetuityGrowth", growthRate: 0 },
+      expected: 2500,
+    },
+    {
+      desc: "exit multiple on ebit",
+      method: { kind: "exitMultiple", multiple, basis: "evEbit" },
+      expected: 3000,
+    },
+    {
+      desc: "exit multiple on ebitda",
+      method: { kind: "exitMultiple", multiple, basis: "evEbitda" },
+      expected: 3400,
+    },
+    {
+      desc: "exit multiple on fcff",
+      method: { kind: "exitMultiple", multiple, basis: "evFcff" },
+      expected: 2000,
+    },
+  ];
+
+  for (const { desc, method, expected } of cases) {
+    it(desc, () => {
+      assertClose(terminalValue(finalYear, wacc, method), expected, 1e-9);
+    });
+  }
 });
