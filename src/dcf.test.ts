@@ -211,3 +211,46 @@ describe("computeDcf", () => {
     assertClose(result.equityValue, result.enterpriseValue + 50, tolerance);
   });
 });
+
+describe("computeDcf on the Nova case", () => {
+  const novaRawInputs: DcfRawInputs = {
+    revenueBase: 3450,
+    taxRate: 0.21,
+    wacc: 0.0678,
+    netDebt: -730,
+    dilutedSharesOutstandingMillions: 55.1,
+    nonOperatingAssets: 0,
+    currency: "SEK",
+    unit: "millions",
+  };
+
+  const novaRawAssumptions: DcfRawAssumptions = {
+    explicitPeriodYears: 5,
+    fadePeriodYears: 5,
+    revenueGrowthPath: [0.18, 0.16, 0.14, 0.12, 0.1, 0.085, 0.07, 0.055, 0.04, 0.025],
+    ebitMarginPath: [0.34, 0.34, 0.34, 0.33, 0.33, 0.32, 0.31, 0.3, 0.29, 0.28],
+    capexPercentOfRevenuePath: Array.from({ length: 10 }, () => 0.04),
+    daPercentOfRevenuePath: Array.from({ length: 10 }, () => 0.038),
+    workingCapitalPercentOfRevenue: 0.02,
+    terminalValueMethod: {
+      kind: "perpetuityGrowth",
+      growthRate: 0.025,
+    },
+  };
+
+  it("matches the golden values", () => {
+    const inputs = unwrap(parseDcfInputs(novaRawInputs));
+    const assumptions = unwrap(parseDcfAssumptions(novaRawAssumptions, inputs.wacc));
+
+    const result = computeDcf(inputs, assumptions);
+
+    assert.equal(result.yearlyCashFlows.length, 10);
+    assert.deepEqual(result.notes, []);
+    assertClose(result.valuePerShare, 644.3162953597478, 1e-9);
+    assertClose(result.enterpriseValue, 34771.8278743221, 1e-9);
+    assertClose(result.equityValue, 35501.8278743221, 1e-9);
+    assertClose(result.terminalValue, 23537.035456178997, 1e-9);
+    assertClose(result.terminalValuePercentOfEv, 0.6768995734492392, 1e-9);
+    assertClose(result.pvExplicitPeriod, 11234.792418143106, 1e-9);
+  });
+});
