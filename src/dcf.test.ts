@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  computeDcf,
   type DcfAssumptions,
   type DcfInputs,
   projectCashFlows,
@@ -16,6 +17,45 @@ import {
   parsePositiveNumber,
   parseUnitInterval,
 } from "./validate.ts";
+
+const baseInputs: DcfInputs = {
+  revenueBase: unwrap(parseNonNegativeNumber(1000, "revenueBase")),
+  taxRate: unwrap(parseUnitInterval(0, "taxRate")),
+  wacc: unwrap(parsePositiveNumber(0.1, "wacc")),
+  netDebt: 0,
+  dilutedSharesOutstandingMillions: unwrap(
+    parsePositiveNumber(100, "dilutedSharesOutstandingMillions"),
+  ),
+  nonOperatingAssets: 0,
+  currency: "SEK",
+  unit: "millions",
+};
+
+function assumptions(
+  terminalValueMethod: TerminalValueMethod,
+  daPercentOfRevenue = 0,
+): DcfAssumptions {
+  return {
+    explicitPeriodYears: unwrap(parsePositiveInteger(1, "explicitPeriodYears")),
+    fadePeriodYears: unwrap(parseNonNegativeInteger(1, "fadePeriodYears")),
+    yearlyAssumptions: [
+      {
+        revenueGrowth: 0,
+        ebitMargin: 0.1,
+        capexPercentOfRevenue: 0,
+        daPercentOfRevenue,
+      },
+      {
+        revenueGrowth: 0,
+        ebitMargin: 0.1,
+        capexPercentOfRevenue: 0,
+        daPercentOfRevenue,
+      },
+    ],
+    workingCapitalPercentOfRevenue: 0,
+    terminalValueMethod,
+  };
+}
 
 describe("projectYear", () => {
   it("constructs every field for year one", () => {
@@ -52,21 +92,8 @@ describe("projectYear", () => {
 
 describe("projectCashFlows", () => {
   it("compounds revenue across years", () => {
-    const inputs: DcfInputs = {
-      revenueBase: unwrap(parseNonNegativeNumber(1000, "revenueBase")),
-      taxRate: unwrap(parseUnitInterval(0, "taxRate")),
-      wacc: unwrap(parsePositiveNumber(0.1, "wacc")),
-      netDebt: 0,
-      dilutedSharesOutstandingMillions: unwrap(
-        parsePositiveNumber(100, "dilutedSharesOutstandingMillions"),
-      ),
-      nonOperatingAssets: 0,
-      currency: "SEK",
-      unit: "millions",
-    };
-    const assumptions: DcfAssumptions = {
-      explicitPeriodYears: unwrap(parsePositiveInteger(1, "explicitPeriodYears")),
-      fadePeriodYears: unwrap(parseNonNegativeInteger(1, "fadePeriodYears")),
+    const actual = projectCashFlows(baseInputs, {
+      ...assumptions({ kind: "perpetuityGrowth", growthRate: 0.025 }),
       yearlyAssumptions: [
         {
           revenueGrowth: 0.1,
@@ -81,11 +108,7 @@ describe("projectCashFlows", () => {
           daPercentOfRevenue: 0,
         },
       ],
-      workingCapitalPercentOfRevenue: 0,
-      terminalValueMethod: { kind: "perpetuityGrowth", growthRate: 0.025 },
-    };
-
-    const actual = projectCashFlows(inputs, assumptions);
+    });
     const expected = [1100, 1155];
 
     assert.deepEqual(
@@ -138,4 +161,71 @@ describe("terminalValue", () => {
       assertClose(terminalValue(finalYear, wacc, method), expected, 1e-9);
     });
   }
+});
+
+describe("computeDcf", () => {
+  const pv2 = 1 / 1.1 ** 2;
+  const tolerance = 1e-9;
+  const perpetuity: TerminalValueMethod = { kind: "perpetuityGrowth", growthRate: 0.025 };
+
+  it("discounts the Gordon perpetuity to present value", () => {
+    const result = computeDcf(baseInputs, assumptions(perpetuity));
+    const expectedTerminalValue = ((100 * 1.025) / 0.075) * pv2;
+
+    assertClose(result.terminalValue, expectedTerminalValue, tolerance);
+    assertClose(result.enterpriseValue, 100 / 1.1 + 100 * pv2 + expectedTerminalValue, tolerance);
+  });
+
+  it("applies an exit multiple to final-year ebit", () => {
+    const result = computeDcf(
+      baseInputs,
+      assumptions({
+        kind: "exitMultiple",
+        multiple: unwrap(parsePositiveNumber(10, "multiple")),
+        basis: "evEbit",
+      }),
+    );
+
+    assertClose(result.terminalValue, 1000 * pv2, tolerance);
+  });
+
+  it("applies an exit multiple to final-year ebitda", () => {
+    const result = computeDcf(
+      baseInputs,
+      assumptions(
+        {
+          kind: "exitMultiple",
+          multiple: unwrap(parsePositiveNumber(8, "multiple")),
+          basis: "evEbitda",
+        },
+        0.05,
+      ),
+    );
+
+    assertClose(result.terminalValue, 1200 * pv2, tolerance);
+  });
+
+  it("emits a note when terminal value exceeds 75% of enterprise value", () => {
+    const result = computeDcf(
+      baseInputs,
+      assumptions({ kind: "perpetuityGrowth", growthRate: 0.07 }),
+    );
+
+    assert.ok(result.terminalValuePercentOfEv > 0.75);
+    assert.deepEqual(result.notes, [
+      { kind: "terminalValueDominates", percentOfEv: result.terminalValuePercentOfEv },
+    ]);
+  });
+
+  it("subtracts net debt in the equity bridge", () => {
+    const result = computeDcf({ ...baseInputs, netDebt: 200 }, assumptions(perpetuity));
+
+    assertClose(result.equityValue, result.enterpriseValue - 200, tolerance);
+  });
+
+  it("adds non-operating assets in the equity bridge", () => {
+    const result = computeDcf({ ...baseInputs, nonOperatingAssets: 50 }, assumptions(perpetuity));
+
+    assertClose(result.equityValue, result.enterpriseValue + 50, tolerance);
+  });
 });

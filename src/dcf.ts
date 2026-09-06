@@ -156,3 +156,49 @@ export function terminalValue(
       return assertNever(method);
   }
 }
+
+function buildNotes(percentOfEv: number): readonly DcfNote[] {
+  if (percentOfEv > 0.75) {
+    return [{ kind: "terminalValueDominates", percentOfEv }];
+  }
+
+  return [];
+}
+
+export function computeDcf(inputs: DcfInputs, assumptions: DcfAssumptions): DcfResult {
+  const yearlyCashFlows = projectCashFlows(inputs, assumptions);
+  const finalYear = yearlyCashFlows.at(-1);
+
+  // impossible branch - used to narrow final year
+  if (finalYear === undefined) {
+    throw new Error(`projection produced no cash flows`);
+  }
+
+  const discountedTerminalValue =
+    terminalValue(finalYear, inputs.wacc, assumptions.terminalValueMethod) *
+    finalYear.discountFactor;
+  let pvExplicitPeriod = 0;
+
+  for (const y of yearlyCashFlows) {
+    pvExplicitPeriod += y.pvFcff;
+  }
+
+  const enterpriseValue = pvExplicitPeriod + discountedTerminalValue;
+  const terminalValuePercentOfEv =
+    enterpriseValue === 0 ? 0 : discountedTerminalValue / enterpriseValue;
+  const equityValue = enterpriseValue - inputs.netDebt + inputs.nonOperatingAssets;
+  const valuePerShare = equityValue / inputs.dilutedSharesOutstandingMillions;
+
+  return {
+    valuePerShare,
+    enterpriseValue,
+    equityValue,
+    terminalValue: discountedTerminalValue,
+    terminalValuePercentOfEv,
+    pvExplicitPeriod,
+    yearlyCashFlows,
+    inputsUsed: inputs,
+    assumptionsUsed: assumptions,
+    notes: buildNotes(terminalValuePercentOfEv),
+  };
+}
