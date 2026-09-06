@@ -68,8 +68,7 @@ describe("projectYear", () => {
         capexPercentOfRevenue: 0.05,
         daPercentOfRevenue: 0.04,
       },
-      { taxRate: 0.2, wacc: 0.1 },
-      0.02,
+      { taxRate: 0.2, wacc: 0.1, workingCapitalPercentOfRevenue: 0.02 },
     );
 
     const expected = {

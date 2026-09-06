@@ -73,15 +73,20 @@ export type DcfResult = {
   readonly notes: readonly DcfNote[];
 };
 
+type ProjectionConstants = {
+  readonly taxRate: number;
+  readonly wacc: number;
+  readonly workingCapitalPercentOfRevenue: number;
+};
+
 export function projectYear(
   previousRevenue: number,
   year: number,
   yearAssumptions: YearAssumptions,
-  rates: { readonly taxRate: number; readonly wacc: number },
-  workingCapitalPercentOfRevenue: number,
+  constants: ProjectionConstants,
 ): YearlyCashFlow {
   const { revenueGrowth, ebitMargin, daPercentOfRevenue, capexPercentOfRevenue } = yearAssumptions;
-  const { wacc, taxRate } = rates;
+  const { wacc, taxRate, workingCapitalPercentOfRevenue } = constants;
   const revenue = previousRevenue * (1 + revenueGrowth);
   const ebit = revenue * ebitMargin;
   const nopat = ebit * (1 - taxRate);
@@ -114,14 +119,15 @@ export function projectCashFlows(
 ): readonly YearlyCashFlow[] {
   const yearlyCashFlows: YearlyCashFlow[] = [];
   let previousRevenue: number = inputs.revenueBase;
-  for (const [i, year] of assumptions.yearlyAssumptions.entries()) {
-    const row = projectYear(
-      previousRevenue,
-      i + 1,
-      year,
-      inputs,
-      assumptions.workingCapitalPercentOfRevenue,
-    );
+  const constants: ProjectionConstants = {
+    taxRate: inputs.taxRate,
+    wacc: inputs.wacc,
+    workingCapitalPercentOfRevenue: assumptions.workingCapitalPercentOfRevenue,
+  };
+
+  for (const [i, yearAssumptions] of assumptions.yearlyAssumptions.entries()) {
+    const year = i + 1;
+    const row = projectYear(previousRevenue, year, yearAssumptions, constants);
     yearlyCashFlows.push(row);
     previousRevenue = row.revenue;
   }
@@ -183,7 +189,7 @@ export function computeDcf(inputs: DcfInputs, assumptions: DcfAssumptions): DcfR
 
   // impossible branch - used to narrow final year
   if (finalYear === undefined) {
-    throw new Error(`projection produced no cash flows`);
+    throw new Error("projection produced no cash flows");
   }
 
   const discountedTerminalValue =
