@@ -1,27 +1,29 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { describe, it } from "node:test";
 import { err, ok, type Result } from "./result.ts";
 
-test("ok wraps a value", () => {
-  const r = ok(42);
-  assert.equal(r.ok, true);
+describe("ok", () => {
+  it("wraps a value", () => {
+    assert.deepEqual(ok(42), { ok: true, value: 42 });
+  });
+
+  it("exposes value after narrowing", () => {
+    const r: Result<number, string> = ok(42);
+    if (!r.ok) {
+      assert.fail("expected ok");
+    }
+    assert.equal(r.value, 42);
+  });
 });
 
-test("err wraps an error", () => {
-  const e = err("you died");
-  assert.equal(e.ok, false);
-});
+describe("err", () => {
+  it("wraps an error", () => {
+    assert.deepEqual(err("you died"), { ok: false, error: "you died" });
+  });
 
-test("narrowing on ok exposes value", () => {
-  const r: Result<number, string> = ok(42);
-  if (!r.ok) {
-    assert.fail("expected ok");
-  }
-  assert.equal(r.value, 42);
-});
-
-test("value is not accessible before narrowing", () => {
-  const r: Result<number, string> = err("computer says no");
-  // @ts-expect-error value only exists on the ok variant
-  r.value;
+  it("hides value before narrowing", () => {
+    const r: Result<number, string> = err("computer says no");
+    // @ts-expect-error value only exists on the ok variant
+    r.value;
+  });
 });
