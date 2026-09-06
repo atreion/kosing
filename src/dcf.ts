@@ -29,7 +29,7 @@ export type TerminalValueMethod =
       readonly basis: ExitMultipleBasis;
     };
 
-type YearAssumptions = {
+export type YearAssumptions = {
   readonly revenueGrowth: number;
   readonly ebitMargin: number;
   readonly capexPercentOfRevenue: number;
@@ -157,12 +157,24 @@ export function computeTerminalValue(
   }
 }
 
+const TERMINAL_VALUE_DOMINANCE_THRESHOLD = 0.75;
+
 function buildNotes(percentOfEv: number): readonly DcfNote[] {
-  if (percentOfEv > 0.75) {
+  if (percentOfEv > TERMINAL_VALUE_DOMINANCE_THRESHOLD) {
     return [{ kind: "terminalValueDominates", percentOfEv }];
   }
 
   return [];
+}
+
+function sumPvFcff(yearlyCashFlows: readonly YearlyCashFlow[]): number {
+  let sum = 0;
+
+  for (const y of yearlyCashFlows) {
+    sum += y.pvFcff;
+  }
+
+  return sum;
 }
 
 export function computeDcf(inputs: DcfInputs, assumptions: DcfAssumptions): DcfResult {
@@ -177,12 +189,7 @@ export function computeDcf(inputs: DcfInputs, assumptions: DcfAssumptions): DcfR
   const discountedTerminalValue =
     computeTerminalValue(finalYear, inputs.wacc, assumptions.terminalValueMethod) *
     finalYear.discountFactor;
-  let pvExplicitPeriod = 0;
-
-  for (const y of yearlyCashFlows) {
-    pvExplicitPeriod += y.pvFcff;
-  }
-
+  const pvExplicitPeriod = sumPvFcff(yearlyCashFlows);
   const enterpriseValue = pvExplicitPeriod + discountedTerminalValue;
   const terminalValuePercentOfEv =
     enterpriseValue === 0 ? 0 : discountedTerminalValue / enterpriseValue;
