@@ -27,7 +27,7 @@ type ScalarCase = {
   readonly expected: "ok" | ValidationError["kind"];
 };
 
-function expectedScalarResult(field: string, { input, expected }: ScalarCase) {
+function makeExpectedScalarResult(field: string, { input, expected }: ScalarCase) {
   return expected === "ok"
     ? { ok: true, value: input }
     : { ok: false, error: { kind: expected, name: field, value: input } };
@@ -44,7 +44,7 @@ describe("parsePositiveNumber", () => {
 
   for (const c of cases) {
     it(c.desc, () => {
-      assert.deepEqual(parsePositiveNumber(c.input, field), expectedScalarResult(field, c));
+      assert.deepEqual(parsePositiveNumber(c.input, field), makeExpectedScalarResult(field, c));
     });
   }
 
@@ -65,7 +65,7 @@ describe("parseNonNegativeNumber", () => {
 
   for (const c of cases) {
     it(c.desc, () => {
-      assert.deepEqual(parseNonNegativeNumber(c.input, field), expectedScalarResult(field, c));
+      assert.deepEqual(parseNonNegativeNumber(c.input, field), makeExpectedScalarResult(field, c));
     });
   }
 
@@ -88,7 +88,7 @@ describe("parseUnitInterval", () => {
 
   for (const c of cases) {
     it(c.desc, () => {
-      assert.deepEqual(parseUnitInterval(c.input, field), expectedScalarResult(field, c));
+      assert.deepEqual(parseUnitInterval(c.input, field), makeExpectedScalarResult(field, c));
     });
   }
 
@@ -110,7 +110,7 @@ describe("parsePositiveInteger", () => {
 
   for (const c of cases) {
     it(c.desc, () => {
-      assert.deepEqual(parsePositiveInteger(c.input, field), expectedScalarResult(field, c));
+      assert.deepEqual(parsePositiveInteger(c.input, field), makeExpectedScalarResult(field, c));
     });
   }
 
@@ -132,7 +132,7 @@ describe("parseNonNegativeInteger", () => {
 
   for (const c of cases) {
     it(c.desc, () => {
-      assert.deepEqual(parseNonNegativeInteger(c.input, field), expectedScalarResult(field, c));
+      assert.deepEqual(parseNonNegativeInteger(c.input, field), makeExpectedScalarResult(field, c));
     });
   }
 

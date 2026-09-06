@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   computeDcf,
+  computeTerminalValue,
   type DcfAssumptions,
   type DcfInputs,
   projectCashFlows,
   projectYear,
   type TerminalValueMethod,
-  terminalValue,
 } from "./dcf.ts";
 import { assertAllClose, assertClose, unwrap } from "./test-utils.ts";
 import {
@@ -31,7 +31,7 @@ const baseInputs: DcfInputs = {
   unit: "millions",
 };
 
-function assumptions(
+function makeAssumptions(
   terminalValueMethod: TerminalValueMethod,
   daPercentOfRevenue = 0,
 ): DcfAssumptions {
@@ -93,7 +93,7 @@ describe("projectYear", () => {
 describe("projectCashFlows", () => {
   it("compounds revenue across years", () => {
     const actual = projectCashFlows(baseInputs, {
-      ...assumptions({ kind: "perpetuityGrowth", growthRate: 0.025 }),
+      ...makeAssumptions({ kind: "perpetuityGrowth", growthRate: 0.025 }),
       yearlyAssumptions: [
         {
           revenueGrowth: 0.1,
@@ -124,7 +124,7 @@ type TerminalValueCase = {
   readonly expected: number;
 };
 
-describe("terminalValue", () => {
+describe("computeTerminalValue", () => {
   const multiple = unwrap(parsePositiveNumber(10, "multiple"));
   const finalYear = { ebit: 300, ebitda: 340, fcff: 200 };
   const wacc = 0.08;
@@ -158,7 +158,7 @@ describe("terminalValue", () => {
 
   for (const { desc, method, expected } of cases) {
     it(desc, () => {
-      assertClose(terminalValue(finalYear, wacc, method), expected, 1e-9);
+      assertClose(computeTerminalValue(finalYear, wacc, method), expected, 1e-9);
     });
   }
 });
@@ -169,7 +169,7 @@ describe("computeDcf", () => {
   const perpetuity: TerminalValueMethod = { kind: "perpetuityGrowth", growthRate: 0.025 };
 
   it("discounts the Gordon perpetuity to present value", () => {
-    const result = computeDcf(baseInputs, assumptions(perpetuity));
+    const result = computeDcf(baseInputs, makeAssumptions(perpetuity));
     const expectedTerminalValue = ((100 * 1.025) / 0.075) * pv2;
 
     assertClose(result.terminalValue, expectedTerminalValue, tolerance);
@@ -179,7 +179,7 @@ describe("computeDcf", () => {
   it("applies an exit multiple to final-year ebit", () => {
     const result = computeDcf(
       baseInputs,
-      assumptions({
+      makeAssumptions({
         kind: "exitMultiple",
         multiple: unwrap(parsePositiveNumber(10, "multiple")),
         basis: "evEbit",
@@ -192,7 +192,7 @@ describe("computeDcf", () => {
   it("applies an exit multiple to final-year ebitda", () => {
     const result = computeDcf(
       baseInputs,
-      assumptions(
+      makeAssumptions(
         {
           kind: "exitMultiple",
           multiple: unwrap(parsePositiveNumber(8, "multiple")),
@@ -208,7 +208,7 @@ describe("computeDcf", () => {
   it("emits a note when terminal value exceeds 75% of enterprise value", () => {
     const result = computeDcf(
       baseInputs,
-      assumptions({ kind: "perpetuityGrowth", growthRate: 0.07 }),
+      makeAssumptions({ kind: "perpetuityGrowth", growthRate: 0.07 }),
     );
 
     assert.ok(result.terminalValuePercentOfEv > 0.75);
@@ -218,13 +218,16 @@ describe("computeDcf", () => {
   });
 
   it("subtracts net debt in the equity bridge", () => {
-    const result = computeDcf({ ...baseInputs, netDebt: 200 }, assumptions(perpetuity));
+    const result = computeDcf({ ...baseInputs, netDebt: 200 }, makeAssumptions(perpetuity));
 
     assertClose(result.equityValue, result.enterpriseValue - 200, tolerance);
   });
 
   it("adds non-operating assets in the equity bridge", () => {
-    const result = computeDcf({ ...baseInputs, nonOperatingAssets: 50 }, assumptions(perpetuity));
+    const result = computeDcf(
+      { ...baseInputs, nonOperatingAssets: 50 },
+      makeAssumptions(perpetuity),
+    );
 
     assertClose(result.equityValue, result.enterpriseValue + 50, tolerance);
   });

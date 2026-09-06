@@ -128,7 +128,7 @@ export function projectCashFlows(
   return yearlyCashFlows;
 }
 
-function terminalBasisValue(finalYear: TerminalBasis, basis: ExitMultipleBasis): number {
+function selectTerminalBasis(finalYear: TerminalBasis, basis: ExitMultipleBasis): number {
   switch (basis) {
     case "evEbit":
       return finalYear.ebit;
@@ -141,7 +141,7 @@ function terminalBasisValue(finalYear: TerminalBasis, basis: ExitMultipleBasis):
   }
 }
 
-export function terminalValue(
+export function computeTerminalValue(
   finalYear: TerminalBasis,
   wacc: number,
   method: TerminalValueMethod,
@@ -151,7 +151,7 @@ export function terminalValue(
     case "perpetuityGrowth":
       return (fcff * (1 + method.growthRate)) / (wacc - method.growthRate);
     case "exitMultiple":
-      return method.multiple * terminalBasisValue(finalYear, method.basis);
+      return method.multiple * selectTerminalBasis(finalYear, method.basis);
     default:
       return assertNever(method);
   }
@@ -175,7 +175,7 @@ export function computeDcf(inputs: DcfInputs, assumptions: DcfAssumptions): DcfR
   }
 
   const discountedTerminalValue =
-    terminalValue(finalYear, inputs.wacc, assumptions.terminalValueMethod) *
+    computeTerminalValue(finalYear, inputs.wacc, assumptions.terminalValueMethod) *
     finalYear.discountFactor;
   let pvExplicitPeriod = 0;
 
