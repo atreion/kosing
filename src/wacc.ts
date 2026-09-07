@@ -1,4 +1,4 @@
-import { ok, type Result } from "./result.ts";
+import { collectResults, type Result } from "./result.ts";
 import {
   type NonNegativeNumber,
   type PositiveNumber,
@@ -44,49 +44,16 @@ export function computeWacc(inputs: WaccInputs): WaccResult {
   };
 }
 
-export function parseWaccInputs(raw: WaccRawInputs): Result<WaccInputs, ValidationError> {
-  const riskFreeRate = parseNonNegativeNumber(raw.riskFreeRate, "riskFreeRate");
-  if (!riskFreeRate.ok) {
-    return riskFreeRate;
-  }
-
-  const erp = parseNonNegativeNumber(raw.erp, "erp");
-  if (!erp.ok) {
-    return erp;
-  }
-
-  const beta = parsePositiveNumber(raw.beta, "beta");
-  if (!beta.ok) {
-    return beta;
-  }
-
-  const countryRiskPremium = parseNonNegativeNumber(raw.countryRiskPremium, "countryRiskPremium");
-  if (!countryRiskPremium.ok) {
-    return countryRiskPremium;
-  }
-
-  const taxRate = parseUnitInterval(raw.taxRate, "taxRate");
-  if (!taxRate.ok) {
-    return taxRate;
-  }
-
-  const preTaxCostOfDebt = parseNonNegativeNumber(raw.preTaxCostOfDebt, "preTaxCostOfDebt");
-  if (!preTaxCostOfDebt.ok) {
-    return preTaxCostOfDebt;
-  }
-
-  const equityWeight = parseUnitInterval(raw.equityWeight, "equityWeight");
-  if (!equityWeight.ok) {
-    return equityWeight;
-  }
-
-  return ok({
-    riskFreeRate: riskFreeRate.value,
-    erp: erp.value,
-    beta: beta.value,
-    countryRiskPremium: countryRiskPremium.value,
-    taxRate: taxRate.value,
-    preTaxCostOfDebt: preTaxCostOfDebt.value,
-    equityWeight: equityWeight.value,
+export function parseWaccInputs(
+  raw: WaccRawInputs,
+): Result<WaccInputs, readonly ValidationError[]> {
+  return collectResults({
+    riskFreeRate: parseNonNegativeNumber(raw.riskFreeRate, "riskFreeRate"),
+    erp: parseNonNegativeNumber(raw.erp, "erp"),
+    beta: parsePositiveNumber(raw.beta, "beta"),
+    countryRiskPremium: parseNonNegativeNumber(raw.countryRiskPremium, "countryRiskPremium"),
+    taxRate: parseUnitInterval(raw.taxRate, "taxRate"),
+    preTaxCostOfDebt: parseNonNegativeNumber(raw.preTaxCostOfDebt, "preTaxCostOfDebt"),
+    equityWeight: parseUnitInterval(raw.equityWeight, "equityWeight"),
   });
 }

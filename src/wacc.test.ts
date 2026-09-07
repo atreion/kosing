@@ -49,7 +49,7 @@ describe("parseWaccInputs", () => {
 
     assert.deepEqual(result, {
       ok: false,
-      error: { kind: "notPositive", name: "beta", value: -0.5 },
+      error: [{ kind: "notPositive", name: "beta", value: -0.5 }],
     });
   });
 
@@ -58,7 +58,19 @@ describe("parseWaccInputs", () => {
 
     assert.deepEqual(result, {
       ok: false,
-      error: { kind: "notNonNegative", name: "riskFreeRate", value: -0.01 },
+      error: [{ kind: "notNonNegative", name: "riskFreeRate", value: -0.01 }],
+    });
+  });
+
+  it("reports every invalid field", () => {
+    const result = parseWaccInputs({ ...validRaw, riskFreeRate: -0.01, beta: -0.5 });
+
+    assert.deepEqual(result, {
+      ok: false,
+      error: [
+        { kind: "notNonNegative", name: "riskFreeRate", value: -0.01 },
+        { kind: "notPositive", name: "beta", value: -0.5 },
+      ],
     });
   });
 });
