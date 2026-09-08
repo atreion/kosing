@@ -39,7 +39,7 @@ const baseRawAssumptions: DcfRawAssumptions = {
 type RejectedInputsCase = {
   readonly desc: string;
   readonly raw: DcfRawInputs;
-  readonly expected: ValidationError;
+  readonly expected: readonly ValidationError[];
 };
 
 describe("parseDcfInputs", () => {
@@ -51,22 +51,30 @@ describe("parseDcfInputs", () => {
     {
       desc: "rejects a negative revenue base",
       raw: { ...baseRawInputs, revenueBase: -1 },
-      expected: { kind: "notNonNegative", name: "revenueBase", value: -1 },
+      expected: [{ kind: "notNonNegative", name: "revenueBase", value: -1 }],
     },
     {
       desc: "rejects a tax rate above one",
       raw: { ...baseRawInputs, taxRate: 1.5 },
-      expected: { kind: "notUnitInterval", name: "taxRate", value: 1.5 },
+      expected: [{ kind: "notUnitInterval", name: "taxRate", value: 1.5 }],
     },
     {
       desc: "rejects a zero wacc",
       raw: { ...baseRawInputs, wacc: 0 },
-      expected: { kind: "notPositive", name: "wacc", value: 0 },
+      expected: [{ kind: "notPositive", name: "wacc", value: 0 }],
     },
     {
       desc: "rejects zero diluted shares",
       raw: { ...baseRawInputs, dilutedSharesOutstandingMillions: 0 },
-      expected: { kind: "notPositive", name: "dilutedSharesOutstandingMillions", value: 0 },
+      expected: [{ kind: "notPositive", name: "dilutedSharesOutstandingMillions", value: 0 }],
+    },
+    {
+      desc: "reports every invalid field",
+      raw: { ...baseRawInputs, taxRate: 21, dilutedSharesOutstandingMillions: 0 },
+      expected: [
+        { kind: "notUnitInterval", name: "taxRate", value: 21 },
+        { kind: "notPositive", name: "dilutedSharesOutstandingMillions", value: 0 },
+      ],
     },
   ];
 
@@ -80,7 +88,7 @@ describe("parseDcfInputs", () => {
 type RejectedAssumptionsCase = {
   readonly desc: string;
   readonly raw: DcfRawAssumptions;
-  readonly expected: DcfValidationError;
+  readonly expected: readonly DcfValidationError[];
 };
 
 describe("parseDcfAssumptions", () => {
@@ -136,27 +144,27 @@ describe("parseDcfAssumptions", () => {
     {
       desc: "rejects a zero explicit period",
       raw: { ...baseRawAssumptions, explicitPeriodYears: 0 },
-      expected: { kind: "notPositiveInteger", name: "explicitPeriodYears", value: 0 },
+      expected: [{ kind: "notPositiveInteger", name: "explicitPeriodYears", value: 0 }],
     },
     {
       desc: "rejects a fractional explicit period",
       raw: { ...baseRawAssumptions, explicitPeriodYears: 1.5 },
-      expected: { kind: "notPositiveInteger", name: "explicitPeriodYears", value: 1.5 },
+      expected: [{ kind: "notPositiveInteger", name: "explicitPeriodYears", value: 1.5 }],
     },
     {
       desc: "rejects a negative fade period",
       raw: { ...baseRawAssumptions, fadePeriodYears: -1 },
-      expected: { kind: "notNonNegativeInteger", name: "fadePeriodYears", value: -1 },
+      expected: [{ kind: "notNonNegativeInteger", name: "fadePeriodYears", value: -1 }],
     },
     {
       desc: "rejects a path shorter than the projection",
       raw: { ...baseRawAssumptions, ebitMarginPath: [0.1] },
-      expected: { kind: "wrongLength", name: "ebitMarginPath", actual: 1, expected: 2 },
+      expected: [{ kind: "wrongLength", name: "ebitMarginPath", actual: 1, expected: 2 }],
     },
     {
       desc: "rejects a path longer than the projection",
       raw: { ...baseRawAssumptions, daPercentOfRevenuePath: [0, 0, 0] },
-      expected: { kind: "wrongLength", name: "daPercentOfRevenuePath", actual: 3, expected: 2 },
+      expected: [{ kind: "wrongLength", name: "daPercentOfRevenuePath", actual: 3, expected: 2 }],
     },
     {
       desc: "rejects terminal growth equal to wacc",
@@ -164,7 +172,7 @@ describe("parseDcfAssumptions", () => {
         ...baseRawAssumptions,
         terminalValueMethod: { kind: "perpetuityGrowth", growthRate: 0.1 },
       },
-      expected: { kind: "terminalGrowthNotBelowWacc", growthRate: 0.1, wacc: 0.1 },
+      expected: [{ kind: "terminalGrowthNotBelowWacc", growthRate: 0.1, wacc: 0.1 }],
     },
     {
       desc: "rejects terminal growth above wacc",
@@ -172,7 +180,7 @@ describe("parseDcfAssumptions", () => {
         ...baseRawAssumptions,
         terminalValueMethod: { kind: "perpetuityGrowth", growthRate: 0.12 },
       },
-      expected: { kind: "terminalGrowthNotBelowWacc", growthRate: 0.12, wacc: 0.1 },
+      expected: [{ kind: "terminalGrowthNotBelowWacc", growthRate: 0.12, wacc: 0.1 }],
     },
     {
       desc: "rejects a zero exit multiple",
@@ -180,7 +188,32 @@ describe("parseDcfAssumptions", () => {
         ...baseRawAssumptions,
         terminalValueMethod: { kind: "exitMultiple", multiple: 0, basis: "evEbit" },
       },
-      expected: { kind: "notPositive", name: "multiple", value: 0 },
+      expected: [{ kind: "notPositive", name: "multiple", value: 0 }],
+    },
+    {
+      desc: "reports every invalid scalar",
+      raw: {
+        ...baseRawAssumptions,
+        explicitPeriodYears: 0,
+        terminalValueMethod: { kind: "perpetuityGrowth", growthRate: 0.1 },
+      },
+      expected: [
+        { kind: "notPositiveInteger", name: "explicitPeriodYears", value: 0 },
+        { kind: "terminalGrowthNotBelowWacc", growthRate: 0.1, wacc: 0.1 },
+      ],
+    },
+    {
+      desc: "reports every path with the wrong length",
+      raw: { ...baseRawAssumptions, revenueGrowthPath: [0], daPercentOfRevenuePath: [0, 0, 0] },
+      expected: [
+        { kind: "wrongLength", name: "revenueGrowthPath", actual: 1, expected: 2 },
+        { kind: "wrongLength", name: "daPercentOfRevenuePath", actual: 3, expected: 2 },
+      ],
+    },
+    {
+      desc: "skips path checks when the period is invalid",
+      raw: { ...baseRawAssumptions, explicitPeriodYears: 0, ebitMarginPath: [0.1] },
+      expected: [{ kind: "notPositiveInteger", name: "explicitPeriodYears", value: 0 }],
     },
   ];
 

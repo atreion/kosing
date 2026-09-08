@@ -6,7 +6,7 @@ import type {
   YearAssumptions,
 } from "./dcf.ts";
 import { assertNever } from "./exhaustive.ts";
-import { err, ok, type Result } from "./result.ts";
+import { collectResults, err, ok, type Result } from "./result.ts";
 import {
   type PositiveNumber,
   parseNonNegativeInteger,
@@ -45,38 +45,26 @@ export type TerminalGrowthNotBelowWaccError = {
 
 export type DcfValidationError = ValidationError | TerminalGrowthNotBelowWaccError;
 
-export function parseDcfInputs(raw: DcfRawInputs): Result<DcfInputs, ValidationError> {
-  const revenueBase = parseNonNegativeNumber(raw.revenueBase, "revenueBase");
-  if (!revenueBase.ok) {
-    return revenueBase;
-  }
+export function parseDcfInputs(raw: DcfRawInputs): Result<DcfInputs, readonly ValidationError[]> {
+  const parsed = collectResults({
+    revenueBase: parseNonNegativeNumber(raw.revenueBase, "revenueBase"),
+    taxRate: parseUnitInterval(raw.taxRate, "taxRate"),
+    wacc: parsePositiveNumber(raw.wacc, "wacc"),
+    dilutedSharesOutstandingMillions: parsePositiveNumber(
+      raw.dilutedSharesOutstandingMillions,
+      "dilutedSharesOutstandingMillions",
+    ),
+  });
 
-  const taxRate = parseUnitInterval(raw.taxRate, "taxRate");
-  if (!taxRate.ok) {
-    return taxRate;
-  }
-
-  const wacc = parsePositiveNumber(raw.wacc, "wacc");
-  if (!wacc.ok) {
-    return wacc;
-  }
-
-  const dilutedSharesOutstandingMillions = parsePositiveNumber(
-    raw.dilutedSharesOutstandingMillions,
-    "dilutedSharesOutstandingMillions",
-  );
-  if (!dilutedSharesOutstandingMillions.ok) {
-    return dilutedSharesOutstandingMillions;
+  if (!parsed.ok) {
+    return parsed;
   }
 
   const { netDebt, nonOperatingAssets, currency, unit } = raw;
 
   return ok({
-    revenueBase: revenueBase.value,
-    taxRate: taxRate.value,
-    wacc: wacc.value,
+    ...parsed.value,
     netDebt,
-    dilutedSharesOutstandingMillions: dilutedSharesOutstandingMillions.value,
     nonOperatingAssets,
     currency,
     unit,
@@ -140,62 +128,41 @@ function zipYearAssumptions(assumptions: PathAssumptions): readonly YearAssumpti
 export function parseDcfAssumptions(
   raw: DcfRawAssumptions,
   wacc: PositiveNumber,
-): Result<DcfAssumptions, DcfValidationError> {
-  const explicitPeriodYears = parsePositiveInteger(raw.explicitPeriodYears, "explicitPeriodYears");
-  if (!explicitPeriodYears.ok) {
-    return explicitPeriodYears;
+): Result<DcfAssumptions, readonly DcfValidationError[]> {
+  const scalars = collectResults({
+    explicitPeriodYears: parsePositiveInteger(raw.explicitPeriodYears, "explicitPeriodYears"),
+    fadePeriodYears: parseNonNegativeInteger(raw.fadePeriodYears, "fadePeriodYears"),
+    terminalValueMethod: parseTerminalValueMethod(raw.terminalValueMethod, wacc),
+  });
+
+  if (!scalars.ok) {
+    return scalars;
   }
 
-  const fadePeriodYears = parseNonNegativeInteger(raw.fadePeriodYears, "fadePeriodYears");
-  if (!fadePeriodYears.ok) {
-    return fadePeriodYears;
-  }
+  const totalYears = scalars.value.explicitPeriodYears + scalars.value.fadePeriodYears;
 
-  const totalYears = explicitPeriodYears.value + fadePeriodYears.value;
+  const paths = collectResults({
+    revenueGrowthPath: parsePathLength(raw.revenueGrowthPath, totalYears, "revenueGrowthPath"),
+    ebitMarginPath: parsePathLength(raw.ebitMarginPath, totalYears, "ebitMarginPath"),
+    capexPercentOfRevenuePath: parsePathLength(
+      raw.capexPercentOfRevenuePath,
+      totalYears,
+      "capexPercentOfRevenuePath",
+    ),
+    daPercentOfRevenuePath: parsePathLength(
+      raw.daPercentOfRevenuePath,
+      totalYears,
+      "daPercentOfRevenuePath",
+    ),
+  });
 
-  const revenueGrowthPath = parsePathLength(raw.revenueGrowthPath, totalYears, "revenueGrowthPath");
-  if (!revenueGrowthPath.ok) {
-    return revenueGrowthPath;
-  }
-
-  const ebitMarginPath = parsePathLength(raw.ebitMarginPath, totalYears, "ebitMarginPath");
-  if (!ebitMarginPath.ok) {
-    return ebitMarginPath;
-  }
-
-  const capexPercentOfRevenuePath = parsePathLength(
-    raw.capexPercentOfRevenuePath,
-    totalYears,
-    "capexPercentOfRevenuePath",
-  );
-  if (!capexPercentOfRevenuePath.ok) {
-    return capexPercentOfRevenuePath;
-  }
-
-  const daPercentOfRevenuePath = parsePathLength(
-    raw.daPercentOfRevenuePath,
-    totalYears,
-    "daPercentOfRevenuePath",
-  );
-  if (!daPercentOfRevenuePath.ok) {
-    return daPercentOfRevenuePath;
-  }
-
-  const terminalValueMethod = parseTerminalValueMethod(raw.terminalValueMethod, wacc);
-  if (!terminalValueMethod.ok) {
-    return terminalValueMethod;
+  if (!paths.ok) {
+    return paths;
   }
 
   return ok({
-    explicitPeriodYears: explicitPeriodYears.value,
-    fadePeriodYears: fadePeriodYears.value,
-    yearlyAssumptions: zipYearAssumptions({
-      revenueGrowthPath: revenueGrowthPath.value,
-      ebitMarginPath: ebitMarginPath.value,
-      capexPercentOfRevenuePath: capexPercentOfRevenuePath.value,
-      daPercentOfRevenuePath: daPercentOfRevenuePath.value,
-    }),
+    ...scalars.value,
+    yearlyAssumptions: zipYearAssumptions(paths.value),
     workingCapitalPercentOfRevenue: raw.workingCapitalPercentOfRevenue,
-    terminalValueMethod: terminalValueMethod.value,
   });
 }
