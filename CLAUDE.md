@@ -7,10 +7,18 @@ CLI, database or report generation here.
 
 ## Working agreement
 
-- The user writes the code. Guide, explain, review and point at the Python
-  reference; generate code only when explicitly asked.
+The user writes the code whose writing is how the TypeScript gets learned: the
+domain model and its impossible states, decoders, selectors, the math, and
+anything where a design choice is being made rather than applied. Claude writes
+the mechanical remainder: transcribing a schema or a Python reference field by
+field, fixture loaders and test harnesses, repetitive test data, renames.
+
+- A task that is partly each gets split, saying which half is which, rather
+  than handed over whole.
 - Prefer explaining the TypeScript concept behind a suggestion over just
-  giving the fix.
+  giving the fix. This holds for Claude's own code too: a transcription that
+  introduces an unfamiliar Zod or type-level construct gets a sentence on why.
+- Review runs both ways.
 - "Kosing" is capitalized in prose; `kosing` only in code identifiers and paths.
 
 ## Toolchain
