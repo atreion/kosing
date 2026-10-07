@@ -321,6 +321,23 @@ Rationale for the shape:
   is `NonEmpty` so `ltm ?? latest` always lands — so it stays in the selector
   and `Company` keeps no derivation it did not need.
 
+  Modelling the absence as reason-carrying variants
+  (`Period | AbsentForDcf | AbsentForCyclical`) was considered and rejected.
+  Those are not two kinds of absence; they are one absence with two consumer
+  reactions, and the decoder would have to know which branch it was serving to
+  pick a variant — shaping the domain model by its readers rather than by the
+  facts. The reaction already has a home in `Resolution`.
+
+  **The general rule: model a sum type when the data distinguishes the cases;
+  use `| null` plus a `Resolution` when only the consumer's response differs.**
+  A genuinely different axis does exist here — *why* the row is absent, whether
+  not gathered, not reported, or redundant after a fiscal close — and all 46
+  dossiers record something about it in `researcher_notes.missing_data`. W5, one
+  of the two without an LTM row, names it directly
+  (`field: "financials_annual (LTM row)"`). But `field` is free text, so nothing
+  can join it to a field path, and lifting it into the type system would
+  fabricate precision the data does not have. See "Deferred, not rejected".
+
   Only KINVB and W5 lack an LTM row today, and both are on branches carrying no
   financials. **The DCF fiscal-year fallback therefore has zero corpus
   coverage** and needs a hand-written test, like unit rescaling.
@@ -619,6 +636,14 @@ impossible states the research model currently has to avoid by hand:
   constraints.
 - `revenue_base_policy` plus conditional `revenue_base_years` becomes one tagged
   object.
+- `researcher_notes.missing_data[].field` becomes a field-path enum rather than
+  free text. Today all 46 dossiers populate `missing_data`, but `field` holds
+  sentences (`"financials_annual (LTM row)"`,
+  `"identity.employees / listed_since / isin"`), so no consumer can join a gap
+  to the field it describes. Structured, it would let absence carry its cause:
+  `ltm: Period | { absent: DataGap }` becomes a correct model rather than a
+  fabricated one, and the same applies wherever the domain currently uses a
+  bare `| null`.
 
 Better for both sides: fewer ways for the model to be wrong, less for the
 decoder to resolve. The natural moment is when kosing emits the schema from Zod,
