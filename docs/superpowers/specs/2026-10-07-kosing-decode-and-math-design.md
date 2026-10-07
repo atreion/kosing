@@ -241,7 +241,7 @@ type Valuation =
   | { method: "deferred";  classification: DeferredClassification };
 
 type OperatingFinancials = {
-  ltm:         Period | null;          // 44/46 have one; null is a real state
+  ltm:         Period | null;          // absence is a real state on both branches
   fiscalYears: NonEmpty<FiscalYear>;   // sorted oldest to newest
 };
 
@@ -299,20 +299,27 @@ Rationale for the shape:
   `reit` and others, but only `holding_company` is read by math. A bank's CET1
   ratio is real research data this application has no use for, so it stops at
   the wire and has no domain representation.
-- **`ltm` is nullable because absence is a real state, on one branch only.** The
-  schema does not require an LTM row, and the DCF method falls back to the
-  latest fiscal year, recording why. The cyclical branch is different: three of
-  the four cyclicals state `revenue_base_policy: "ltm"`, which *requires* one,
-  so `{ method: "cyclical", policy: ltm }` with `ltm: null` would be a
-  representable invalid state. `CyclicalRevenueBase` closes it by carrying the
-  evidence that the stated policy was satisfiable, and both `ValueError`s in
+- **`ltm` is nullable on both branches, for different reasons.** The schema does
+  not require an LTM row. On the DCF branch the method falls back to the latest
+  fiscal year, recording why. On the cyclical branch `ltm` is read only for
+  `ltmEbitMargin`, which the math itself takes as optional
+  (`NormalisedEarningsInputs.ltm_ebit_margin: float | None`) — it is a
+  comparison reference, not an input the valuation depends on. Absence is a real
+  domain state in both cases.
+
+  What *was* an impossible state is the cyclical revenue base. Three of the four
+  cyclicals state `revenue_base_policy: "ltm"`, which requires an LTM row, so
+  `{ method: "cyclical", policy: ltm }` with `ltm: null` was representable and
+  invalid. `CyclicalRevenueBase` closes it by carrying the evidence that the
+  stated policy was satisfiable, and both `ValueError`s in
   `_cyclical_revenue_base` become decode errors.
 
-  The resulting asymmetry is a rule, not an accident: **decode resolves whatever
-  can fail; selectors resolve what cannot.** Cyclical's revenue base can fail
-  because the policy may not be satisfiable by the data. DCF's cannot, because
-  `fiscalYears` is `NonEmpty` so `ltm ?? latest` always lands — so it stays in
-  the selector and `Company` keeps no derivation it did not need.
+  The asymmetry that survives is about where the revenue base resolves, and it
+  is a rule rather than an accident: **decode resolves whatever can fail;
+  selectors resolve what cannot.** Cyclical's can fail, because the stated
+  policy may not be satisfiable by the data. DCF's cannot, because `fiscalYears`
+  is `NonEmpty` so `ltm ?? latest` always lands — so it stays in the selector
+  and `Company` keeps no derivation it did not need.
 
   Only KINVB and W5 lack an LTM row today, and both are on branches carrying no
   financials. **The DCF fiscal-year fallback therefore has zero corpus
