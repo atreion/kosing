@@ -143,6 +143,57 @@ type Subject =
 in which the member is still called `Company`. Naming it `Company` now is not a
 decision that has to be undone.
 
+### Closed sets of string values are named, with one exception
+
+Every closed set of string values is declared once as an `as const` array in
+`domain/types.ts`, with the type derived from it:
+
+```ts
+export const BASIS_VALUES = ["listed", "unlisted"] as const;
+export type Basis = (typeof BASIS_VALUES)[number];
+```
+
+The array is plain TypeScript, so the wire layer builds `z.enum(BASIS_VALUES)`
+from it and Zod never appears in the domain — the dependency arrow stays
+correct. One source of truth, and the runtime array is available for exhaustive
+test cases and for error messages that list what was allowed.
+
+This applies to `Basis`, `Classification`, `Zone` (multiples positioning),
+`Currency`, `RiskFreeBasis` and the rest.
+
+**The exception is the union discriminant.** `Valuation["method"]` is not
+declared as a named type:
+
+```ts
+type Method = "dcf" | "cyclical" | "nav" | "deferred";   // deliberately absent
+```
+
+Naming a discriminant invites a function that takes the tag divorced from the
+data it tags, which is what the union exists to prevent. The union is already
+the named type, and `Valuation["method"]` is available where the tag alone is
+genuinely needed, reading as derived rather than primary.
+
+### Classification maps to method through an exhaustive switch
+
+`DeferredClassification` is computed rather than listed, so the five deferred
+names appear nowhere and cannot drift from the nine:
+
+```ts
+export type DeferredClassification =
+  Exclude<Classification,
+    "quality_compounder" | "garp" | "value_cyclical" | "holding_company">;
+```
+
+Coverage is enforced by the mapping itself, written as a `switch` with one case
+per classification and `assertNever` in the `default`. Adding a tenth
+classification to the wire schema then fails to compile — `assertNever` takes a
+`never`, and an uncovered value is not `never` — forcing whoever extends the
+research schema to decide which branch it takes.
+
+The alternative, a "known-priceable, else defer" rule, was rejected: it is
+shorter and its runtime behaviour is correct, but a schema change would land
+with nobody being asked whether the new classification is priceable.
+
 ## Architecture
 
 Three layers. Dependencies point one way only; the arrows are functions living
