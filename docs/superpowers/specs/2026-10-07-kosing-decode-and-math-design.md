@@ -181,6 +181,7 @@ type Valuation =
                            costOfCapital: CostOfCapital;
                            assumptions: DcfAssumptions }
   | { method: "cyclical";  financials: OperatingFinancials;
+                           revenueBase: CyclicalRevenueBase;
                            assumptions: CyclicalAssumptions }
   | { method: "nav";       holdings: NonEmpty<Holding>;
                            parentNetDebt: number;
@@ -195,6 +196,10 @@ type OperatingFinancials = {
 
 type Period     = { revenue: number; ebit: number; /* the genuinely nullable rest */ };
 type FiscalYear = Period & { fy: number; endDate: IsoDate };
+
+type CyclicalRevenueBase =
+  | { kind: "ltm";       period: Period }
+  | { kind: "averageFy"; window: NonEmpty<FiscalYear> };
 
 type Holding = { name: string; fairValue: number; basis: "listed" | "unlisted" };
 ```
@@ -243,6 +248,24 @@ Rationale for the shape:
   `reit` and others, but only `holding_company` is read by math. A bank's CET1
   ratio is real research data this application has no use for, so it stops at
   the wire and has no domain representation.
+- **`ltm` is nullable because absence is a real state, on one branch only.** The
+  schema does not require an LTM row, and the DCF method falls back to the
+  latest fiscal year, recording why. The cyclical branch is different: three of
+  the four cyclicals state `revenue_base_policy: "ltm"`, which *requires* one,
+  so `{ method: "cyclical", policy: ltm }` with `ltm: null` would be a
+  representable invalid state. `CyclicalRevenueBase` closes it by carrying the
+  evidence that the stated policy was satisfiable, and both `ValueError`s in
+  `_cyclical_revenue_base` become decode errors.
+
+  The resulting asymmetry is a rule, not an accident: **decode resolves whatever
+  can fail; selectors resolve what cannot.** Cyclical's revenue base can fail
+  because the policy may not be satisfiable by the data. DCF's cannot, because
+  `fiscalYears` is `NonEmpty` so `ltm ?? latest` always lands — so it stays in
+  the selector and `Company` keeps no derivation it did not need.
+
+  Only KINVB and W5 lack an LTM row today, and both are on branches carrying no
+  financials. **The DCF fiscal-year fallback therefore has zero corpus
+  coverage** and needs a hand-written test, like unit rescaling.
 - **Splitting `ltm` from `fiscalYears`** removes the impossible pair the wire
   carries: `is_ltm: boolean` with `fy: number | null` admits
   `{is_ltm: true, fy: 2024}` and `{is_ltm: false, fy: null}`, both nonsense, and
@@ -350,13 +373,13 @@ decodeCompany(json): Result<{ company; resolutions; warnings }, DecodeError[]>
 selectDcfInputs(company, overrides): { inputs: DcfInputs; resolutions: Resolution[] }
 ```
 
-Fixed rules resolve at decode (beta fallback, share count, tax rate,
-normalisation). Caller *choices* stay in selectors (`betaOverride`,
-`waccOverride`, `targetPrice`, and revenue-base selection, which is a valuation
-input rather than a fact about the company). The caller concatenates. This keeps
-`Company` free of method-specific derivations at the cost of assembling the
-audit trail from two sources, which was judged negligible against modelling the
-domain correctly.
+The split follows the rule above: decode resolves whatever can fail (beta
+fallback, share count, WACC tax rate, normalisation, the cyclical revenue base),
+and selectors resolve what cannot (DCF revenue base) plus caller *choices*
+(`betaOverride`, `waccOverride`, `targetPrice`). The caller concatenates. This
+keeps `Company` free of derivations it did not need, at the cost of assembling
+the audit trail from two sources, which was judged negligible against modelling
+the domain correctly.
 
 ### Selectors are total
 
@@ -465,6 +488,15 @@ plus cases no real dossier exercises: mixed units, mixed currencies, dangling
 `source_ref`, `is_ltm` with an `fy`, `average_fy` without `revenue_base_years`,
 a holding with a null fair value. Several of these should now fail to construct
 a `Company` rather than fail a check, and the test asserts which.
+
+Three paths exist in the code but in no dossier, so a green corpus says nothing
+about them. Each needs a hand-written case here:
+
+- unit rescaling — all 247 rows are `millions`;
+- the DCF fiscal-year revenue-base fallback — every dossier reaching
+  `OperatingFinancials` has an LTM row;
+- `average_fy` with a window longer than the available fiscal rows — EQNR, the
+  only `average_fy` cyclical, asks for 3 and has 5.
 
 ### 3. Properties
 
