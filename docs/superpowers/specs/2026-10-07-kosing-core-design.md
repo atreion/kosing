@@ -147,6 +147,15 @@ nullable distinction entirely: `exactOptionalPropertyTypes` has nothing to
 distinguish. Blocks that do not apply to a company (`holdings` for a company
 that holds nothing) are `null` as a whole.
 
+### Conventional JSON naming
+
+Keys and enum values are camelCase: `totalDebt`, `sourceRefs`,
+`normalisedEarnings`, `evEbit`. The old dossier used snake_case because Python
+wrote and read it. Nothing in kosing does, and the TypeScript already names the
+same things in camelCase, so carrying Python's convention into the format
+would mean renaming at every boundary for no reason.
+
+
 ### Zod 4, carried forward
 
 Hand-written decoders were rejected in the previous spec for the right reason:
@@ -205,111 +214,111 @@ always millions and the field names say so. Percentages are fractions (`0.21`,
 not `21`). Every block that reports something cites sources by id.
 
 ```
-schema_version   "1.0"
+schemaVersion   "1.0"
 company          { ticker, exchange, name, isin: string|null, country: AA }
-as_of            date — when these facts were gathered
+asOf            date — when these facts were gathered
 currency         ISO 4217 — reporting currency
 unit             "millions" | "thousands" | "ones"
 
 market {
   price                  number > 0
-  price_currency         ISO 4217 — trading currency; equals `currency` unless dual-listed
-  as_of                  date
-  shares_outstanding_m   number >= 0
-  shares_diluted_m       number >= 0 | null
-  week52_high            number >= 0 | null
-  week52_low             number >= 0 | null
-  source_refs            [id, ...] non-empty
+  priceCurrency         ISO 4217 — trading currency; equals `currency` unless dual-listed
+  asOf                  date
+  sharesOutstandingM   number >= 0
+  sharesDilutedM       number >= 0 | null
+  week52High            number >= 0 | null
+  week52Low             number >= 0 | null
+  sourceRefs            [id, ...] non-empty
 }
 
 financials {
-  fiscal_years   [FiscalYearRow, ...] non-empty, any order; decode sorts
+  fiscalYears   [FiscalYearRow, ...] non-empty, any order; decode sorts
   ltm            LtmRow | null
   quarters       [QuarterRow, ...] | null
 }
 FiscalYearRow {
   fy             integer 1900..2200
-  end_date       date
-  revenue, ebit, net_income, ebitda, depreciation_amortization,
-  cogs, gross_profit, opex, interest_expense, tax_expense,
-  ocf, capex, fcf, dividends_paid                     number | null, each
-  shares_basic_m, shares_diluted_m                     number >= 0 | null
-  source_ref     id
+  endDate       date
+  revenue, ebit, netIncome, ebitda, depreciationAmortization,
+  cogs, grossProfit, opex, interestExpense, taxExpense,
+  ocf, capex, fcf, dividendsPaid                     number | null, each
+  sharesBasicM, sharesDilutedM                     number >= 0 | null
+  sourceRef     id
 }
 LtmRow      FiscalYearRow without `fy`
-QuarterRow  { fq: /^[12][0-9]{3}Q[1-4]$/, end_date, revenue, ebit, net_income,
-              ocf, capex, fcf: number|null each, source_ref }
+QuarterRow  { fq: /^[12][0-9]{3}Q[1-4]$/, endDate, revenue, ebit, netIncome,
+              ocf, capex, fcf: number|null each, sourceRef }
 
-balance_sheet {
-  as_of                        date
-  cash_and_equivalents         number
-  short_term_investments       number | null
-  total_debt                   number >= 0
-  short_term_debt              number >= 0 | null
-  long_term_debt               number >= 0 | null
-  operating_lease_liabilities  number >= 0 | null
-  pension_obligations          number | null
+balanceSheet {
+  asOf                        date
+  cashAndEquivalents         number
+  shortTermInvestments       number | null
+  totalDebt                   number >= 0
+  shortTermDebt              number >= 0 | null
+  longTermDebt               number >= 0 | null
+  operatingLeaseLiabilities  number >= 0 | null
+  pensionObligations          number | null
   goodwill                     number | null
-  intangibles_ex_goodwill      number | null
-  source_ref                   id
+  intangiblesExGoodwill      number | null
+  sourceRef                   id
 }
 
-cost_of_capital {
-  risk_free_rate        number
-  risk_free_basis       string non-empty — e.g. "Swedish 10-year government bond"
+costOfCapital {
+  riskFreeRate        number
+  riskFreeBasis       string non-empty — e.g. "Swedish 10-year government bond"
   erp                   number >= 0 — the convention the researcher looked up
-  country_premium       number | null
-  beta_company          number | null
-  beta_sector           number | null
-  tax_rate_effective    0..1
-  tax_rate_statutory    0..1 | null
-  pretax_cost_of_debt   number >= 0
-  equity_weight         0..1
-  debt_weight           0..1
-  weights_as_of         date
-  source_refs           [id, ...] non-empty
+  countryPremium       number | null
+  betaCompany          number | null
+  betaSector           number | null
+  taxRateEffective    0..1
+  taxRateStatutory    0..1 | null
+  pretaxCostOfDebt   number >= 0
+  equityWeight         0..1
+  debtWeight           0..1
+  weightsAsOf         date
+  sourceRefs           [id, ...] non-empty
 }
 
-historical_ranges {
-  share_price   RangeBand
-  pe_trailing   RangeBand
-  ev_ebit       RangeBand
-  ev_ebitda     RangeBand
-  price_book    RangeBand
-  source_refs   [id, ...] non-empty
+historicalRanges {
+  sharePrice   RangeBand
+  peTrailing   RangeBand
+  evEbit       RangeBand
+  evEbitda     RangeBand
+  priceBook    RangeBand
+  sourceRefs   [id, ...] non-empty
 } | null
-RangeBand { y5_low, y5_high, y10_low, y10_high: number | null each }
+RangeBand { y5Low, y5High, y10Low, y10High: number | null each }
 
 peers [{
   name          string
   ticker        string | null
-  pe_trailing, ev_ebit, ev_ebitda, ev_revenue   number | null each
-  source_ref    id
+  peTrailing, evEbit, evEbitda, evRevenue   number | null each
+  sourceRef    id
 }, ...] | null
 
 estimates [{
   fy            integer
   revenue, ebit, eps    number | null each
-  source_ref    id
+  sourceRef    id
 }, ...] | null
 
 holdings {
-  items   [{ name, fair_value: number|null, basis: "listed"|"unlisted", source_ref }, ...]
-  parent_net_debt     number
-  look_through_nav    number | null
-  source_refs         [id, ...] non-empty
+  items   [{ name, fairValue: number|null, basis: "listed"|"unlisted", sourceRef }, ...]
+  parentNetDebt     number
+  lookThroughNav    number | null
+  sourceRefs         [id, ...] non-empty
 } | null
 
 fx {
-  spot_rates   [{ pair: /^[A-Z]{6}$/, rate: number > 0, as_of: date, source_ref }, ...]
-  exposures    [{ currency: ISO 4217, revenue_share: 0..1|null, cost_share: 0..1|null }, ...]
+  spotRates   [{ pair: /^[A-Z]{6}$/, rate: number > 0, asOf: date, sourceRef }, ...]
+  exposures    [{ currency: ISO 4217, revenueShare: 0..1|null, costShare: 0..1|null }, ...]
 } | null
 
 sources [{
   id          /^S[0-9]+$/, unique within the document
-  kind        "annual_report" | "interim_report" | "quarterly_report" | "press_release"
-              | "ir_page" | "broker_estimate" | "aggregator" | "regulator"
-              | "macro_reference" | "market_data_feed"
+  kind        "annualReport" | "interimReport" | "quarterlyReport" | "pressRelease"
+              | "irPage" | "brokerEstimate" | "aggregator" | "regulator"
+              | "macroReference" | "marketDataFeed"
   issuer      string
   title       string
   url         URL
@@ -324,52 +333,52 @@ gaps [{ field: string — a path such as "financials.ltm", reason: string }, ...
 
 Wire-level rules, all producing an error with a path into this file:
 
-- every `source_ref` and every member of every `source_refs` resolves to a
+- every `sourceRef` and every member of every `sourceRefs` resolves to a
   `sources[].id`;
-- `fiscal_years[].fy` values are distinct;
-- `equity_weight + debt_weight` is 1 within 1e-6;
-- `price_currency` differing from `currency` requires an `fx.spot_rates` entry
+- `fiscalYears[].fy` values are distinct;
+- `equityWeight + debtWeight` is 1 within 1e-6;
+- `priceCurrency` differing from `currency` requires an `fx.spotRates` entry
   for the pair in either direction.
 
 ## `thesis.json`
 
 ```
-schema_version    "1.0"
+schemaVersion    "1.0"
 ticker            string — must equal facts.company.ticker
-facts_as_of       date | null — the facts snapshot this was written against
-classification    "quality_compounder" | "garp" | "value_cyclical" | "holding_company"
-                  | "bank_insurer" | "reit_utility" | "saas_pre_profit"
-                  | "commodity_producer" | "special_situation"
+factsAsOf       date | null — the facts snapshot this was written against
+classification    "qualityCompounder" | "garp" | "valueCyclical" | "holdingCompany"
+                  | "bankInsurer" | "reitUtility" | "saasPreProfit"
+                  | "commodityProducer" | "specialSituation"
                   — an opinion for the advisor; kosing validates it and never reads it
 
 method   one of:
   {
     kind                        "dcf"
-    revenue_growth_path         [number × 10]
-    ebit_margin_path            [number × 10]
-    capex_pct_revenue_path      [number × 10]
-    da_pct_revenue_path         [number × 10]
-    working_capital_pct_revenue number
-    terminal                    { kind: "perpetuity_growth", growth: number, basis: string }
-                              | { kind: "exit_multiple", multiple: number > 0,
-                                  on: "ev_ebit" | "ev_ebitda" | "ev_fcff", basis: string }
+    revenueGrowthPath         [number × 10]
+    ebitMarginPath            [number × 10]
+    capexPctRevenuePath      [number × 10]
+    daPctRevenuePath         [number × 10]
+    workingCapitalPctRevenue number
+    terminal                    { kind: "perpetuityGrowth", growth: number, basis: string }
+                              | { kind: "exitMultiple", multiple: number > 0,
+                                  on: "evEbit" | "evEbitda" | "evFcff", basis: string }
     rationale                   string non-empty
-    source_refs                 [id, ...] — ids in facts.sources
+    sourceRefs                 [id, ...] — ids in facts.sources
   }
   {
-    kind                "normalised_earnings"
-    revenue_base        { kind: "ltm" } | { kind: "average_fy", years: integer >= 1 }
-    ebit_margin         { bear, base, bull }
-    ev_ebit_multiple    { bear, base, bull }
-    multiple_ceiling    number | null
+    kind                "normalisedEarnings"
+    revenueBase        { kind: "ltm" } | { kind: "averageFy", years: integer >= 1 }
+    ebitMargin         { bear, base, bull }
+    evEbitMultiple    { bear, base, bull }
+    multipleCeiling    number | null
     rationale           string non-empty
-    source_refs         [id, ...]
+    sourceRefs         [id, ...]
   }
   {
     kind                "nav"
-    warranted_discount  0..0.9
+    warrantedDiscount  0..0.9
     rationale           string non-empty
-    source_refs         [id, ...]
+    sourceRefs         [id, ...]
   }
 
 overrides {
@@ -379,15 +388,15 @@ overrides {
 }
 
 sensitivity {
-  wacc_steps              [number, ...] — absolute deltas around the computed WACC, e.g. [-0.01, -0.005, 0, 0.005, 0.01]
-  terminal_growth_steps   [number, ...] — likewise; only meaningful for perpetuity growth
+  waccSteps              [number, ...] — absolute deltas around the computed WACC, e.g. [-0.01, -0.005, 0, 0.005, 0.01]
+  terminalGrowthSteps   [number, ...] — likewise; only meaningful for perpetuity growth
 } | null — null means the default grid of ±1pp / ±0.5pp
 ```
 
 Wire-level rules:
 
 - `bear <= base <= bull` on each scenario triple;
-- no scenario multiple above `multiple_ceiling` when it is set;
+- no scenario multiple above `multipleCeiling` when it is set;
 - `overrides.rationale` is non-null when either override is;
 - `sensitivity` steps each contain `0`.
 
@@ -414,7 +423,7 @@ decode(facts, thesis): Result<Decoded, DecodeError[]>
 type DecodeError = {
   file: "facts" | "thesis";
   layer: "schema" | "semantic";
-  rule: string;       // "schema.violation", "semantic.holding_without_value"
+  rule: string;       // "schema.violation", "semantic.holdingWithoutValue"
   path: string;       // dotted path into that file
   message: string;
 };
@@ -429,18 +438,18 @@ Every fallback is data, formatted into a sentence only when an AI reads it.
 
 | Kind | Fires when |
 | --- | --- |
-| `betaFromSector` | `beta_company` is null and `beta_sector` is not |
+| `betaFromSector` | `betaCompany` is null and `betaSector` is not |
 | `betaOverridden` | `overrides.beta` is set |
 | `waccOverridden` | `overrides.wacc` is set |
-| `sharesFromOutstanding` | `shares_diluted_m` is null |
-| `taxRateFromEffective` | `tax_rate_statutory` is null; the discounting rate falls back |
+| `sharesFromOutstanding` | `sharesDilutedM` is null |
+| `taxRateFromEffective` | `taxRateStatutory` is null; the discounting rate falls back |
 | `unitRescaled` | `unit` is `thousands` or `ones`; carries the factor and the row count |
-| `priceConvertedToReporting` | `price_currency` differs from `currency`; carries the pair and rate used |
+| `priceConvertedToReporting` | `priceCurrency` differs from `currency`; carries the pair and rate used |
 | `netDebtDerived` | always; carries the components used, so the convention is visible |
 | `revenueBaseFromLtm` | normalised earnings with the `ltm` policy |
-| `revenueBaseAveraged` | normalised earnings with `average_fy`; carries the window |
+| `revenueBaseAveraged` | normalised earnings with `averageFy`; carries the window |
 | `dcfBasePeriodFromFiscalYear` | the DCF selector used the latest fiscal year because `ltm` is null |
-| `reverseDcfUnavailable` | no usable base period exists, meaning none with non-null revenue, EBIT, capex and depreciation_amortization, which a projection needs; carries the reason |
+| `reverseDcfUnavailable` | no usable base period exists, meaning none with non-null revenue, EBIT, capex and depreciationAmortization, which a projection needs; carries the reason |
 
 Share count fallback and beta fallback use explicit null checks, never `||`. A
 share count of `0` is a share count.
@@ -452,13 +461,13 @@ Each is a `semantic.*` error. Together they are the reason the domain's
 
 | Rule | Requires |
 | --- | --- |
-| `semantic.ticker_mismatch` | `thesis.ticker === facts.company.ticker` |
-| `semantic.no_beta` | a non-null beta from `beta_company`, `beta_sector` or `overrides.beta` |
-| `semantic.period_missing_figure` | for `dcf` and `normalised_earnings`: every fiscal year and the LTM row, if present, has non-null `revenue` and `ebit` |
-| `semantic.revenue_base_unsatisfiable` | `ltm` policy with `financials.ltm` present; `average_fy(n)` with at least `n` fiscal years |
-| `semantic.nav_requires_holdings` | `nav` with `facts.holdings` non-null and `items` non-empty |
-| `semantic.holding_without_value` | every holding has a non-null `fair_value`; the error names the holding |
-| `semantic.source_ref` | every `source_refs` entry in the thesis resolves in `facts.sources` |
+| `semantic.tickerMismatch` | `thesis.ticker === facts.company.ticker` |
+| `semantic.noBeta` | a non-null beta from `betaCompany`, `betaSector` or `overrides.beta` |
+| `semantic.periodMissingFigure` | for `dcf` and `normalisedEarnings`: every fiscal year and the LTM row, if present, has non-null `revenue` and `ebit` |
+| `semantic.revenueBaseUnsatisfiable` | `ltm` policy with `financials.ltm` present; `averageFy(n)` with at least `n` fiscal years |
+| `semantic.navRequiresHoldings` | `nav` with `facts.holdings` non-null and `items` non-empty |
+| `semantic.holdingWithoutValue` | every holding has a non-null `fairValue`; the error names the holding |
+| `semantic.sourceRef` | every `sourceRefs` entry in the thesis resolves in `facts.sources` |
 
 ### Warnings
 
@@ -466,9 +475,9 @@ Advisory, never fatal, computed over the decoded `Company` with fixed paths.
 
 | Rule | Fires when |
 | --- | --- |
-| `thesisPredatesFacts` | `thesis.facts_as_of` is set and earlier than `facts.as_of` |
-| `rfBasisMismatch` | `risk_free_basis` does not mention a country hint for `currency` (table carried over from `semantic.py`) |
-| `ltmOlderThanFiscalYear` | `financials.ltm.end_date` is earlier than the latest fiscal year's `end_date` |
+| `thesisPredatesFacts` | `thesis.factsAsOf` is set and earlier than `facts.asOf` |
+| `rfBasisMismatch` | `riskFreeBasis` does not mention a country hint for `currency` (table carried over from `semantic.py`) |
+| `ltmOlderThanFiscalYear` | `financials.ltm.endDate` is earlier than the latest fiscal year's `endDate` |
 
 ## Domain model
 
@@ -480,7 +489,7 @@ type Company = {
   market: Market;                  // price in reporting currency, shares resolved, 52w range
   financials: Financials;          // rows with nullable figures; a holdco has no revenue
   balanceSheet: BalanceSheet;
-  netDebt: number;                 // derived: total_debt - cash - short_term_investments
+  netDebt: number;                 // derived: totalDebt - cash - shortTermInvestments
   otherClaims: OtherClaims;        // leases, pensions, reported separately, not in netDebt
   costOfCapital: CostOfCapital;    // beta resolved, both tax rates, overrides applied
   historicalRanges: HistoricalRanges | null;
@@ -531,7 +540,7 @@ type Holding = { name: string; fairValue: number; basis: Basis };
 `Company.financials` keeps nullable figures because a holding company's rows
 genuinely lack revenue. `Valuation` carries `OperatingFinancials`, whose figures
 are non-null, because decode has already rejected a `dcf` or
-`normalised_earnings` thesis against rows that lack them. The same split applies
+`normalisedEarnings` thesis against rows that lack them. The same split applies
 to `Holding.fairValue`: nullable in `Company.holdings`, required on the `nav`
 branch.
 
@@ -539,8 +548,8 @@ branch.
 `as const` arrays in `src/domain/types.ts`; the input layer builds `z.enum()`
 from them. Wire-only vocabularies (source kinds, tiers) live in the input layer.
 
-The net debt convention: `total_debt - cash_and_equivalents - short_term_investments`,
-with `short_term_investments` treated as `0` when null. Operating leases and
+The net debt convention: `totalDebt - cashAndEquivalents - shortTermInvestments`,
+with `shortTermInvestments` treated as `0` when null. Operating leases and
 pension obligations are carried as `otherClaims` and appear in results beside
 `netDebt`, so the advisor sees both; whether to treat them as debt is a
 judgement the thesis does not yet express. See "Deferred".
@@ -559,7 +568,7 @@ analyst conventionally supplied.
 | `fx` | `Company` | value per share under spot moves of ±5 %, ±10 % on each relevant pair, when `fx` is present |
 | `dcf` | `Company` + `dcf` valuation | ten-year projection, terminal value by the chosen method, EV, equity value, value per share, terminal-value share of EV; the existing `computeDcf` |
 | `sensitivity` | the `dcf` inputs + axes | value per share over the WACC × terminal-growth grid, with the base case at the centre |
-| `normalised-earnings` | `Company` + `normalised_earnings` valuation | revenue base × margin × multiple → EV → equity → per share, for bear, base and bull; LTM margin as a comparison reference when present |
+| `normalised-earnings` | `Company` + `normalisedEarnings` valuation | revenue base × margin × multiple → EV → equity → per share, for bear, base and bull; LTM margin as a comparison reference when present |
 | `nav` | `Company` + `nav` valuation | sum of fair values, less parent net debt, less the warranted discount, per share; look-through NAV reported beside it when supplied |
 
 `linearFade(from, to, years)` remains a shared helper for building paths.
@@ -583,32 +592,32 @@ One shape regardless of what ran. Sections that could not run are `null` with
 the reason in `resolutions`.
 
 ```
-schema_version   "1.0"
+schemaVersion   "1.0"
 inputs {
-  ticker, facts_as_of, thesis_facts_as_of: date|null, classification: string|null
+  ticker, factsAsOf, thesisFactsAsOf: date|null, classification: string|null
   company          the decoded Company, echoed, so the advisor reads one file
 }
 derived {
-  market_cap, enterprise_value, net_debt, other_claims
-  multiples   { pe_trailing, ev_ebit, ev_ebitda, ev_revenue, price_book: number|null each }
-  wacc        { cost_of_equity, after_tax_cost_of_debt, wacc, overridden: boolean }
+  marketCap, enterpriseValue, netDebt, otherClaims
+  multiples   { peTrailing, evEbit, evEbitda, evRevenue, priceBook: number|null each }
+  wacc        { costOfEquity, afterTaxCostOfDebt, wacc, overridden: boolean }
 }
-priced_in {
-  reverse_dcf   { implied_growth, base_period: { kind, fy|null, end_date }, horizon_years } | null
-  multiples     [{ metric, current, band_5y, band_10y, position: "below"|"within"|"above"|null,
-                   peer_median: number|null }, ...]
+pricedIn {
+  reverseDcf   { impliedGrowth, basePeriod: { kind, fy|null, endDate }, horizonYears } | null
+  multiples     [{ metric, current, band5y, band10y, position: "below"|"within"|"above"|null,
+                   peerMedian: number|null }, ...]
 }
 valuation   null | one of:
-  { method: "dcf", value_per_share, enterprise_value, equity_value, terminal_value,
-    terminal_value_pct_of_ev, pv_explicit_period, projection: [YearRow × 10],
+  { method: "dcf", valuePerShare, enterpriseValue, equityValue, terminalValue,
+    terminalValuePctOfEv, pvExplicitPeriod, projection: [YearRow × 10],
     terminal: { kind, ... }, notes: [...] }
-  { method: "normalised_earnings", revenue_base: { kind, value, window|null },
-    scenarios: { bear, base, bull: { ebit, ev, equity, value_per_share } },
-    ltm_ebit_margin: number|null }
-  { method: "nav", gross_asset_value, parent_net_debt, nav, discount_applied,
-    value_per_share, look_through_nav: number|null, holdings: [...] }
-sensitivity   { axes: { wacc: [...], terminal_growth: [...] }, grid: [[number]], base: [i, j] } | null
-fx            [{ pair, moves: [{ pct, value_per_share }, ...] }, ...] | null
+  { method: "normalisedEarnings", revenueBase: { kind, value, window|null },
+    scenarios: { bear, base, bull: { ebit, ev, equity, valuePerShare } },
+    ltmEbitMargin: number|null }
+  { method: "nav", grossAssetValue, parentNetDebt, nav, discountApplied,
+    valuePerShare, lookThroughNav: number|null, holdings: [...] }
+sensitivity   { axes: { wacc: [...], terminalGrowth: [...] }, grid: [[number]], base: [i, j] } | null
+fx            [{ pair, moves: [{ pct, valuePerShare }, ...] }, ...] | null
 resolutions   [Resolution, ...]
 warnings      [Warning, ...]
 ```
