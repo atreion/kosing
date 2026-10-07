@@ -1,4 +1,4 @@
-# Kosing core: inputs, math, results
+# The valuator: inputs, math, results
 
 Date: 2026-10-07
 Status: approved design, not yet planned or implemented
@@ -6,13 +6,13 @@ Supersedes: `2026-10-07-kosing-decode-and-math-design.md`
 
 ## Purpose
 
-Kosing becomes the investment workbench, replacing `invest` piece by piece
-until nothing is left there. This spec covers the first piece, the
-deterministic core: what a researcher writes, what an analyst writes, the math
-that runs over both, and what an advisor reads. The AI roles around the core
-(researcher, analyst, advisor) and the prose they draw on (wisdom, checklist,
-theses) migrate in later specs. Invest is not modified on the way; it is
-abandoned.
+Kosing is the investment workbench, replacing `invest` piece by piece until
+nothing is left there. It is a funnel of four roles: a researcher, an analyst,
+a valuator and an advisor. This spec covers the valuator, the one deterministic
+role among four: what a researcher writes, what an analyst writes, the math
+that runs over both, and what an advisor reads. The three AI roles and the
+prose they draw on (wisdom, checklist, theses) migrate in later specs. Invest
+is not modified on the way; it is abandoned.
 
 ### Why this replaces the previous design
 
@@ -31,7 +31,7 @@ plan established three things:
 - The spec itself listed six latent bugs in the adapters the corpus would
   have enshrined.
 
-An oracle that is not trusted is not an oracle. The algorithms kosing implements
+An oracle that is not trusted is not an oracle. The algorithms the valuator implements
 (DCF, reverse DCF, WACC, NAV, normalised earnings, multiples) are textbook
 finance; the authority on what they compute is the textbook, and Python was only
 ever another implementation. Dropping the corpus removes the one commitment that
@@ -48,13 +48,13 @@ the defects in the data written against it.
    assumptions. A different job from research, with a different half-life: a
    thesis about SAP not being disrupted by AI outlives many quarterly refreshes
    of SAP's price and guidance.
-4. **Kosing** computes and outputs results. It takes the method as given and
-   decides nothing.
+4. **The valuator** computes and outputs results. It takes the method as given
+   and decides nothing. The only role that is not an AI.
 5. **The advisor** (AI) reads the results against your wisdom, checklist and
    theses, and recommends.
 
 A screen is step 2 alone: facts in, what-is-priced-in out. Full research adds
-step 3. Kosing has no screen mode; it computes whatever the inputs it was given
+step 3. The valuator has no screen mode; it computes whatever the inputs it was given
 support.
 
 ## Scope
@@ -88,7 +88,7 @@ Out of scope, for later specs:
 - No `Money` type. Decode normalises everything to reporting currency,
   millions; the math is plain float arithmetic.
 - No opinion in the core about what kind of company this is. Classification is
-  an opinion the analyst writes and the advisor reads; kosing validates the
+  an opinion the analyst writes and the advisor reads; the valuator validates the
   enum and never branches on it.
 
 ## Decisions
@@ -133,7 +133,7 @@ tooling, not about the bank.
 ### Facts contain no derived numbers
 
 Market cap, enterprise value and current multiples are arithmetic on other
-facts, and the old dossier asked the model to perform it. Kosing derives; the
+facts, and the old dossier asked the model to perform it. The valuator derives; the
 researcher copies what a report says. Net debt is derived from the balance
 sheet by a stated convention rather than copied from a company's own
 definition, which varies.
@@ -186,6 +186,7 @@ union in which the member is still called `Company`.
                 |                         |
                 +-----------+-------------+
                             |
+   ======================= the valuator ========================
    INPUT   src/input/       |   Zod schemas, JSON Schema emission, decode.
                             |   Knows field names and every input rule.
                             |   Knows nothing about valuation.
@@ -198,6 +199,7 @@ union in which the member is still called `Company`.
    RESULTS src/results/     |   Assembles results.json from math outputs.
                             |
    CLI     src/cli.ts       |   Paths, stdin/stdout, exit codes. Nothing else.
+   ============================================================
                             |
                        results.json
                             |
@@ -349,7 +351,7 @@ factsAsOf       date | null — the facts snapshot this was written against
 classification    "qualityCompounder" | "garp" | "valueCyclical" | "holdingCompany"
                   | "bankInsurer" | "reitUtility" | "saasPreProfit"
                   | "commodityProducer" | "specialSituation"
-                  — an opinion for the advisor; kosing validates it and never reads it
+                  — an opinion for the advisor; the valuator validates it and never reads it
 
 method   one of:
   {
@@ -623,7 +625,7 @@ warnings      [Warning, ...]
 ```
 
 Nothing in results is a formatted sentence. The advisor turns resolutions and
-warnings into prose; kosing does not.
+warnings into prose; the valuator does not.
 
 ## CLI
 

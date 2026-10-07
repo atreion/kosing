@@ -1,7 +1,7 @@
 # Kosing as the workbench application layer: decode and math
 
 Date: 2026-10-07
-Status: superseded by `2026-10-07-kosing-core-design.md`, which records why.
+Status: superseded by `2026-10-07-valuator-design.md`, which records why.
 Kept because its reasoning on Zod, the absence of a `Money` type and the
 domain root still holds and is carried forward there.
 
