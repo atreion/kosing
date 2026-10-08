@@ -17,7 +17,8 @@
     "lint": "biome check .",
     "fix": "biome check --write .",
     "check": "npm run typecheck && npm run lint && npm test",
-    "build": "tsc"
+    "build": "tsc",
+    "kosing": "node --import tsx src/cli.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
