@@ -44,9 +44,9 @@ the defects in the data written against it.
 2. **The researcher** (AI) finds, collects and writes what is observable about
    the company. Its only job. The math stays out of AI hands because AI is
    unreliable at arithmetic.
-3. **The analyst** (AI) writes the thesis: which valuation applies and on what
+3. **The analyst** (AI) writes the case: which valuation applies and on what
    assumptions. A different job from research, with a different half-life: a
-   thesis about SAP not being disrupted by AI outlives many quarterly refreshes
+   case for SAP that rests on AI not disrupting it outlives many quarterly refreshes
    of SAP's price and guidance.
 4. **The valuator** computes and outputs results. It takes the method as given
    and decides nothing. The only role that is not an AI.
@@ -61,7 +61,7 @@ support.
 
 In scope:
 
-- `facts.json` and `thesis.json`, defined as Zod schemas with JSON Schema
+- `facts.json` and `case.json`, defined as Zod schemas with JSON Schema
   generated from them for the AI roles to fill in;
 - decode from both documents into a domain model in which the cross-document
   rules are unrepresentable rather than checked;
@@ -82,7 +82,7 @@ Out of scope, for later specs:
 - No reading of existing dossiers. They were inputs to an oracle that no longer
   exists. At most they are reference material for what a researcher tends to
   find.
-- No revision bookkeeping. Facts and thesis are files under version control;
+- No revision bookkeeping. Facts and case are files under version control;
   git is the revision history. The `revision_history` block, `price_refresh`
   kinds, `fields_changed` lists and the `co_invalidation` check are gone.
 - No `Money` type. Decode normalises everything to reporting currency,
@@ -97,7 +97,7 @@ Out of scope, for later specs:
 
 Today `dossier.schema.json` is authoritative and hand-maintained, and consumers
 mirror it in another language. Inverted: kosing's Zod schemas are the single
-source of truth, and `kosing schema facts` / `kosing schema thesis` emit the
+source of truth, and `kosing schema facts` / `kosing schema case` emit the
 JSON Schema the researcher and analyst fill in. The researcher still gets a
 flat, model-friendly document; it stops being maintained separately from the
 thing that consumes it.
@@ -110,40 +110,50 @@ ceiling, weights summing to one) are listed in a test so the set of rules the
 schema cannot carry is maintained, not discovered, and the skills spec restates
 them in English for the AI roles.
 
-### Facts and thesis are two documents
+### Facts and case are two documents
 
-Facts are what is observable about the company. The thesis is a judgement about
+Facts are what is observable about the company. The case is a judgement about
 the company's future. They change for different reasons, and either can change
 while the other stands still.
 
 Facts move when the company reports: a new quarter, new guidance, a share
 issue, a price. Waiting for an entry price is the common case: facts refresh
-weekly, the thesis holds, the advisor re-reads new results against an unchanged
+weekly, the case holds, the advisor re-reads new results against an unchanged
 view.
 
-The thesis moves when the world does, or when you do. Fukushima cut nuclear
+The case moves when the world does, or when you do. Fukushima cut nuclear
 construction across many countries in a week; nothing in any reactor builder's
 accounts had changed. Russia's invasion of Ukraine repriced every defence name
 before a single new contract was signed. A closed Strait of Hormuz changes what
 the world expects to pay for oil in a day, and the oil companies are the same
-companies with the same reserves. A thesis can also change because you changed
+companies with the same reserves. A case can also change because you changed
 your mind about your own world view, with no event at all.
 
 One document would couple two things with independent causes: a world event
 would force re-emitting the facts, and a quarterly report would force
-re-emitting the thesis, and a revision log would be needed to say which half
+re-emitting the case, and a revision log would be needed to say which half
 actually moved. Two files under version control record each change against the
 cause that produced it.
 
-### The thesis names the method; the math decides nothing
+The word "thesis" is reserved for something else: a world-view that is not
+about any one company. "AI disruption is an overreaction for businesses with
+high switching costs" covers SAP and ServiceNow both; SAP also rests on
+"European digital sovereignty", ServiceNow on "long-run USD depreciation". Many
+companies rest on one thesis; one company rests on many. A case therefore
+*cites* the theses it rests on, by slug, and the valuator carries the citations
+through to results without reading them. The theses themselves are prose for
+the advisor, and the questions they enable ("which holdings are exposed if this
+thesis is wrong?") belong to the advisor's spec.
+
+### The case names the method; the math decides nothing
 
 The old dossier said `primary_type: garp` and Python inferred "garp means DCF",
 expecting a `base_dcf` block. Classification was doing two jobs: routing key for
-the math and judgement about the company. Here the thesis says `method: dcf`
-and supplies DCF assumptions; the type system makes a thesis with the wrong
+the math and judgement about the company. Here the case says `method: dcf`
+and supplies DCF assumptions; the type system makes a case with the wrong
 assumptions unrepresentable. Classification survives as an opinion for the
 advisor. The `methodFor` switch and `DeferredClassification` do not exist. A
-bank has no thesis the math can run yet, which is a statement about the
+bank has no case the math can run yet, which is a statement about the
 tooling, not about the bank.
 
 ### Facts contain no derived numbers
@@ -198,7 +208,7 @@ union in which the member is still called `Company`.
 ```
           researcher (AI)            analyst (AI)
                 |                         |
-            facts.json               thesis.json
+            facts.json               case.json
                 |                         |
                 +-----------+-------------+
                             |
@@ -358,7 +368,12 @@ Wire-level rules, all producing an error with a path into this file:
 - `priceCurrency` differing from `currency` requires an `fx.spotRates` entry
   for the pair in either direction.
 
-## `thesis.json`
+## `case.json`
+
+The case for investing in one company: which valuation applies, on what
+assumptions, and which world-view theses it rests on. In code, `case` is a
+reserved word, so the file is `case.ts`, the schema `CaseSchema`, the type
+`Case`, and any variable `investmentCase`.
 
 ```
 schemaVersion    "1.0"
@@ -368,6 +383,9 @@ classification    "qualityCompounder" | "garp" | "valueCyclical" | "holdingCompa
                   | "bankInsurer" | "reitUtility" | "saasPreProfit"
                   | "commodityProducer" | "specialSituation"
                   — an opinion for the advisor; the valuator validates it and never reads it
+theses            [slug, ...] — the world-view theses this case rests on, e.g.
+                  ["ai-disruption-overreaction", "eu-digital-sovereignty"]; may be empty;
+                  the valuator validates the shape and passes it through, never resolves it
 
 method   one of:
   {
@@ -423,23 +441,24 @@ The `terminal` union matches what `src/dcf.ts` already computes:
 
 ## Decode
 
-`decode(facts: unknown, thesis: unknown | undefined)` parses each document with
+`decode(facts: unknown, investmentCase: unknown | undefined)` parses each document with
 its schema, maps every Zod issue to a `DecodeError` naming the file and the
 dotted path, then builds the domain. It returns
 
 ```ts
 type Decoded = {
   company: Company;              // from facts alone; always constructible from valid facts
-  valuation: Valuation | null;   // from facts + thesis; null when no thesis was given
+  valuation: Valuation | null;   // from facts + case; null when no case was given
   classification: Classification | null;  // passed through for the advisor
+  theses: readonly string[];              // passed through for the advisor; empty without a case
   resolutions: Resolution[];
   warnings: Warning[];
 };
 
-decode(facts, thesis): Result<Decoded, DecodeError[]>
+decode(facts, investmentCase): Result<Decoded, DecodeError[]>
 
 type DecodeError = {
-  file: "facts" | "thesis";
+  file: "facts" | "case";
   layer: "schema" | "semantic";
   rule: string;       // "schema.violation", "semantic.holdingWithoutValue"
   path: string;       // dotted path into that file
@@ -479,13 +498,13 @@ Each is a `semantic.*` error. Together they are the reason the domain's
 
 | Rule | Requires |
 | --- | --- |
-| `semantic.tickerMismatch` | `thesis.ticker === facts.company.ticker` |
+| `semantic.tickerMismatch` | `case.ticker === facts.company.ticker` |
 | `semantic.noBeta` | a non-null beta from `betaCompany`, `betaSector` or `overrides.beta` |
 | `semantic.periodMissingFigure` | for `dcf` and `normalisedEarnings`: every fiscal year and the LTM row, if present, has non-null `revenue` and `ebit` |
 | `semantic.revenueBaseUnsatisfiable` | `ltm` policy with `financials.ltm` present; `averageFy(n)` with at least `n` fiscal years |
 | `semantic.navRequiresHoldings` | `nav` with `facts.holdings` non-null and `items` non-empty |
 | `semantic.holdingWithoutValue` | every holding has a non-null `fairValue`; the error names the holding |
-| `semantic.sourceRef` | every `sourceRefs` entry in the thesis resolves in `facts.sources` |
+| `semantic.sourceRef` | every `sourceRefs` entry in the case resolves in `facts.sources` |
 
 ### Warnings
 
@@ -493,7 +512,7 @@ Advisory, never fatal, computed over the decoded `Company` with fixed paths.
 
 | Rule | Fires when |
 | --- | --- |
-| `thesisPredatesFacts` | `thesis.factsAsOf` is set and earlier than `facts.asOf` |
+| `casePredatesFacts` | `case.factsAsOf` is set and earlier than `facts.asOf` |
 | `rfBasisMismatch` | `riskFreeBasis` does not mention a country hint for `currency` (table carried over from `semantic.py`) |
 | `ltmOlderThanFiscalYear` | `financials.ltm.endDate` is earlier than the latest fiscal year's `endDate` |
 
@@ -558,7 +577,7 @@ type Holding = { name: string; fairValue: number; basis: Basis };
 `Company.financials` keeps nullable figures because a holding company's rows
 genuinely lack revenue. `Valuation` carries `OperatingFinancials`, whose figures
 are non-null, because decode has already rejected a `dcf` or
-`normalisedEarnings` thesis against rows that lack them. The same split applies
+`normalisedEarnings` case against rows that lack them. The same split applies
 to `Holding.fairValue`: nullable in `Company.holdings`, required on the `nav`
 branch.
 
@@ -570,7 +589,7 @@ The net debt convention: `totalDebt - cashAndEquivalents - shortTermInvestments`
 with `shortTermInvestments` treated as `0` when null. Operating leases and
 pension obligations are carried as `otherClaims` and appear in results beside
 `netDebt`, so the advisor sees both; whether to treat them as debt is a
-judgement the thesis does not yet express. See "Deferred".
+judgement the case does not yet express. See "Deferred".
 
 ## Math
 
@@ -612,7 +631,7 @@ the reason in `resolutions`.
 ```
 schemaVersion   "1.0"
 inputs {
-  ticker, factsAsOf, thesisFactsAsOf: date|null, classification: string|null
+  ticker, factsAsOf, caseFactsAsOf: date|null, classification: string|null, theses: [slug, ...]
   company          the decoded Company, echoed, so the advisor reads one file
 }
 derived {
@@ -648,9 +667,9 @@ warnings into prose; the valuator does not.
 `src/cli.ts`, the only file that knows about files and streams.
 
 ```
-kosing value --facts F [--thesis T]     results.json on stdout, exit 0
+kosing value --facts F [--case C]     results.json on stdout, exit 0
                                         DecodeError[] on stderr as JSON, exit 1
-kosing schema facts | thesis            the generated JSON Schema on stdout
+kosing schema facts | case            the generated JSON Schema on stdout
 ```
 
 Nothing in `src/input/`, `src/domain/`, `src/select/`, `src/math/` or
@@ -665,7 +684,7 @@ Four layers, in the order they catch things. No layer reads anything from
 ### Types
 
 Impossible states cannot be constructed. The instrument is `@ts-expect-error`
-on a line that must not compile: a thesis with two methods, a `FiscalYear`
+on a line that must not compile: a case with two methods, a `FiscalYear`
 without `fy`, an empty holdings list on the `nav` branch, a `Period` without
 revenue. If such a line ever compiles, `tsc` reports the unused directive and
 the build fails.
@@ -675,7 +694,7 @@ the build fails.
 Invariants the formulas imply, checked over deterministic grids. No generative
 library: monotonicity, round-trips and symmetry do not need shrinking, and a
 grid keeps the dependency count at zero. If a generative property is ever
-wanted ("no thesis produces NaN"), `fast-check` is the tool, added then.
+wanted ("no case produces NaN"), `fast-check` is the tool, added then.
 
 - DCF value is increasing in each growth-path entry and in terminal growth,
   decreasing in WACC, and continuous in all three.
@@ -701,7 +720,7 @@ Python's output, is deleted.
 
 ### Boundary
 
-Hand-written `facts.json` and `thesis.json` fixtures under `tests/fixtures/`:
+Hand-written `facts.json` and `case.json` fixtures under `tests/fixtures/`:
 one valid pair per method and one for facts alone; one invalid fixture per
 decode rule, each test asserting the rule name and the path. Plus the schema
 round-trip: a valid fixture validates against the emitted JSON Schema (using
@@ -710,7 +729,7 @@ emitted schema cannot express.
 
 ### End to end
 
-One real name, with facts and thesis written by hand against a current report,
+One real name, with facts and case written by hand against a current report,
 through `kosing value`, checked for shape. It proves the whole thing runs, and
 it is the first worked example of what the researcher skill has to produce.
 
@@ -721,7 +740,7 @@ src/
   input/              INPUT
     primitives.ts       Iso4217, IsoDateString, YearMonth, ScenarioTriple, TenNumberPath, RangeBand, SourceEntry
     facts.ts            FactsSchema and its blocks
-    thesis.ts           ThesisSchema and the method union
+    case.ts           CaseSchema and the method union
     schema.ts           JSON Schema emission
     decode.ts           both documents to Decoded
     errors.ts           DecodeError, Resolution, Warning
@@ -743,7 +762,7 @@ src/
   index.ts
 tests/
   fixtures/
-    valid/              one facts + thesis pair per method, one facts alone
+    valid/              one facts + case pair per method, one facts alone
     invalid/            one per decode rule
 ```
 
@@ -800,13 +819,17 @@ has emitted a schema for the researcher to target.
 
 ## Deferred, not rejected
 
+- **Thesis documents and the queries over them.** A case cites theses by slug;
+  nothing yet defines a thesis document, checks that a slug resolves, or asks
+  which cases rest on a given thesis. All three belong to the advisor's spec,
+  since the advisor is the only reader.
 - **Leases and pensions as debt.** `otherClaims` is reported beside `netDebt`
-  and the thesis cannot yet say "treat leases as debt". When a name needs it,
-  the thesis gains an `adjustments` block and decode folds the chosen claims
+  and the case cannot yet say "treat leases as debt". When a name needs it,
+  the case gains an `adjustments` block and decode folds the chosen claims
   into `netDebt`, recording a resolution.
 - **A structured `gaps.field`.** It is a free string today. When the schema is
   stable, a test can assert each `field` is a real path in the document.
-- **Multiple methods per thesis.** A cyclical with a DCF cross-check. The
+- **Multiple methods per case.** A cyclical with a DCF cross-check. The
   `Valuation` union becomes a non-empty set and results carries each. Not
   needed until the analyst skill wants it.
 - **Non-company subjects.** The root union, when funds or certificates need
@@ -824,7 +847,7 @@ has emitted a schema for the researcher to target.
   the properties exercise the paths. Neither alone is enough, which is why both
   layers exist.
 - **Net debt convention.** Reasonable people fold leases in. The convention is
-  stated, recorded in a resolution on every run, and the thesis will be able to
+  stated, recorded in a resolution on every run, and the case will be able to
   override it. The risk is a valuation read without noticing which convention
   applied, which the resolution exists to prevent.
 - **Dual-currency price conversion is new behaviour.** Python rejected the
