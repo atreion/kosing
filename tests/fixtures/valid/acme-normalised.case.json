@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "ticker": "ACME",
+  "factsAsOf": "2026-10-01",
+  "classification": "valueCyclical",
+  "theses": [],
+  "method": {
+    "kind": "normalisedEarnings",
+    "revenueBase": { "kind": "averageFy", "years": 3 },
+    "ebitMargin": { "bear": 0.09, "base": 0.12, "bull": 0.14 },
+    "evEbitMultiple": { "bear": 10, "base": 13, "bull": 16 },
+    "multipleCeiling": 18,
+    "rationale": "Treating Acme as mid-cycle: three-year average revenue, margins bracketing the last cycle.",
+    "sourceRefs": ["S1"]
+  },
+  "overrides": { "beta": null, "wacc": null, "rationale": null },
+  "sensitivity": null
+}

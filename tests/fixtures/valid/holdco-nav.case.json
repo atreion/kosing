@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0",
+  "ticker": "HOLD",
+  "factsAsOf": null,
+  "classification": "holdingCompany",
+  "theses": ["nordic-holdco-discount-compression"],
+  "method": {
+    "kind": "nav",
+    "warrantedDiscount": 0.2,
+    "rationale": "Two listed holdings at market, one private at the latest funding round, parent net debt small.",
+    "sourceRefs": ["S1"]
+  },
+  "overrides": { "beta": null, "wacc": null, "rationale": null },
+  "sensitivity": null
+}

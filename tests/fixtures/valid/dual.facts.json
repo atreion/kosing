@@ -1,0 +1,146 @@
+{
+  "schemaVersion": "1.0",
+  "company": {
+    "ticker": "DUAL",
+    "exchange": "STO",
+    "name": "Dual Listed Group",
+    "isin": "FI0000000002",
+    "country": "FI"
+  },
+  "asOf": "2026-10-01",
+  "currency": "EUR",
+  "unit": "thousands",
+  "market": {
+    "price": 150,
+    "priceCurrency": "SEK",
+    "asOf": "2026-10-01",
+    "sharesOutstandingM": 50,
+    "sharesDilutedM": 0,
+    "week52High": null,
+    "week52Low": null,
+    "sourceRefs": ["S2"]
+  },
+  "financials": {
+    "fiscalYears": [
+      {
+        "fy": 2025,
+        "endDate": "2025-12-31",
+        "revenue": 1200000,
+        "ebit": 150000,
+        "netIncome": 110000,
+        "ebitda": 200000,
+        "depreciationAmortization": 50000,
+        "cogs": null,
+        "grossProfit": null,
+        "opex": null,
+        "interestExpense": null,
+        "taxExpense": null,
+        "ocf": 180000,
+        "capex": -60000,
+        "fcf": 120000,
+        "dividendsPaid": null,
+        "sharesBasicM": 50,
+        "sharesDilutedM": null,
+        "sourceRef": "S1"
+      },
+      {
+        "fy": 2024,
+        "endDate": "2024-12-31",
+        "revenue": 1100000,
+        "ebit": 130000,
+        "netIncome": 95000,
+        "ebitda": 175000,
+        "depreciationAmortization": 45000,
+        "cogs": null,
+        "grossProfit": null,
+        "opex": null,
+        "interestExpense": null,
+        "taxExpense": null,
+        "ocf": 160000,
+        "capex": -55000,
+        "fcf": 105000,
+        "dividendsPaid": null,
+        "sharesBasicM": 50,
+        "sharesDilutedM": null,
+        "sourceRef": "S1"
+      }
+    ],
+    "ltm": null,
+    "quarters": null
+  },
+  "balanceSheet": {
+    "asOf": "2025-12-31",
+    "cashAndEquivalents": 300000,
+    "shortTermInvestments": null,
+    "totalDebt": 500000,
+    "shortTermDebt": null,
+    "longTermDebt": null,
+    "operatingLeaseLiabilities": 80000,
+    "pensionObligations": null,
+    "goodwill": null,
+    "intangiblesExGoodwill": null,
+    "sourceRef": "S1"
+  },
+  "costOfCapital": {
+    "riskFreeRate": 0.03,
+    "riskFreeBasis": "German 10-year Bund",
+    "erp": 0.05,
+    "countryPremium": 0.005,
+    "betaCompany": 1.2,
+    "betaSector": 1.0,
+    "taxRateEffective": 0.2,
+    "taxRateStatutory": 0.2,
+    "pretaxCostOfDebt": 0.045,
+    "equityWeight": 0.8,
+    "debtWeight": 0.2,
+    "weightsAsOf": "2026-10-01",
+    "sourceRefs": ["S3"]
+  },
+  "historicalRanges": null,
+  "peers": null,
+  "estimates": null,
+  "holdings": null,
+  "fx": {
+    "spotRates": [{ "pair": "SEKEUR", "rate": 0.088, "asOf": "2026-10-01", "sourceRef": "S2" }],
+    "exposures": [
+      { "currency": "EUR", "revenueShare": 0.6, "costShare": 0.7 },
+      { "currency": "USD", "revenueShare": 0.4, "costShare": null }
+    ]
+  },
+  "sources": [
+    {
+      "id": "S1",
+      "kind": "annualReport",
+      "issuer": "Dual Listed Group",
+      "title": "Annual Report 2025",
+      "url": "https://dual.example/ar2025.pdf",
+      "published": "2026-02-20",
+      "retrieved": "2026-10-01",
+      "pages": null,
+      "tier": "primary"
+    },
+    {
+      "id": "S2",
+      "kind": "marketDataFeed",
+      "issuer": "Nasdaq Stockholm",
+      "title": "DUAL quote and SEKEUR",
+      "url": "https://quotes.example/DUAL",
+      "published": null,
+      "retrieved": "2026-10-01",
+      "pages": null,
+      "tier": "secondary"
+    },
+    {
+      "id": "S3",
+      "kind": "macroReference",
+      "issuer": "Bundesbank",
+      "title": "Bund yields",
+      "url": "https://bundesbank.example/yields",
+      "published": null,
+      "retrieved": "2026-10-01",
+      "pages": null,
+      "tier": "primary"
+    }
+  ],
+  "gaps": []
+}
