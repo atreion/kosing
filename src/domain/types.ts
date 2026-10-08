@@ -18,19 +18,14 @@ export type Basis = (typeof BASIS_VALUES)[number];
 export const UNIT_VALUES = ["millions", "thousands", "ones"] as const;
 export type Unit = (typeof UNIT_VALUES)[number];
 export const CLASSIFICATIONS = [
-  "quality_compounder",
+  "qualityCompounder",
   "garp",
-  "value_cyclical",
-  "holding_company",
-  "bank_insurer",
-  "reit_utility",
-  "saas_pre_profit",
-  "commodity_producer",
-  "special_situation",
+  "valueCyclical",
+  "holdingCompany",
+  "bankInsurer",
+  "reitUtility",
+  "saasPreProfit",
+  "commodityProducer",
+  "specialSituation",
 ] as const;
 export type Classification = (typeof CLASSIFICATIONS)[number];
-
-export type DeferredClassification = Exclude<
-  Classification,
-  "quality_compounder" | "garp" | "value_cyclical" | "holding_company"
->;

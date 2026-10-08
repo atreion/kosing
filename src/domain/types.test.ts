@@ -6,7 +6,11 @@ test("closed sets carry their members at runtime", () => {
   assert.deepEqual([...BASIS_VALUES], ["listed", "unlisted"]);
   assert.deepEqual([...UNIT_VALUES], ["millions", "thousands", "ones"]);
   assert.equal(CLASSIFICATIONS.length, 9);
-  assert.ok(CLASSIFICATIONS.includes("special_situation"));
+  assert.ok(CLASSIFICATIONS.includes("specialSituation"));
+  assert.ok(
+    CLASSIFICATIONS.every((c) => !c.includes("_")),
+    "classification values are camelCase",
+  );
 });
 
 test("isNonEmpty narrows an array", () => {
