@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { BalanceSheet, CostOfCapital, Financials, FiscalYearRow, Market } from "./facts.ts";
+import {
+  BalanceSheet,
+  CostOfCapital,
+  FactsSchema,
+  Financials,
+  FiscalYearRow,
+  HistoricalRanges,
+  Holdings,
+  Market,
+} from "./facts.ts";
 
 export const market = {
   price: 212,
@@ -126,4 +135,162 @@ test("cost of capital bounds its rates and weights", () => {
   assert.equal(CostOfCapital.safeParse({ ...costOfCapital, taxRateEffective: 1.2 }).success, false);
   assert.equal(CostOfCapital.safeParse({ ...costOfCapital, equityWeight: -0.1 }).success, false);
   assert.equal(CostOfCapital.safeParse({ ...costOfCapital, sourceRefs: [] }).success, false);
+});
+
+const band = { y5Low: 120, y5High: 260, y10Low: 80, y10High: 260 };
+const nullBand = { y5Low: null, y5High: null, y10Low: null, y10High: null };
+
+test("historical ranges carry five bands and source refs", () => {
+  const ranges = {
+    sharePrice: band,
+    peTrailing: band,
+    evEbit: nullBand,
+    evEbitda: nullBand,
+    priceBook: nullBand,
+    sourceRefs: ["S2"],
+  };
+  assert.equal(HistoricalRanges.safeParse(ranges).success, true);
+  const { priceBook: _pb, ...missing } = ranges;
+  assert.equal(HistoricalRanges.safeParse(missing).success, false);
+});
+
+test("holdings carry items with a nullable fair value and a closed basis", () => {
+  const holdings = {
+    items: [{ name: "Investor AB", fairValue: 1200, basis: "listed", sourceRef: "S1" }],
+    parentNetDebt: -300,
+    lookThroughNav: 1500,
+    sourceRefs: ["S1"],
+  };
+  assert.equal(Holdings.safeParse(holdings).success, true);
+  assert.equal(
+    Holdings.safeParse({
+      ...holdings,
+      items: [{ name: "X", fairValue: null, basis: "guessed", sourceRef: "S1" }],
+    }).success,
+    false,
+  );
+});
+
+export const sources = [
+  {
+    id: "S1",
+    kind: "annualReport",
+    issuer: "Acme Industrial AB",
+    title: "Annual Report 2025",
+    url: "https://acme.example/ar2025.pdf",
+    published: "2026-02-12",
+    retrieved: "2026-10-01",
+    pages: null,
+    tier: "primary",
+  },
+  {
+    id: "S2",
+    kind: "marketDataFeed",
+    issuer: "Nasdaq Stockholm",
+    title: "ACME quote",
+    url: "https://quotes.example/ACME",
+    published: null,
+    retrieved: "2026-10-01",
+    pages: null,
+    tier: "secondary",
+  },
+  {
+    id: "S3",
+    kind: "macroReference",
+    issuer: "Riksbanken",
+    title: "Government bond yields",
+    url: "https://riksbank.example/yields",
+    published: null,
+    retrieved: "2026-10-01",
+    pages: null,
+    tier: "primary",
+  },
+];
+
+export function facts(over: Record<string, unknown> = {}) {
+  return {
+    schemaVersion: "1.0",
+    company: {
+      ticker: "ACME",
+      exchange: "STO",
+      name: "Acme Industrial AB",
+      isin: "SE0000000001",
+      country: "SE",
+    },
+    asOf: "2026-10-01",
+    currency: "SEK",
+    unit: "millions",
+    market,
+    financials: {
+      fiscalYears: [fiscalYear(2024), fiscalYear(2025)],
+      ltm: null,
+      quarters: null,
+    },
+    balanceSheet,
+    costOfCapital,
+    historicalRanges: null,
+    peers: null,
+    estimates: null,
+    holdings: null,
+    fx: null,
+    sources,
+    gaps: [],
+    ...over,
+  };
+}
+
+test("a minimal facts document parses", () => {
+  const result = FactsSchema.safeParse(facts());
+  assert.ok(result.success, JSON.stringify(result.error?.issues.slice(0, 3)));
+});
+
+test("an unresolvable source ref is rejected with its path", () => {
+  const result = FactsSchema.safeParse(facts({ market: { ...market, sourceRefs: ["S9"] } }));
+  assert.equal(result.success, false);
+  const issue = result.error?.issues.find((i) => i.message.includes("S9"));
+  assert.deepEqual(issue?.path, ["market", "sourceRefs", 0]);
+});
+
+test("a duplicate fiscal year is rejected at the second occurrence", () => {
+  const result = FactsSchema.safeParse(
+    facts({
+      financials: {
+        fiscalYears: [fiscalYear(2025), fiscalYear(2024), fiscalYear(2025)],
+        ltm: null,
+        quarters: null,
+      },
+    }),
+  );
+  assert.equal(result.success, false);
+  const issue = result.error?.issues.find((i) => i.message.includes("2025"));
+  assert.deepEqual(issue?.path, ["financials", "fiscalYears", 2, "fy"]);
+});
+
+test("capital-structure weights must sum to one", () => {
+  const result = FactsSchema.safeParse(
+    facts({ costOfCapital: { ...costOfCapital, equityWeight: 0.8, debtWeight: 0.1 } }),
+  );
+  assert.equal(result.success, false);
+  assert.ok(result.error?.issues.some((i) => i.path.join(".") === "costOfCapital.debtWeight"));
+});
+
+test("a trading currency differing from reporting needs a spot rate for the pair", () => {
+  const dual = facts({ market: { ...market, priceCurrency: "EUR" } });
+  const result = FactsSchema.safeParse(dual);
+  assert.equal(result.success, false);
+  assert.ok(result.error?.issues.some((i) => i.path.join(".") === "fx"));
+
+  const withRate = facts({
+    market: { ...market, priceCurrency: "EUR" },
+    fx: {
+      spotRates: [{ pair: "SEKEUR", rate: 0.088, asOf: "2026-10-01", sourceRef: "S2" }],
+      exposures: [],
+    },
+  });
+  assert.equal(FactsSchema.safeParse(withRate).success, true, "either direction satisfies it");
+});
+
+test("the document is strict at every level", () => {
+  assert.equal(FactsSchema.safeParse(facts({ extra: 1 })).success, false);
+  assert.equal(FactsSchema.safeParse(facts({ market: { ...market, extra: 1 } })).success, false);
 });

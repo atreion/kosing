@@ -6,8 +6,16 @@
  */
 
 import { z } from "zod";
-import { UNIT_VALUES } from "../domain/types.ts";
-import { Iso4217, IsoDateString, SourceId, SourceRefs } from "./primitives.ts";
+import { BASIS_VALUES, UNIT_VALUES } from "../domain/types.ts";
+import {
+  Gap,
+  Iso4217,
+  IsoDateString,
+  RangeBand,
+  SourceEntry,
+  SourceId,
+  SourceRefs,
+} from "./primitives.ts";
 
 const nullableNumber = z.number().nullable();
 const nullableNonNegative = z.number().min(0).nullable();
@@ -106,3 +114,188 @@ export const CostOfCapital = z.strictObject({
 });
 
 export const UNIT = z.enum(UNIT_VALUES);
+
+export const HistoricalRanges = z.strictObject({
+  sharePrice: RangeBand,
+  peTrailing: RangeBand,
+  evEbit: RangeBand,
+  evEbitda: RangeBand,
+  priceBook: RangeBand,
+  sourceRefs: SourceRefs,
+});
+
+export const Peer = z.strictObject({
+  name: z.string().min(1),
+  ticker: z.string().nullable(),
+  peTrailing: nullableNumber,
+  evEbit: nullableNumber,
+  evEbitda: nullableNumber,
+  evRevenue: nullableNumber,
+  sourceRef: SourceId,
+});
+
+export const Estimate = z.strictObject({
+  fy: z.number().int(),
+  revenue: nullableNumber,
+  ebit: nullableNumber,
+  eps: nullableNumber,
+  sourceRef: SourceId,
+});
+
+export const HoldingItem = z.strictObject({
+  name: z.string().min(1),
+  fairValue: nullableNumber,
+  basis: z.enum(BASIS_VALUES),
+  sourceRef: SourceId,
+});
+
+export const Holdings = z.strictObject({
+  items: z.array(HoldingItem),
+  parentNetDebt: z.number(),
+  lookThroughNav: nullableNumber,
+  sourceRefs: SourceRefs,
+});
+
+const CurrencyPair = z.string().regex(/^[A-Z]{6}$/, "must be six uppercase letters, as in EURSEK");
+
+export const SpotRate = z.strictObject({
+  pair: CurrencyPair,
+  rate: z.number().positive(),
+  asOf: IsoDateString,
+  sourceRef: SourceId,
+});
+
+export const Exposure = z.strictObject({
+  currency: Iso4217,
+  revenueShare: unitInterval.nullable(),
+  costShare: unitInterval.nullable(),
+});
+
+export const Fx = z.strictObject({
+  spotRates: z.array(SpotRate),
+  exposures: z.array(Exposure),
+});
+
+/** Named CompanyBlock so the domain's Company is the only Company. */
+export const CompanyBlock = z.strictObject({
+  ticker: z.string().min(1),
+  exchange: z.string().min(1),
+  name: z.string().min(1),
+  isin: z.string().nullable(),
+  country: z.string().regex(/^[A-Z]{2}$/, "must be a two-letter country code"),
+});
+
+export const FactsShape = z.strictObject({
+  schemaVersion: z.literal("1.0"),
+  company: CompanyBlock,
+  asOf: IsoDateString,
+  currency: Iso4217,
+  unit: UNIT,
+  market: Market,
+  financials: Financials,
+  balanceSheet: BalanceSheet,
+  costOfCapital: CostOfCapital,
+  historicalRanges: HistoricalRanges.nullable(),
+  peers: z.array(Peer).nullable(),
+  estimates: z.array(Estimate).nullable(),
+  holdings: Holdings.nullable(),
+  fx: Fx.nullable(),
+  sources: z.array(SourceEntry).min(1),
+  gaps: z.array(Gap),
+});
+
+export type FactsShape = z.infer<typeof FactsShape>;
+
+/**
+ * Every place a source id appears, with its path, so the refinement can point
+ * at the exact reference that does not resolve.
+ */
+export function collectSourceRefs(facts: FactsShape): readonly { path: string; id: string }[] {
+  const refs: { path: string; id: string }[] = [];
+  function one(path: string, id: string): void {
+    refs.push({ path, id });
+  }
+  function many(path: string, ids: readonly string[]): void {
+    for (const [i, id] of ids.entries()) one(`${path}.${i}`, id);
+  }
+  function each(path: string, rows: readonly { sourceRef: string }[]): void {
+    for (const [i, row] of rows.entries()) one(`${path}.${i}.sourceRef`, row.sourceRef);
+  }
+
+  many("market.sourceRefs", facts.market.sourceRefs);
+  each("financials.fiscalYears", facts.financials.fiscalYears);
+  if (facts.financials.ltm) one("financials.ltm.sourceRef", facts.financials.ltm.sourceRef);
+  each("financials.quarters", facts.financials.quarters ?? []);
+  one("balanceSheet.sourceRef", facts.balanceSheet.sourceRef);
+  many("costOfCapital.sourceRefs", facts.costOfCapital.sourceRefs);
+  if (facts.historicalRanges) {
+    many("historicalRanges.sourceRefs", facts.historicalRanges.sourceRefs);
+  }
+  each("peers", facts.peers ?? []);
+  each("estimates", facts.estimates ?? []);
+  if (facts.holdings) {
+    each("holdings.items", facts.holdings.items);
+    many("holdings.sourceRefs", facts.holdings.sourceRefs);
+  }
+  each("fx.spotRates", facts.fx?.spotRates ?? []);
+  return refs;
+}
+
+function toPath(dotted: string): (string | number)[] {
+  return dotted.split(".").map((seg) => (/^\d+$/.test(seg) ? Number(seg) : seg));
+}
+
+/**
+ * The four value rules the shape cannot carry. Each issue names the path in
+ * the file the researcher edits; schema.test.ts lists them as unrepresentable
+ * in the emitted JSON Schema.
+ */
+export const FactsSchema = FactsShape.superRefine((facts, ctx) => {
+  const ids = new Set(facts.sources.map((s) => s.id));
+  for (const { path, id } of collectSourceRefs(facts)) {
+    if (!ids.has(id)) {
+      ctx.addIssue({
+        code: "custom",
+        path: toPath(path),
+        message: `source ${id} is not in sources`,
+      });
+    }
+  }
+
+  const seen = new Set<number>();
+  facts.financials.fiscalYears.forEach((row, i) => {
+    if (seen.has(row.fy)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["financials", "fiscalYears", i, "fy"],
+        message: `fiscal year ${row.fy} appears more than once`,
+      });
+    }
+    seen.add(row.fy);
+  });
+
+  const { equityWeight, debtWeight } = facts.costOfCapital;
+  if (Math.abs(equityWeight + debtWeight - 1) > 1e-6) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["costOfCapital", "debtWeight"],
+      message: `equityWeight + debtWeight must be 1, got ${equityWeight + debtWeight}`,
+    });
+  }
+
+  const { priceCurrency } = facts.market;
+  if (priceCurrency !== facts.currency) {
+    const direct = `${priceCurrency}${facts.currency}`;
+    const inverse = `${facts.currency}${priceCurrency}`;
+    const hasPair = facts.fx?.spotRates.some((s) => s.pair === direct || s.pair === inverse);
+    if (!hasPair) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["fx"],
+        message: `price is in ${priceCurrency} but no spot rate for ${direct} or ${inverse} is given`,
+      });
+    }
+  }
+});
+
+export type Facts = z.infer<typeof FactsSchema>;
