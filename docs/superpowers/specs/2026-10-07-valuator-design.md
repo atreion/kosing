@@ -799,19 +799,11 @@ because it records reasoning that still holds.
 
 ## Working split
 
-Per `CLAUDE.md`: the user writes code whose writing is how the TypeScript gets
-learned; Claude writes the mechanical remainder.
-
-| Claude writes | The user writes |
-| --- | --- |
-| the Zod schemas from this spec | the domain model and its `@ts-expect-error` tests |
-| JSON Schema emission | decode and the cross-document rules |
-| fixtures, valid and invalid | selectors |
-| the CLI | the math modules |
-| property-test grids and harness | the property assertions |
-| results assembly | worked-example lookups and their goldens |
-
-Review runs both ways.
+Claude writes the code; the user reviews at checkpoints, approves and gives
+feedback. The goal is a working, reliable core as soon as possible. Rulings
+made where the spec or a plan is silent are recorded in the plan's ledger and
+surfaced at the next checkpoint. Review runs both ways: the user reads what
+was built, and Claude says what it is unsure of.
 
 ## Plans
 

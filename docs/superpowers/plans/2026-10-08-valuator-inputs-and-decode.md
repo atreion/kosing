@@ -12,7 +12,7 @@
 
 **Scope:** Plan 1 of 2. Plan 2 covers `src/math/`, `src/select/`, `src/results/`, `kosing value`, properties and worked examples, and deletes `result.ts`, `validate.ts`, `dcf-parse.ts` and the Nova golden. Those files keep working untouched here; `dcf.ts` and `wacc.ts` still import them.
 
-**Working split:** per `CLAUDE.md`. Each task names its owner. Claude: Tasks 2, 3, 4, 5, 6, 7, 13. The user: Tasks 1, 8, 9, 10, 11, 12. For the user's tasks the implementation block is a reference to check against after writing, not a thing to paste; the tests are binding.
+**Execution:** Claude implements every task inline (superpowers:executing-plans), with the user reviewing at three checkpoints: after Task 7 (the input contract), after Task 12 (decode end to end), and after Task 13 plus the whole-branch review. Reference implementations in the user-authored tasks were written as references and are now simply the implementation.
 
 ## Global Constraints
 
@@ -49,7 +49,7 @@ Five input classes the spec implies, that no fixture exercises on its own, and t
 
 ---
 
-### Task 1: Domain vocabulary for the new format — the user
+### Task 1: Domain vocabulary for the new format
 
 **Files:**
 - Modify: `src/domain/types.ts`
@@ -115,7 +115,7 @@ git commit -m "refactor(domain): camelCase classifications and drop the deferred
 
 ---
 
-### Task 2: Input primitives — Claude
+### Task 2: Input primitives
 
 **Files:**
 - Create: `src/input/primitives.ts`
@@ -337,7 +337,7 @@ git commit -m "refactor(input): reshape the primitives for kosing's own format"
 
 ---
 
-### Task 3: Facts blocks, part one — Claude
+### Task 3: Facts blocks, part one
 
 **Files:**
 - Create: `src/input/facts.ts`
@@ -619,7 +619,7 @@ git commit -m "feat(input): define the market, financials, balance sheet and cos
 
 ---
 
-### Task 4: Facts blocks, part two, and the document — Claude
+### Task 4: Facts blocks, part two, and the document
 
 **Files:**
 - Modify: `src/input/facts.ts`
@@ -988,7 +988,7 @@ git commit -m "feat(input): assemble the facts document and its wire-level rules
 
 ---
 
-### Task 5: The case document — Claude
+### Task 5: The case document
 
 **Files:**
 - Create: `src/input/case.ts`
@@ -1326,7 +1326,7 @@ git commit -m "feat(input): define the case document with one method per case"
 
 ---
 
-### Task 6: Fixtures and the loader — Claude
+### Task 6: Fixtures and the loader
 
 **Files:**
 - Create: `tests/fixtures/valid/acme.facts.json`
@@ -1695,7 +1695,7 @@ git commit -m "test(fixtures): add hand-written facts and case documents and a l
 
 ---
 
-### Task 7: JSON Schema emission — Claude
+### Task 7: JSON Schema emission
 
 **Files:**
 - Create: `src/input/schema.ts`
@@ -1832,7 +1832,7 @@ git commit -m "feat(input): emit the JSON Schema and list the rules it cannot ca
 
 ---
 
-### Task 8: Errors, resolutions and warnings — the user
+### Task 8: Errors, resolutions and warnings
 
 **Files:**
 - Create: `src/input/errors.ts`
@@ -1973,7 +1973,7 @@ git commit -m "feat(input): model decode errors, resolutions and warnings as dat
 
 ---
 
-### Task 9: The domain model — the user
+### Task 9: The domain model
 
 **Files:**
 - Create: `src/domain/company.ts`
@@ -2324,7 +2324,7 @@ git commit -m "feat(domain): model the company and the valuation union"
 
 ---
 
-### Task 10: Decode facts into a Company — the user
+### Task 10: Decode facts into a Company
 
 **Files:**
 - Create: `src/input/decode-company.ts`
@@ -2650,7 +2650,7 @@ git commit -m "feat(input): decode facts into a company, recording every fallbac
 
 ---
 
-### Task 11: Decode the case into a Valuation — the user
+### Task 11: Decode the case into a Valuation
 
 **Files:**
 - Create: `src/input/decode-valuation.ts`
@@ -3022,7 +3022,7 @@ git commit -m "feat(input): decode the case into a valuation whose rules hold by
 
 ---
 
-### Task 12: Warnings and the top-level decoder — the user
+### Task 12: Warnings and the top-level decoder
 
 **Files:**
 - Create: `src/input/warnings.ts`
@@ -3302,7 +3302,7 @@ git commit -m "feat(input): add advisory warnings and the top-level decoder"
 
 ---
 
-### Task 13: CLI `kosing schema` and the public surface — Claude
+### Task 13: CLI `kosing schema` and the public surface
 
 **Files:**
 - Create: `src/cli.ts`
