@@ -237,9 +237,11 @@ imports crossing it.
 
 ## `facts.json`
 
-Monetary figures are in `currency` and `unit` throughout. Share counts are
-always millions and the field names say so. Percentages are fractions (`0.21`,
-not `21`). Every block that reports something cites sources by id.
+Aggregate monetary figures (financial rows, the balance sheet, holdings) are in
+`currency` and `unit`. Per-share figures (`price`, the 52-week range, `eps`) are
+in `currency` as quoted, never scaled by `unit`. Share counts are always
+millions and the field names say so. Percentages are fractions (`0.21`, not
+`21`). Every block that reports something cites sources by id.
 
 ```
 schemaVersion   "1.0"
@@ -434,7 +436,10 @@ Wire-level rules:
 - `bear <= base <= bull` on each scenario triple;
 - no scenario multiple above `multipleCeiling` when it is set;
 - `overrides.rationale` is non-null when either override is;
-- `sensitivity` steps each contain `0`.
+- `sensitivity` steps each contain `0`;
+- `overrides` are all null and `sensitivity` is null unless `method.kind` is
+  `dcf`: only a DCF discounts, so only a DCF can have its discount rate
+  overridden or swept.
 
 The `terminal` union matches what `src/dcf.ts` already computes:
 `perpetuityGrowth` and `exitMultiple` over `evEbit | evEbitda | evFcff`.
@@ -499,7 +504,7 @@ Each is a `semantic.*` error. Together they are the reason the domain's
 | Rule | Requires |
 | --- | --- |
 | `semantic.tickerMismatch` | `case.ticker === facts.company.ticker` |
-| `semantic.noBeta` | a non-null beta from `betaCompany`, `betaSector` or `overrides.beta` |
+| `semantic.noBeta` | a non-null beta from `betaCompany` or `betaSector`; an override replaces a beta, it cannot stand in for none, because the screen needs one with no case present |
 | `semantic.periodMissingFigure` | for `dcf` and `normalisedEarnings`: every fiscal year and the LTM row, if present, has non-null `revenue` and `ebit` |
 | `semantic.revenueBaseUnsatisfiable` | `ltm` policy with `financials.ltm` present; `averageFy(n)` with at least `n` fiscal years |
 | `semantic.navRequiresHoldings` | `nav` with `facts.holdings` non-null and `items` non-empty |
@@ -528,7 +533,7 @@ type Company = {
   balanceSheet: BalanceSheet;
   netDebt: number;                 // derived: totalDebt - cash - shortTermInvestments
   otherClaims: OtherClaims;        // leases, pensions, reported separately, not in netDebt
-  costOfCapital: CostOfCapital;    // beta resolved, both tax rates, overrides applied
+  costOfCapital: CostOfCapital;    // from facts alone: beta resolved, both tax rates, no overrides
   historicalRanges: HistoricalRanges | null;
   peers: readonly Peer[];
   estimates: readonly Estimate[];
@@ -541,14 +546,14 @@ type CostOfCapital = {
   preTaxCostOfDebt: number; equityWeight: number; debtWeight: number;
   taxRateForDiscounting: number;   // statutory ?? effective
   taxRateForCashFlows: number;     // effective, always present
-  waccOverride: number | null;
 };
 
 /** As reported: every figure nullable, because a holding company has no revenue. */
 type ReportedPeriod = { revenue: number | null; ebit: number | null; /* ... the rest, nullable */ };
 type ReportedFiscalYear = ReportedPeriod & { fy: number; endDate: IsoDate };
+type ReportedLtm = ReportedPeriod & { endDate: IsoDate };   // dated, so the staleness warning can compare it
 type Financials = {
-  ltm: ReportedPeriod | null;
+  ltm: ReportedLtm | null;
   fiscalYears: NonEmpty<ReportedFiscalYear>;   // sorted oldest to newest
 };
 
@@ -561,6 +566,8 @@ type OperatingFinancials = { ltm: Period | null; fiscalYears: NonEmpty<FiscalYea
 
 type Valuation =
   | { method: "dcf"; financials: OperatingFinancials; assumptions: DcfAssumptions;
+      costOfCapital: CostOfCapital;    // facts' cost of capital with overrides.beta applied
+      waccOverride: number | null;     // overrides.wacc, replacing the computed WACC outright
       sensitivity: SensitivityAxes }
   | { method: "normalisedEarnings"; financials: OperatingFinancials;
       revenueBase: CyclicalRevenueBase; assumptions: CyclicalAssumptions }
@@ -599,7 +606,7 @@ analyst conventionally supplied.
 
 | Module | Inputs from | Computes |
 | --- | --- | --- |
-| `wacc` | `Company` | cost of equity (CAPM with country premium), after-tax cost of debt, WACC; honours `waccOverride` |
+| `wacc` | `Company`, or the `dcf` branch's cost of capital | cost of equity (CAPM with country premium), after-tax cost of debt, WACC; the `dcf` branch's `waccOverride` replaces the result |
 | `reverse-dcf` | `Company` | the constant revenue growth over the horizon that makes DCF value equal the current price, holding the base period's EBIT margin, capex and D&A ratios and the computed WACC; `null` with a reason when no usable base period exists |
 | `multiples` | `Company` | current P/E, EV/EBIT, EV/EBITDA, EV/revenue, P/B from derived figures; position of each against its historical band and the peer set |
 | `fx` | `Company` | value per share under spot moves of ±5 %, ±10 % on each relevant pair, when `fx` is present |
@@ -637,7 +644,7 @@ inputs {
 derived {
   marketCap, enterpriseValue, netDebt, otherClaims
   multiples   { peTrailing, evEbit, evEbitda, evRevenue, priceBook: number|null each }
-  wacc        { costOfEquity, afterTaxCostOfDebt, wacc, overridden: boolean }
+  wacc        { costOfEquity, afterTaxCostOfDebt, wacc }   — from facts alone, never overridden
 }
 pricedIn {
   reverseDcf   { impliedGrowth, basePeriod: { kind, fy|null, endDate }, horizonYears } | null
@@ -645,7 +652,8 @@ pricedIn {
                    peerMedian: number|null }, ...]
 }
 valuation   null | one of:
-  { method: "dcf", valuePerShare, enterpriseValue, equityValue, terminalValue,
+  { method: "dcf", wacc: { costOfEquity, afterTaxCostOfDebt, wacc, overridden: boolean },
+    valuePerShare, enterpriseValue, equityValue, terminalValue,
     terminalValuePctOfEv, pvExplicitPeriod, projection: [YearRow × 10],
     terminal: { kind, ... }, notes: [...] }
   { method: "normalisedEarnings", revenueBase: { kind, value, window|null },
