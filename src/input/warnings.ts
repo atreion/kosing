@@ -8,18 +8,6 @@ import type { Case } from "./case.ts";
 import type { Warning } from "./errors.ts";
 import type { Facts } from "./facts.ts";
 
-/** Carried over from invest's semantic.py; a currency with no entry never warns. */
-const COUNTRY_HINTS: Record<string, readonly string[]> = {
-  SEK: ["swed", "sverige", "riksbank"],
-  NOK: ["norw", "norge", "norges bank"],
-  DKK: ["dan", "denmark", "nationalbank"],
-  EUR: ["euro", "bund", "german", "ecb", "french", "oat", "dutch", "finnish", "finland"],
-  USD: ["us ", "u.s.", "treasury", "united states", "american"],
-  GBP: ["uk ", "gilt", "british", "united kingdom", "bank of england"],
-  CHF: ["swiss", "switzerland", "snb"],
-  JPY: ["japan", "jgb"],
-};
-
 function casePredatesFacts(facts: Facts, c: Case | null): Warning[] {
   if (c === null || c.factsAsOf === null || c.factsAsOf >= facts.asOf) return [];
   return [
@@ -27,20 +15,6 @@ function casePredatesFacts(facts: Facts, c: Case | null): Warning[] {
       rule: "casePredatesFacts",
       path: "factsAsOf",
       message: `case was written against facts of ${c.factsAsOf}; facts are now ${facts.asOf}`,
-    },
-  ];
-}
-
-function rfBasisMismatch(facts: Facts): Warning[] {
-  const hints = COUNTRY_HINTS[facts.currency];
-  if (hints === undefined) return [];
-  const basis = facts.costOfCapital.riskFreeBasis.toLowerCase();
-  if (hints.some((h) => basis.includes(h))) return [];
-  return [
-    {
-      rule: "rfBasisMismatch",
-      path: "costOfCapital.riskFreeBasis",
-      message: `riskFreeBasis "${facts.costOfCapital.riskFreeBasis}" does not look like a ${facts.currency} curve`,
     },
   ];
 }
@@ -65,9 +39,5 @@ export function collectWarnings(
   investmentCase: Case | null,
   company: Company,
 ): Warning[] {
-  return [
-    ...casePredatesFacts(facts, investmentCase),
-    ...rfBasisMismatch(facts),
-    ...ltmOlderThanFiscalYear(company),
-  ];
+  return [...casePredatesFacts(facts, investmentCase), ...ltmOlderThanFiscalYear(company)];
 }

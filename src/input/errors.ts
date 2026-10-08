@@ -73,7 +73,7 @@ export type Resolution =
 
 /** Advisory, never fatal. */
 export type Warning = {
-  readonly rule: "casePredatesFacts" | "rfBasisMismatch" | "ltmOlderThanFiscalYear";
+  readonly rule: "casePredatesFacts" | "ltmOlderThanFiscalYear";
   readonly path: string;
   readonly message: string;
 };

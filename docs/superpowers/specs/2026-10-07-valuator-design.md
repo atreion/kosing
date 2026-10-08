@@ -518,8 +518,13 @@ Advisory, never fatal, computed over the decoded `Company` with fixed paths.
 | Rule | Fires when |
 | --- | --- |
 | `casePredatesFacts` | `case.factsAsOf` is set and earlier than `facts.asOf` |
-| `rfBasisMismatch` | `riskFreeBasis` does not mention a country hint for `currency` (table carried over from `semantic.py`) |
 | `ltmOlderThanFiscalYear` | `financials.ltm.endDate` is earlier than the latest fiscal year's `endDate` |
+
+Python's `rf_basis_consistency` warning (a substring heuristic matching
+`risk_free_basis` against a per-currency table of country hints) is not
+carried over. The advisor is the only reader of warnings, and a heuristic it
+did not ask for is more likely to mislead than to help; if it wants one, the
+advisor's spec defines it.
 
 ## Domain model
 
