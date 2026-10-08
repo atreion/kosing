@@ -112,12 +112,28 @@ them in English for the AI roles.
 
 ### Facts and thesis are two documents
 
-Facts are what is observable and are refreshed mechanically: a new report, a new
-price, new guidance. The thesis is judgement and changes when the view changes.
-Waiting for an entry price is the common case: facts refresh weekly, the thesis
-holds, the advisor re-reads new results against an unchanged view. One document
-would force the stable part to be re-emitted every time the volatile part moved,
-and would need a revision log to say which part changed.
+Facts are what is observable about the company. The thesis is a judgement about
+the company's future. They change for different reasons, and either can change
+while the other stands still.
+
+Facts move when the company reports: a new quarter, new guidance, a share
+issue, a price. Waiting for an entry price is the common case: facts refresh
+weekly, the thesis holds, the advisor re-reads new results against an unchanged
+view.
+
+The thesis moves when the world does, or when you do. Fukushima cut nuclear
+construction across many countries in a week; nothing in any reactor builder's
+accounts had changed. Russia's invasion of Ukraine repriced every defence name
+before a single new contract was signed. A closed Strait of Hormuz changes what
+the world expects to pay for oil in a day, and the oil companies are the same
+companies with the same reserves. A thesis can also change because you changed
+your mind about your own world view, with no event at all.
+
+One document would couple two things with independent causes: a world event
+would force re-emitting the facts, and a quarterly report would force
+re-emitting the thesis, and a revision log would be needed to say which half
+actually moved. Two files under version control record each change against the
+cause that produced it.
 
 ### The thesis names the method; the math decides nothing
 
