@@ -1,0 +1,167 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { loadFixture, mutate } from "../test-fixtures.ts";
+import { CaseSchema } from "./case.ts";
+import { decodeCompany } from "./decode-company.ts";
+import { decodeValuation } from "./decode-valuation.ts";
+import { FactsSchema } from "./facts.ts";
+
+function run(factsDoc: unknown, caseDoc: unknown) {
+  const facts = FactsSchema.safeParse(factsDoc);
+  const c = CaseSchema.safeParse(caseDoc);
+  assert.ok(facts.success, JSON.stringify(facts.error?.issues.slice(0, 3)));
+  assert.ok(c.success, JSON.stringify(c.error?.issues.slice(0, 3)));
+  const company = decodeCompany(facts.data);
+  assert.ok(company.success);
+  return decodeValuation(facts.data, c.data, company.data.company);
+}
+
+const acme = () => loadFixture("acme.facts");
+const holdco = () => loadFixture("holdco.facts");
+
+test("a dcf case decodes with the default sensitivity grid and no overrides", () => {
+  const result = run(acme(), loadFixture("acme-dcf.case"));
+  assert.ok(result.success, JSON.stringify(result.error));
+  const { valuation, resolutions } = result.data;
+  assert.equal(valuation.method, "dcf");
+  if (valuation.method !== "dcf") return;
+  assert.equal(valuation.financials.fiscalYears.length, 5);
+  assert.equal(valuation.financials.ltm?.revenue, 11400);
+  assert.deepEqual(valuation.sensitivity.waccSteps, [-0.01, -0.005, 0, 0.005, 0.01]);
+  assert.equal(valuation.waccOverride, null);
+  assert.equal(valuation.costOfCapital.beta, 1.1);
+  assert.deepEqual(resolutions, []);
+});
+
+test("a beta override replaces the facts' beta on the dcf branch and is recorded", () => {
+  const withOverride = mutate(loadFixture("acme-dcf.case"), "overrides", {
+    beta: 1.3,
+    wacc: null,
+    rationale: "sector beta is stale",
+  });
+  const result = run(acme(), withOverride);
+  assert.ok(result.success);
+  if (result.data.valuation.method !== "dcf") return assert.fail();
+  assert.equal(result.data.valuation.costOfCapital.beta, 1.3);
+  assert.deepEqual(result.data.resolutions, [{ kind: "betaOverridden", from: 1.1, to: 1.3 }]);
+});
+
+test("a case's own sensitivity grid replaces the default", () => {
+  const custom = mutate(loadFixture("acme-dcf.case"), "sensitivity", {
+    waccSteps: [-0.02, 0, 0.02],
+    terminalGrowthSteps: [0, 0.005],
+  });
+  const result = run(acme(), custom);
+  assert.ok(result.success);
+  if (result.data.valuation.method !== "dcf") return assert.fail();
+  assert.deepEqual(result.data.valuation.sensitivity, {
+    waccSteps: [-0.02, 0, 0.02],
+    terminalGrowthSteps: [0, 0.005],
+  });
+});
+
+test("averageFy takes the most recent window and records it", () => {
+  const result = run(acme(), loadFixture("acme-normalised.case"));
+  assert.ok(result.success, JSON.stringify(result.error));
+  if (result.data.valuation.method !== "normalisedEarnings") return assert.fail();
+  const base = result.data.valuation.revenueBase;
+  assert.equal(base.kind, "averageFy");
+  if (base.kind !== "averageFy") return;
+  assert.deepEqual(
+    base.window.map((y) => y.fy),
+    [2023, 2024, 2025],
+  );
+  assert.ok(
+    result.data.resolutions.some(
+      (r) => r.kind === "revenueBaseAveraged" && r.fromFy === 2023 && r.toFy === 2025,
+    ),
+  );
+});
+
+test("an ltm policy with no ltm row is unsatisfiable", () => {
+  const ltmCase = mutate(loadFixture("acme-normalised.case"), "method.revenueBase", {
+    kind: "ltm",
+  });
+  const result = run(mutate(acme(), "financials.ltm", null), ltmCase);
+  assert.equal(result.success, false);
+  assert.equal(result.error?.[0]?.rule, "semantic.revenueBaseUnsatisfiable");
+  assert.equal(result.error?.[0]?.path, "method.revenueBase");
+});
+
+test("averageFy asking for more years than exist is unsatisfiable", () => {
+  const six = mutate(loadFixture("acme-normalised.case"), "method.revenueBase", {
+    kind: "averageFy",
+    years: 6,
+  });
+  const result = run(acme(), six);
+  assert.equal(result.success, false);
+  assert.equal(result.error?.[0]?.rule, "semantic.revenueBaseUnsatisfiable");
+});
+
+test("a dcf case against a row with null revenue reports every missing figure", () => {
+  const broken = mutate(
+    mutate(acme(), "financials.fiscalYears.0.revenue", null),
+    "financials.fiscalYears.2.ebit",
+    null,
+  );
+  const result = run(broken, loadFixture("acme-dcf.case"));
+  assert.equal(result.success, false);
+  assert.deepEqual(
+    result.error?.map((e) => [e.rule, e.file, e.path]),
+    [
+      ["semantic.periodMissingFigure", "facts", "financials.fiscalYears.0.revenue"],
+      ["semantic.periodMissingFigure", "facts", "financials.fiscalYears.2.ebit"],
+    ],
+  );
+});
+
+test("a nav case decodes into non-null holdings", () => {
+  const result = run(holdco(), loadFixture("holdco-nav.case"));
+  assert.ok(result.success, JSON.stringify(result.error));
+  if (result.data.valuation.method !== "nav") return assert.fail();
+  assert.equal(result.data.valuation.holdings.length, 3);
+  assert.equal(result.data.valuation.parentNetDebt, 300);
+});
+
+test("a nav case against empty holdings fails at holdings.items, not on items[0]", () => {
+  const result = run(mutate(holdco(), "holdings.items", []), loadFixture("holdco-nav.case"));
+  assert.equal(result.success, false);
+  assert.deepEqual(
+    [result.error?.[0]?.rule, result.error?.[0]?.path],
+    ["semantic.navRequiresHoldings", "holdings.items"],
+  );
+
+  const none = run(mutate(holdco(), "holdings", null), loadFixture("holdco-nav.case"));
+  assert.deepEqual(
+    [none.error?.[0]?.rule, none.error?.[0]?.path],
+    ["semantic.navRequiresHoldings", "holdings"],
+  );
+});
+
+test("a holding with a null fair value is rejected by name", () => {
+  const result = run(
+    mutate(holdco(), "holdings.items.2.fairValue", null),
+    loadFixture("holdco-nav.case"),
+  );
+  assert.equal(result.success, false);
+  assert.equal(result.error?.[0]?.rule, "semantic.holdingWithoutValue");
+  assert.equal(result.error?.[0]?.path, "holdings.items.2.fairValue");
+  assert.ok(result.error?.[0]?.message.includes("Private Software Group"));
+});
+
+test("a ticker mismatch and an unresolvable case source ref are both reported", () => {
+  const wrong = mutate(
+    mutate(loadFixture("acme-dcf.case"), "ticker", "ACMX"),
+    "method.sourceRefs.1",
+    "S77",
+  );
+  const result = run(acme(), wrong);
+  assert.equal(result.success, false);
+  assert.deepEqual(
+    result.error?.map((e) => [e.rule, e.path]),
+    [
+      ["semantic.tickerMismatch", "ticker"],
+      ["semantic.sourceRef", "method.sourceRefs.1"],
+    ],
+  );
+});
