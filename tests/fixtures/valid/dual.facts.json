@@ -16,8 +16,8 @@
     "asOf": "2026-10-01",
     "sharesOutstandingM": 50,
     "sharesDilutedM": 0,
-    "week52High": null,
-    "week52Low": null,
+    "week52High": 180,
+    "week52Low": 120,
     "sourceRefs": ["S2"]
   },
   "financials": {
@@ -96,9 +96,16 @@
     "weightsAsOf": "2026-10-01",
     "sourceRefs": ["S3"]
   },
-  "historicalRanges": null,
+  "historicalRanges": {
+    "sharePrice": { "y5Low": 100, "y5High": 200, "y10Low": null, "y10High": null },
+    "peTrailing": { "y5Low": 12, "y5High": 20, "y10Low": null, "y10High": null },
+    "evEbit": { "y5Low": null, "y5High": null, "y10Low": null, "y10High": null },
+    "evEbitda": { "y5Low": null, "y5High": null, "y10Low": null, "y10High": null },
+    "priceBook": { "y5Low": null, "y5High": null, "y10Low": null, "y10High": null },
+    "sourceRefs": ["S2"]
+  },
   "peers": null,
-  "estimates": null,
+  "estimates": [{ "fy": 2026, "revenue": 1300000, "ebit": 160000, "eps": 2.4, "sourceRef": "S1" }],
   "holdings": null,
   "fx": {
     "spotRates": [{ "pair": "SEKEUR", "rate": 0.088, "asOf": "2026-10-01", "sourceRef": "S2" }],

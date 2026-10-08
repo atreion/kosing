@@ -127,3 +127,23 @@ test("both betas null is a decode error naming the path", () => {
     message: result.error?.[0]?.message,
   });
 });
+
+test("estimates are aggregates and rescale with the rows; eps is per share and does not", () => {
+  const result = decodeCompany(parse(dual()));
+  assert.ok(result.success);
+  assert.deepEqual(result.data.company.estimates, [
+    { fy: 2026, revenue: 1300, ebit: 160, eps: 2.4 },
+  ]);
+});
+
+test("quoted per-share figures convert with the price; reported ones do not", () => {
+  const result = decodeCompany(parse(dual()));
+  assert.ok(result.success);
+  const { market, historicalRanges, estimates } = result.data.company;
+  assert.ok(Math.abs((market.week52High ?? 0) - 180 * 0.088) < 1e-12);
+  assert.ok(Math.abs((market.week52Low ?? 0) - 120 * 0.088) < 1e-12);
+  assert.ok(Math.abs((historicalRanges?.sharePrice.y5Low ?? 0) - 100 * 0.088) < 1e-12);
+  assert.ok(Math.abs((historicalRanges?.sharePrice.y5High ?? 0) - 200 * 0.088) < 1e-12);
+  assert.equal(historicalRanges?.peTrailing.y5Low, 12, "a multiple is a ratio, not a price");
+  assert.equal(estimates[0]?.eps, 2.4, "eps is reported in the reporting currency already");
+});

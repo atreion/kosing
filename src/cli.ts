@@ -3,6 +3,7 @@
  * its arguments and the io it is handed, which is how the tests call it.
  */
 
+import { pathToFileURL } from "node:url";
 import { emitJsonSchema } from "./input/schema.ts";
 
 export type CliIo = {
@@ -29,7 +30,16 @@ export function runCli(argv: readonly string[], io: CliIo): number {
   return 2;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+/**
+ * Whether this module is the process entry point. import.meta.url is
+ * percent-encoded, so the path from argv has to go through pathToFileURL
+ * rather than a template string, or a directory with a space never matches.
+ */
+export function isMain(importMetaUrl: string, argv1: string | undefined): boolean {
+  return argv1 !== undefined && importMetaUrl === pathToFileURL(argv1).href;
+}
+
+if (isMain(import.meta.url, process.argv[1])) {
   process.exitCode = runCli(process.argv.slice(2), {
     stdout: (text) => process.stdout.write(text),
     stderr: (text) => process.stderr.write(text),

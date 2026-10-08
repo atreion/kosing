@@ -251,7 +251,17 @@ function toPath(dotted: string): (string | number)[] {
  * in the emitted JSON Schema.
  */
 export const FactsSchema = FactsShape.superRefine((facts, ctx) => {
-  const ids = new Set(facts.sources.map((s) => s.id));
+  const ids = new Set<string>();
+  for (const [i, source] of facts.sources.entries()) {
+    if (ids.has(source.id)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["sources", i, "id"],
+        message: `source id ${source.id} appears more than once`,
+      });
+    }
+    ids.add(source.id);
+  }
   for (const { path, id } of collectSourceRefs(facts)) {
     if (!ids.has(id)) {
       ctx.addIssue({

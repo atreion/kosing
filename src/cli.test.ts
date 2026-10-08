@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { runCli } from "./cli.ts";
+import { isMain, runCli } from "./cli.ts";
 
 function capture() {
   const out: string[] = [];
@@ -35,4 +35,11 @@ test("an unknown subcommand or document prints usage to stderr and exits 2", () 
     assert.deepEqual(out, []);
     assert.ok(err.join("").includes("usage"), argv.join(" "));
   }
+});
+
+test("the entry guard recognises its own path even when the path has a space", () => {
+  assert.equal(isMain("file:///a/with%20space/cli.ts", "/a/with space/cli.ts"), true);
+  assert.equal(isMain("file:///a/nospace/cli.ts", "/a/nospace/cli.ts"), true);
+  assert.equal(isMain("file:///a/cli.ts", "/a/other.ts"), false);
+  assert.equal(isMain("file:///a/cli.ts", undefined), false);
 });

@@ -237,9 +237,13 @@ imports crossing it.
 
 ## `facts.json`
 
-Aggregate monetary figures (financial rows, the balance sheet, holdings) are in
-`currency` and `unit`. Per-share figures (`price`, the 52-week range, `eps`) are
-in `currency` as quoted, never scaled by `unit`. Share counts are always
+Aggregate monetary figures (financial rows, the balance sheet, holdings,
+estimates of revenue and EBIT) are in `currency` and `unit`. Per-share figures
+are never scaled by `unit`, and come in two kinds: **quoted** figures (`price`,
+the 52-week range, the historical share-price bands) are in `market.priceCurrency`,
+the currency of the exchange the researcher read them from, and decode converts
+them into `currency` through the spot rate; **reported** figures (`eps`) are in
+`currency` already, because the company reports them. Share counts are always
 millions and the field names say so. Percentages are fractions (`0.21`, not
 `21`). Every block that reports something cites sources by id.
 

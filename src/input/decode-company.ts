@@ -4,7 +4,7 @@
  * recorded as a Resolution.
  */
 
-import type { Company, CostOfCapital, Market } from "../domain/company.ts";
+import type { Company, CostOfCapital, Market, RangeBand } from "../domain/company.ts";
 import type { Financials, ReportedFiscalYear, ReportedPeriod } from "../domain/financials.ts";
 import { isNonEmpty, type Unit } from "../domain/types.ts";
 import { type DecodeResult, decoded, decodeError, failed, type Resolution } from "./errors.ts";
@@ -23,6 +23,45 @@ function scaleBy(unit: Unit): Scale {
   return {
     nullable: (v) => (v === null ? null : v / divisor),
     required: (v) => v / divisor,
+  };
+}
+
+type Convert = (value: number) => number;
+
+/**
+ * Quoted figures (the price, the 52-week range, the historical share-price
+ * bands) are in the trading currency and convert into the reporting currency
+ * through the spot rate, in either direction; the schema guarantees one
+ * exists. Reported per-share figures such as eps are already in the
+ * reporting currency and never pass through here.
+ */
+function quoteConversion(facts: Facts, resolutions: Resolution[]): Convert {
+  const { priceCurrency } = facts.market;
+  if (priceCurrency === facts.currency) return (v) => v;
+  const direct = `${priceCurrency}${facts.currency}`;
+  const inverse = `${facts.currency}${priceCurrency}`;
+  const spot = facts.fx?.spotRates.find((s) => s.pair === direct || s.pair === inverse);
+  if (spot === undefined) throw new Error("unreachable: the schema requires the pair");
+  const inverted = spot.pair === inverse;
+  resolutions.push({
+    kind: "priceConvertedToReporting",
+    pair: spot.pair,
+    rate: spot.rate,
+    inverted,
+  });
+  return inverted ? (v) => v / spot.rate : (v) => v * spot.rate;
+}
+
+function convertNullable(convert: Convert, value: number | null): number | null {
+  return value === null ? null : convert(value);
+}
+
+function convertBand(convert: Convert, band: RangeBand): RangeBand {
+  return {
+    y5Low: convertNullable(convert, band.y5Low),
+    y5High: convertNullable(convert, band.y5High),
+    y10Low: convertNullable(convert, band.y10Low),
+    y10High: convertNullable(convert, band.y10High),
   };
 }
 
@@ -52,38 +91,19 @@ function decodeFinancials(financials: Facts["financials"], scale: Scale): Financ
   return { ltm, fiscalYears: years };
 }
 
-/**
- * Price converts into reporting currency using the pair in either direction;
- * the schema guarantees one exists. The share count prefers diluted, and a
- * diluted count of zero is a share count, which is why the check is === null.
- */
-function decodeMarket(facts: Facts, resolutions: Resolution[]): Market {
+/** The share count prefers diluted; a diluted count of zero is a share count. */
+function decodeMarket(facts: Facts, convert: Convert, resolutions: Resolution[]): Market {
   const { market } = facts;
-  let price = market.price;
-  if (market.priceCurrency !== facts.currency) {
-    const direct = `${market.priceCurrency}${facts.currency}`;
-    const inverse = `${facts.currency}${market.priceCurrency}`;
-    const spot = facts.fx?.spotRates.find((s) => s.pair === direct || s.pair === inverse);
-    if (spot === undefined) throw new Error("unreachable: the schema requires the pair");
-    const inverted = spot.pair === inverse;
-    price = inverted ? price / spot.rate : price * spot.rate;
-    resolutions.push({
-      kind: "priceConvertedToReporting",
-      pair: spot.pair,
-      rate: spot.rate,
-      inverted,
-    });
-  }
   let shares = market.sharesDilutedM;
   if (shares === null) {
     shares = market.sharesOutstandingM;
     resolutions.push({ kind: "sharesFromOutstanding", value: shares });
   }
   return {
-    price,
+    price: convert(market.price),
     shares,
-    week52High: market.week52High,
-    week52Low: market.week52Low,
+    week52High: convertNullable(convert, market.week52High),
+    week52Low: convertNullable(convert, market.week52Low),
     asOf: market.asOf,
   };
 }
@@ -149,11 +169,13 @@ export function decodeCompany(
     shortTermInvestments: shortTermInvestments ?? 0,
   });
 
+  const convert = quoteConversion(facts, resolutions);
+
   const company: Company = {
     identity: { ...facts.company },
     currency: facts.currency,
     asOf: facts.asOf,
-    market: decodeMarket(facts, resolutions),
+    market: decodeMarket(facts, convert, resolutions),
     financials: decodeFinancials(facts.financials, scale),
     balanceSheet: {
       asOf: bs.asOf,
@@ -173,7 +195,7 @@ export function decodeCompany(
     costOfCapital: costOfCapital.data,
     historicalRanges: facts.historicalRanges
       ? {
-          sharePrice: facts.historicalRanges.sharePrice,
+          sharePrice: convertBand(convert, facts.historicalRanges.sharePrice),
           peTrailing: facts.historicalRanges.peTrailing,
           evEbit: facts.historicalRanges.evEbit,
           evEbitda: facts.historicalRanges.evEbitda,
@@ -181,7 +203,12 @@ export function decodeCompany(
         }
       : null,
     peers: (facts.peers ?? []).map(({ sourceRef: _s, ...peer }) => peer),
-    estimates: (facts.estimates ?? []).map(({ sourceRef: _s, ...estimate }) => estimate),
+    estimates: (facts.estimates ?? []).map((e) => ({
+      fy: e.fy,
+      revenue: scale.nullable(e.revenue),
+      ebit: scale.nullable(e.ebit),
+      eps: e.eps,
+    })),
     holdings: facts.holdings
       ? {
           items: facts.holdings.items.map((h) => ({

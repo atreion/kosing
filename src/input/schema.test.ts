@@ -108,3 +108,10 @@ test("sensitivity steps including 0 is a dcf-only rule the schema cannot carry e
   assert.equal(CaseSchema.safeParse(bad).success, false);
   assert.equal(validator("case")(bad), true);
 });
+
+test("duplicate source ids are a rule the schema cannot carry", () => {
+  const doc = loadFixture("acme.facts") as { sources: { id: string }[] };
+  const bad = mutate(doc, "sources", [...doc.sources, { ...doc.sources[0], title: "again" }]);
+  assert.equal(FactsSchema.safeParse(bad).success, false);
+  assert.equal(validator("facts")(bad), true);
+});

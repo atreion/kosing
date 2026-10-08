@@ -294,3 +294,11 @@ test("the document is strict at every level", () => {
   assert.equal(FactsSchema.safeParse(facts({ extra: 1 })).success, false);
   assert.equal(FactsSchema.safeParse(facts({ market: { ...market, extra: 1 } })).success, false);
 });
+
+test("a duplicate source id is rejected at the second occurrence", () => {
+  const twice = [...sources, { ...sources[0], title: "the same id again" }];
+  const result = FactsSchema.safeParse(facts({ sources: twice }));
+  assert.equal(result.success, false);
+  const issue = result.error?.issues.find((i) => i.message.includes("S1"));
+  assert.deepEqual(issue?.path, ["sources", 3, "id"]);
+});
