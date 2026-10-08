@@ -1,0 +1,129 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { loadFixture, mutate } from "../test-fixtures.ts";
+import { decodeCompany } from "./decode-company.ts";
+import { FactsSchema } from "./facts.ts";
+
+function parse(doc: unknown) {
+  const result = FactsSchema.safeParse(doc);
+  assert.ok(result.success, JSON.stringify(result.error?.issues.slice(0, 3)));
+  return result.data;
+}
+
+const acme = () => loadFixture("acme.facts");
+const dual = () => loadFixture("dual.facts");
+
+test("acme decodes with the sector beta and derived net debt recorded", () => {
+  const result = decodeCompany(parse(acme()));
+  assert.ok(result.success);
+  const { company, resolutions } = result.data;
+  assert.equal(company.costOfCapital.beta, 1.1);
+  assert.equal(company.netDebt, 4100 - 1900 - 200);
+  assert.deepEqual(company.otherClaims, {
+    operatingLeaseLiabilities: 700,
+    pensionObligations: 450,
+  });
+  assert.deepEqual(resolutions.map((r) => r.kind).sort(), ["betaFromSector", "netDebtDerived"]);
+});
+
+test("diluted shares win over outstanding, and zero is a share count", () => {
+  const diluted = decodeCompany(parse(acme()));
+  assert.equal(diluted.data?.company.market.shares, 115);
+
+  const zero = decodeCompany(parse(dual()));
+  assert.ok(zero.success);
+  assert.equal(zero.data.company.market.shares, 0, "sharesDilutedM: 0 is used, not missing");
+  assert.ok(!zero.data.resolutions.some((r) => r.kind === "sharesFromOutstanding"));
+});
+
+test("a null diluted count falls back and records why", () => {
+  const result = decodeCompany(parse(mutate(acme(), "market.sharesDilutedM", null)));
+  assert.equal(result.data?.company.market.shares, 113.2);
+  assert.ok(
+    result.data?.resolutions.some((r) => r.kind === "sharesFromOutstanding" && r.value === 113.2),
+  );
+});
+
+test("fiscal years are sorted ascending regardless of file order", () => {
+  const result = decodeCompany(parse(dual()));
+  assert.deepEqual(
+    result.data?.company.financials.fiscalYears.map((y) => y.fy),
+    [2024, 2025],
+  );
+});
+
+test("thousands are rescaled on every aggregate and no per-share figure", () => {
+  const result = decodeCompany(parse(dual()));
+  assert.ok(result.success);
+  const { company, resolutions } = result.data;
+  assert.equal(company.financials.fiscalYears[0].revenue, 1100);
+  assert.equal(company.balanceSheet.totalDebt, 500);
+  assert.equal(company.otherClaims.operatingLeaseLiabilities, 80);
+  assert.equal(company.financials.fiscalYears[0].fy, 2024, "fy is not a monetary figure");
+  assert.ok(
+    resolutions.some(
+      (r) => r.kind === "unitRescaled" && r.from === "thousands" && r.divisor === 1000,
+    ),
+  );
+});
+
+test("ones rescale holdings too, and leave price alone", () => {
+  const holdco = mutate(
+    mutate(loadFixture("holdco.facts"), "unit", "ones"),
+    "holdings.items.0.fairValue",
+    18_000_000_000,
+  );
+  const result = decodeCompany(parse(holdco));
+  assert.ok(result.success);
+  assert.equal(result.data.company.holdings?.items[0]?.fairValue, 18000);
+  assert.equal(result.data.company.holdings?.parentNetDebt, 300 / 1_000_000);
+  assert.equal(result.data.company.market.price, 98, "price is per share and never rescaled");
+});
+
+test("a price in another currency is converted using the pair in either direction", () => {
+  const result = decodeCompany(parse(dual()));
+  assert.ok(result.success);
+  assert.ok(Math.abs(result.data.company.market.price - 150 * 0.088) < 1e-12);
+  const conversion = result.data.resolutions.find((r) => r.kind === "priceConvertedToReporting");
+  assert.deepEqual(conversion, {
+    kind: "priceConvertedToReporting",
+    pair: "SEKEUR",
+    rate: 0.088,
+    inverted: false,
+  });
+
+  const flipped = mutate(
+    mutate(dual(), "fx.spotRates.0.pair", "EURSEK"),
+    "fx.spotRates.0.rate",
+    1 / 0.088,
+  );
+  const inverted = decodeCompany(parse(flipped));
+  assert.ok(inverted.success);
+  assert.ok(Math.abs(inverted.data.company.market.price - 150 * 0.088) < 1e-9);
+  assert.equal(
+    inverted.data.resolutions.find((r) => r.kind === "priceConvertedToReporting")?.inverted,
+    true,
+  );
+});
+
+test("a statutory tax rate wins; a null one falls back and records why", () => {
+  const statutory = decodeCompany(parse(acme()));
+  assert.equal(statutory.data?.company.costOfCapital.taxRateForDiscounting, 0.206);
+  assert.equal(statutory.data?.company.costOfCapital.taxRateForCashFlows, 0.21);
+
+  const effective = decodeCompany(parse(mutate(acme(), "costOfCapital.taxRateStatutory", null)));
+  assert.equal(effective.data?.company.costOfCapital.taxRateForDiscounting, 0.21);
+  assert.ok(effective.data?.resolutions.some((r) => r.kind === "taxRateFromEffective"));
+});
+
+test("both betas null is a decode error naming the path", () => {
+  const result = decodeCompany(parse(mutate(acme(), "costOfCapital.betaSector", null)));
+  assert.equal(result.success, false);
+  assert.deepEqual(result.error?.[0], {
+    file: "facts",
+    layer: "semantic",
+    rule: "semantic.noBeta",
+    path: "costOfCapital.betaCompany",
+    message: result.error?.[0]?.message,
+  });
+});
