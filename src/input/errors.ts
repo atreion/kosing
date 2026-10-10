@@ -69,7 +69,13 @@ export type Resolution =
   | { readonly kind: "revenueBaseFromLtm" }
   | { readonly kind: "revenueBaseAveraged"; readonly fromFy: number; readonly toFy: number }
   | { readonly kind: "dcfBasePeriodFromFiscalYear"; readonly fy: number }
-  | { readonly kind: "reverseDcfUnavailable"; readonly reason: string };
+  | {
+      readonly kind: "reverseDcfUnavailable";
+      readonly reason:
+        | "noUsableBasePeriod"
+        | "terminalGrowthNotBelowWacc"
+        | "noGrowthInBracketMatchesPrice";
+    };
 
 /** Advisory, never fatal. */
 export type Warning = {
