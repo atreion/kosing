@@ -154,7 +154,7 @@ test("estimates are aggregates and rescale with the rows; eps is per share and d
   const result = decodeCompany(parse(dual()));
   assert.ok(result.success);
   assert.deepEqual(result.data.company.estimates, [
-    { fy: 2026, revenue: 1300, ebit: 160, eps: 2.4 },
+    { fy: 2026, revenue: 1300, ebit: 160, eps: 2.4, basis: "adjusted" },
   ]);
 });
 

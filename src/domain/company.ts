@@ -76,11 +76,13 @@ export type Peer = {
   readonly evRevenue: number | null;
 };
 
+/** basis: whether ebit and eps are as reported or adjusted, as the source states. */
 export type Estimate = {
   readonly fy: number;
   readonly revenue: number | null;
   readonly ebit: number | null;
   readonly eps: number | null;
+  readonly basis: "reported" | "adjusted" | null;
 };
 
 /** As reported: fairValue nullable here, required on the nav branch. */

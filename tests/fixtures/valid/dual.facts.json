@@ -33,7 +33,7 @@
         "cogs": null,
         "grossProfit": null,
         "opex": null,
-        "interestExpense": null,
+        "netFinancialResult": null,
         "taxExpense": null,
         "ocf": 180000,
         "capex": -60000,
@@ -54,7 +54,7 @@
         "cogs": null,
         "grossProfit": null,
         "opex": null,
-        "interestExpense": null,
+        "netFinancialResult": null,
         "taxExpense": null,
         "ocf": 160000,
         "capex": -55000,
@@ -98,21 +98,70 @@
     "sourceRefs": ["S3"]
   },
   "historicalRanges": {
-    "sharePrice": { "y5Low": 100, "y5High": 200, "y10Low": null, "y10High": null },
-    "peTrailing": { "y5Low": 12, "y5High": 20, "y10Low": null, "y10High": null },
-    "evEbit": { "y5Low": null, "y5High": null, "y10Low": null, "y10High": null },
-    "evEbitda": { "y5Low": null, "y5High": null, "y10Low": null, "y10High": null },
-    "priceBook": { "y5Low": null, "y5High": null, "y10Low": null, "y10High": null },
+    "sharePrice": {
+      "y5Low": 100,
+      "y5High": 200,
+      "y10Low": null,
+      "y10High": null
+    },
+    "peTrailing": {
+      "y5Low": 12,
+      "y5High": 20,
+      "y10Low": null,
+      "y10High": null
+    },
+    "evEbit": {
+      "y5Low": null,
+      "y5High": null,
+      "y10Low": null,
+      "y10High": null
+    },
+    "evEbitda": {
+      "y5Low": null,
+      "y5High": null,
+      "y10Low": null,
+      "y10High": null
+    },
+    "priceBook": {
+      "y5Low": null,
+      "y5High": null,
+      "y10Low": null,
+      "y10High": null
+    },
     "sourceRefs": ["S2"]
   },
   "peers": null,
-  "estimates": [{ "fy": 2026, "revenue": 1300000, "ebit": 160000, "eps": 2.4, "sourceRef": "S1" }],
+  "estimates": [
+    {
+      "fy": 2026,
+      "revenue": 1300000,
+      "ebit": 160000,
+      "eps": 2.4,
+      "basis": "adjusted",
+      "sourceRefs": ["S1"]
+    }
+  ],
   "holdings": null,
   "fx": {
-    "spotRates": [{ "pair": "SEKEUR", "rate": 0.088, "asOf": "2026-10-01", "sourceRef": "S2" }],
+    "spotRates": [
+      {
+        "pair": "SEKEUR",
+        "rate": 0.088,
+        "asOf": "2026-10-01",
+        "sourceRef": "S2"
+      }
+    ],
     "exposures": [
-      { "currency": "EUR", "revenueShare": 0.6, "costShare": 0.7 },
-      { "currency": "USD", "revenueShare": 0.4, "costShare": null }
+      {
+        "currency": "EUR",
+        "revenueShare": 0.6,
+        "costShare": 0.7
+      },
+      {
+        "currency": "USD",
+        "revenueShare": 0.4,
+        "costShare": null
+      }
     ]
   },
   "sources": [

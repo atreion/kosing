@@ -33,7 +33,7 @@
         "cogs": null,
         "grossProfit": null,
         "opex": null,
-        "interestExpense": -60,
+        "netFinancialResult": -60,
         "taxExpense": -160,
         "ocf": 950,
         "capex": -330,
@@ -54,7 +54,7 @@
         "cogs": null,
         "grossProfit": null,
         "opex": null,
-        "interestExpense": -65,
+        "netFinancialResult": -65,
         "taxExpense": -185,
         "ocf": 1050,
         "capex": -360,
@@ -75,7 +75,7 @@
         "cogs": null,
         "grossProfit": null,
         "opex": null,
-        "interestExpense": -70,
+        "netFinancialResult": -70,
         "taxExpense": -210,
         "ocf": 1180,
         "capex": -390,
@@ -96,7 +96,7 @@
         "cogs": null,
         "grossProfit": null,
         "opex": null,
-        "interestExpense": -72,
+        "netFinancialResult": -72,
         "taxExpense": -238,
         "ocf": 1290,
         "capex": -420,
@@ -117,7 +117,7 @@
         "cogs": null,
         "grossProfit": null,
         "opex": null,
-        "interestExpense": -75,
+        "netFinancialResult": -75,
         "taxExpense": -265,
         "ocf": 1400,
         "capex": -440,
@@ -138,7 +138,7 @@
       "cogs": null,
       "grossProfit": null,
       "opex": null,
-      "interestExpense": -76,
+      "netFinancialResult": -76,
       "taxExpense": -280,
       "ocf": 1450,
       "capex": -450,
@@ -146,7 +146,7 @@
       "dividendsPaid": null,
       "sharesBasicM": 113.2,
       "sharesDilutedM": 115,
-      "sourceRef": "S4"
+      "sourceRefs": ["S4"]
     },
     "quarters": null
   },
@@ -180,11 +180,36 @@
     "sourceRefs": ["S3", "S2"]
   },
   "historicalRanges": {
-    "sharePrice": { "y5Low": 120, "y5High": 260, "y10Low": 80, "y10High": 260 },
-    "peTrailing": { "y5Low": 14, "y5High": 28, "y10Low": 11, "y10High": 28 },
-    "evEbit": { "y5Low": 11, "y5High": 22, "y10Low": null, "y10High": null },
-    "evEbitda": { "y5Low": null, "y5High": null, "y10Low": null, "y10High": null },
-    "priceBook": { "y5Low": null, "y5High": null, "y10Low": null, "y10High": null },
+    "sharePrice": {
+      "y5Low": 120,
+      "y5High": 260,
+      "y10Low": 80,
+      "y10High": 260
+    },
+    "peTrailing": {
+      "y5Low": 14,
+      "y5High": 28,
+      "y10Low": 11,
+      "y10High": 28
+    },
+    "evEbit": {
+      "y5Low": 11,
+      "y5High": 22,
+      "y10Low": null,
+      "y10High": null
+    },
+    "evEbitda": {
+      "y5Low": null,
+      "y5High": null,
+      "y10Low": null,
+      "y10High": null
+    },
+    "priceBook": {
+      "y5Low": null,
+      "y5High": null,
+      "y10Low": null,
+      "y10High": null
+    },
     "sourceRefs": ["S2"]
   },
   "peers": [
@@ -207,7 +232,16 @@
       "sourceRef": "S2"
     }
   ],
-  "estimates": [{ "fy": 2026, "revenue": 11900, "ebit": 1450, "eps": 9.4, "sourceRef": "S2" }],
+  "estimates": [
+    {
+      "fy": 2026,
+      "revenue": 11900,
+      "ebit": 1450,
+      "eps": 9.4,
+      "basis": "adjusted",
+      "sourceRefs": ["S2"]
+    }
+  ],
   "holdings": null,
   "fx": null,
   "sources": [

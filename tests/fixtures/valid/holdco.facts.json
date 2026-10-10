@@ -33,7 +33,7 @@
         "cogs": null,
         "grossProfit": null,
         "opex": -120,
-        "interestExpense": -40,
+        "netFinancialResult": -40,
         "taxExpense": null,
         "ocf": null,
         "capex": null,
@@ -54,7 +54,7 @@
         "cogs": null,
         "grossProfit": null,
         "opex": -125,
-        "interestExpense": -42,
+        "netFinancialResult": -42,
         "taxExpense": null,
         "ocf": null,
         "capex": null,
@@ -102,8 +102,18 @@
   "estimates": null,
   "holdings": {
     "items": [
-      { "name": "Listed Industrial AB", "fairValue": 18000, "basis": "listed", "sourceRef": "S1" },
-      { "name": "Listed Bank AB", "fairValue": 9500, "basis": "listed", "sourceRef": "S1" },
+      {
+        "name": "Listed Industrial AB",
+        "fairValue": 18000,
+        "basis": "listed",
+        "sourceRef": "S1"
+      },
+      {
+        "name": "Listed Bank AB",
+        "fairValue": 9500,
+        "basis": "listed",
+        "sourceRef": "S1"
+      },
       {
         "name": "Private Software Group",
         "fairValue": 4200,
@@ -156,6 +166,9 @@
       "field": "financials.fiscalYears.0.revenue",
       "reason": "an investment company reports no revenue"
     },
-    { "field": "financials.ltm", "reason": "no trailing-twelve-month figures published" }
+    {
+      "field": "financials.ltm",
+      "reason": "no trailing-twelve-month figures published"
+    }
   ]
 }

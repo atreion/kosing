@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { loadFixture, mutate } from "../test-fixtures.ts";
 import {
   BalanceSheet,
   CostOfCapital,
+  Estimate,
   FactsSchema,
   Financials,
   FiscalYearRow,
@@ -45,7 +47,7 @@ export function fiscalYear(fy: number, over: Record<string, unknown> = {}) {
     cogs: null,
     grossProfit: null,
     opex: null,
-    interestExpense: null,
+    netFinancialResult: null,
     taxExpense: null,
     ocf: 140,
     capex: -40,
@@ -64,11 +66,48 @@ test("a fiscal-year row parses with nulls and rejects a non-integer or out-of-ra
   assert.equal(FiscalYearRow.safeParse(fiscalYear(1899)).success, false);
 });
 
-test("an ltm row is a fiscal-year row without fy", () => {
-  const { fy: _fy, ...ltm } = fiscalYear(2026, { endDate: "2026-06-30" });
+test("an ltm row is a fiscal-year row without fy, citing every document it was built from", () => {
+  const { fy: _fy, sourceRef: _s, ...figures } = fiscalYear(2026, { endDate: "2026-06-30" });
+  const ltm = { ...figures, sourceRefs: ["S1", "S2"] };
   const financials = { fiscalYears: [fiscalYear(2025)], ltm, quarters: null };
   assert.equal(Financials.safeParse(financials).success, true);
   assert.equal(Financials.safeParse({ ...financials, ltm: { ...ltm, fy: 2026 } }).success, false);
+  assert.equal(
+    Financials.safeParse({ ...financials, ltm: { ...figures, sourceRef: "S1" } }).success,
+    false,
+    "a single sourceRef is the old shape",
+  );
+  assert.equal(
+    Financials.safeParse({ ...financials, ltm: { ...ltm, sourceRefs: [] } }).success,
+    false,
+  );
+});
+
+test("a period row's financial result is signed and named for what it is", () => {
+  assert.equal(
+    FiscalYearRow.safeParse(fiscalYear(2025, { netFinancialResult: 744 })).success,
+    true,
+  );
+  const { netFinancialResult: _n, ...old } = fiscalYear(2025);
+  assert.equal(FiscalYearRow.safeParse({ ...old, interestExpense: -60 }).success, false);
+});
+
+test("an estimate states its basis and cites one or more sources", () => {
+  const estimate = {
+    fy: 2026,
+    revenue: 1300,
+    ebit: 160,
+    eps: 2.4,
+    basis: "adjusted",
+    sourceRefs: ["S2", "S3"],
+  };
+  assert.equal(Estimate.safeParse(estimate).success, true);
+  assert.equal(Estimate.safeParse({ ...estimate, basis: null }).success, true);
+  assert.equal(Estimate.safeParse({ ...estimate, basis: "nonIfrs" }).success, false);
+  const { basis: _b, ...noBasis } = estimate;
+  assert.equal(Estimate.safeParse(noBasis).success, false, "every key is present");
+  const { sourceRefs: _r, ...noRefs } = estimate;
+  assert.equal(Estimate.safeParse({ ...noRefs, sourceRef: "S2" }).success, false);
 });
 
 test("financials require at least one fiscal year", () => {
@@ -309,4 +348,11 @@ test("a duplicate source id is rejected at the second occurrence", () => {
   assert.equal(result.success, false);
   const issue = result.error?.issues.find((i) => i.message.includes("S1"));
   assert.deepEqual(issue?.path, ["sources", 3, "id"]);
+});
+
+test("an unresolved reference inside the ltm row's sourceRefs is reported at its index", () => {
+  const doc = mutate(loadFixture("acme.facts"), "financials.ltm.sourceRefs", ["S4", "S99"]);
+  const r = FactsSchema.safeParse(doc);
+  assert.equal(r.success, false);
+  assert.ok(r.error?.issues.some((i) => i.path.join(".") === "financials.ltm.sourceRefs.1"));
 });

@@ -40,7 +40,8 @@ const periodFigures = {
   cogs: nullableNumber,
   grossProfit: nullableNumber,
   opex: nullableNumber,
-  interestExpense: nullableNumber,
+  /** Net financial result: negative when a net cost, positive when net income. */
+  netFinancialResult: nullableNumber,
   taxExpense: nullableNumber,
   ocf: nullableNumber,
   capex: nullableNumber,
@@ -51,6 +52,11 @@ const periodFigures = {
   sourceRef: SourceId,
 };
 
+function withoutSourceRef<T extends { sourceRef: unknown }>(figures: T): Omit<T, "sourceRef"> {
+  const { sourceRef: _s, ...rest } = figures;
+  return rest;
+}
+
 export const FiscalYearRow = z.strictObject({
   fy: z.number().int().min(1900).max(2200),
   endDate: IsoDateString,
@@ -60,7 +66,9 @@ export const FiscalYearRow = z.strictObject({
 /** The trailing-twelve-month row: a fiscal-year row with no fiscal year. */
 export const LtmRow = z.strictObject({
   endDate: IsoDateString,
-  ...periodFigures,
+  ...withoutSourceRef(periodFigures),
+  /** Usually two documents: the last annual report and the latest interim. */
+  sourceRefs: SourceRefs,
 });
 
 export const QuarterRow = z.strictObject({
@@ -135,12 +143,16 @@ export const Peer = z.strictObject({
   sourceRef: SourceId,
 });
 
+export const ESTIMATE_BASES = ["reported", "adjusted"] as const;
+
+/** Consensus often mixes sources and bases, so both are stated. */
 export const Estimate = z.strictObject({
   fy: z.number().int(),
   revenue: nullableNumber,
   ebit: nullableNumber,
   eps: nullableNumber,
-  sourceRef: SourceId,
+  basis: z.enum(ESTIMATE_BASES).nullable(),
+  sourceRefs: SourceRefs,
 });
 
 export const HoldingItem = z.strictObject({
@@ -225,7 +237,7 @@ export function collectSourceRefs(facts: FactsShape): readonly { path: string; i
 
   many("market.sourceRefs", facts.market.sourceRefs);
   each("financials.fiscalYears", facts.financials.fiscalYears);
-  if (facts.financials.ltm) one("financials.ltm.sourceRef", facts.financials.ltm.sourceRef);
+  if (facts.financials.ltm) many("financials.ltm.sourceRefs", facts.financials.ltm.sourceRefs);
   each("financials.quarters", facts.financials.quarters ?? []);
   one("balanceSheet.sourceRef", facts.balanceSheet.sourceRef);
   many("costOfCapital.sourceRefs", facts.costOfCapital.sourceRefs);
@@ -233,7 +245,9 @@ export function collectSourceRefs(facts: FactsShape): readonly { path: string; i
     many("historicalRanges.sourceRefs", facts.historicalRanges.sourceRefs);
   }
   each("peers", facts.peers ?? []);
-  each("estimates", facts.estimates ?? []);
+  for (const [i, e] of (facts.estimates ?? []).entries()) {
+    many(`estimates.${i}.sourceRefs`, e.sourceRefs);
+  }
   if (facts.holdings) {
     each("holdings.items", facts.holdings.items);
     many("holdings.sourceRefs", facts.holdings.sourceRefs);

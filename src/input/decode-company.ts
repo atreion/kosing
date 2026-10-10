@@ -67,7 +67,10 @@ function convertBand(convert: Convert, band: RangeBand): RangeBand {
 
 type ReportedRow = Facts["financials"]["fiscalYears"][number];
 
-function toReportedPeriod(row: Omit<ReportedRow, "fy">, scale: Scale): ReportedPeriod {
+function toReportedPeriod(
+  row: Omit<ReportedRow, "fy" | "sourceRef">,
+  scale: Scale,
+): ReportedPeriod {
   return {
     revenue: scale.nullable(row.revenue),
     ebit: scale.nullable(row.ebit),
@@ -230,6 +233,7 @@ export function decodeCompany(
       revenue: scale.nullable(e.revenue),
       ebit: scale.nullable(e.ebit),
       eps: e.eps,
+      basis: e.basis,
     })),
     holdings: facts.holdings
       ? {
