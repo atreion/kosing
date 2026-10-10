@@ -164,6 +164,7 @@ function decodeCostOfCapital(
     debtWeight: raw.debtWeight,
     taxRateForDiscounting,
     taxRateForCashFlows: raw.taxRateEffective,
+    alternativeBeta: raw.betaCompany !== null ? raw.betaSector : null,
   });
 }
 

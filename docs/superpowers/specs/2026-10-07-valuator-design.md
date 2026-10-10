@@ -274,12 +274,14 @@ FiscalYearRow {
   fy             integer 1900..2200
   endDate       date
   revenue, ebit, netIncome, ebitda, depreciationAmortization,
-  cogs, grossProfit, opex, interestExpense, taxExpense,
+  cogs, grossProfit, opex, netFinancialResult, taxExpense,
   ocf, capex, fcf, dividendsPaid                     number | null, each
   sharesBasicM, sharesDilutedM                     number >= 0 | null
   sourceRef     id
 }
-LtmRow      FiscalYearRow without `fy`
+LtmRow      FiscalYearRow without `fy`, with `sourceRefs: [id, ...]` in place of `sourceRef`
+            (an LTM row is usually built from the annual report and the latest interim)
+            netFinancialResult is signed: negative when a net cost, positive when net income
 QuarterRow  { fq: /^[12][0-9]{3}Q[1-4]$/, endDate, revenue, ebit, netIncome,
               ocf, capex, fcf: number|null each, sourceRef }
 
@@ -334,7 +336,8 @@ peers [{
 estimates [{
   fy            integer
   revenue, ebit, eps    number | null each
-  sourceRef    id
+  basis         "reported" | "adjusted" | null — the basis the source states for ebit and eps
+  sourceRefs   [id, ...] non-empty
 }, ...] | null
 
 holdings {
@@ -405,6 +408,10 @@ method   one of:
     terminal                    { kind: "perpetuityGrowth", growth: number, basis: string }
                               | { kind: "exitMultiple", multiple: number > 0,
                                   on: "evEbit" | "evEbitda" | "evFcff", basis: string }
+    scenarios                   { bear: DcfScenario, bull: DcfScenario } | null
+                                — DcfScenario: { revenueGrowthPath: [number × 10],
+                                  ebitMarginPath: [number × 10], rationale: string };
+                                  every other assumption is the base case's
     rationale                   string non-empty
     sourceRefs                 [id, ...] — ids in facts.sources
   }
@@ -427,7 +434,9 @@ method   one of:
 overrides {
   beta        number | null
   wacc        number in (0, 1) | null — replaces the computed WACC outright
-  rationale   string | null — required when either is non-null
+  taxRate     number in [0, 1) | null — replaces the cash-flow tax rate (not the
+              rate that discounts), for a reported rate distorted by one-offs
+  rationale   string | null — required when any override is non-null
 }
 
 sensitivity {
@@ -440,7 +449,7 @@ Wire-level rules:
 
 - `bear <= base <= bull` on each scenario triple;
 - no scenario multiple above `multipleCeiling` when it is set;
-- `overrides.rationale` is non-null when either override is;
+- `overrides.rationale` is non-null when any override is;
 - `sensitivity` steps each contain `0`;
 - `overrides` are all null and `sensitivity` is null unless `method.kind` is
   `dcf`: only a DCF discounts, so only a DCF can have its discount rate
@@ -489,6 +498,7 @@ Every fallback is data, formatted into a sentence only when an AI reads it.
 | `betaFromSector` | `betaCompany` is null and `betaSector` is not |
 | `betaOverridden` | `overrides.beta` is set |
 | `waccOverridden` | `overrides.wacc` is set |
+| `taxRateOverridden` | `overrides.taxRate` is set; carries the rate it replaced |
 | `sharesFromOutstanding` | `sharesDilutedM` is null |
 | `taxRateFromEffective` | `taxRateStatutory` is null; the discounting rate falls back |
 | `unitRescaled` | `unit` is `thousands` or `ones`; carries the factor and the row count |
@@ -500,7 +510,7 @@ Every fallback is data, formatted into a sentence only when an AI reads it.
 | `reverseDcfUnavailable` | no usable base period exists, meaning none with non-null revenue, EBIT, capex and depreciationAmortization, which a projection needs; carries one of `noUsableBasePeriod`, `discountRateNotPositive`, `terminalGrowthNotBelowWacc`, `noGrowthInBracketMatchesPrice` |
 | `dcfUnavailable` | the WACC that applies is not positive, or the case's terminal growth is not below it by more than 1e-9; carries the reason |
 | `fxUnavailable` | facts carry `fx` but there is no DCF valuation to revalue, or its base period has no positive revenue; carries the reason |
-| `fxShareAssumedZero` | an exposure's `revenueShare` or `costShare` is null and is treated as 0; carries the currency and the field |
+| `fxExposureIncomplete` | an exposure's `revenueShare` or `costShare` is null, so the exposure is not revalued; carries the currency and the missing fields |
 
 Share count fallback and beta fallback use explicit null checks, never `||`. A
 share count of `0` is a share count.
@@ -560,7 +570,8 @@ type CostOfCapital = {
   riskFree: number; erp: number; beta: number; countryPremium: number;
   preTaxCostOfDebt: number; equityWeight: number; debtWeight: number;
   taxRateForDiscounting: number;   // statutory ?? effective
-  taxRateForCashFlows: number;     // effective, always present
+  taxRateForCashFlows: number;     // effective, always present; a case's overrides.taxRate replaces it on the dcf branch
+  alternativeBeta: number | null;  // the sector beta, when the measured beta was used and a sector beta exists
 };
 
 /** As reported: every figure nullable, because a holding company has no revenue. */
@@ -672,7 +683,11 @@ valuation   null | one of:
   { method: "dcf", basePeriod, wacc: { costOfEquity, afterTaxCostOfDebt, wacc, overridden: boolean },
     valuePerShare, enterpriseValue, equityValue, terminalValue, pvTerminalValue,
     terminalValuePctOfEv, pvExplicitPeriod, projection: [YearRow × 10],
-    terminal: { kind, ... }, notes: [...] }
+    terminal: { kind, ... }, notes: [...],
+    scenarios: { bear: ScenarioValue | null, bull: ScenarioValue | null } | null,
+    alternativeBeta: { beta, costOfEquity, wacc, valuePerShare: number | null } | null }
+    — ScenarioValue: { valuePerShare, enterpriseValue, equityValue, terminalValuePctOfEv };
+      alternativeBeta is null without an alternative beta or under a WACC override
   { method: "normalisedEarnings", revenueBase: { kind, value, window|null },
     scenarios: { bear, base, bull: { ebit, ev, equity, valuePerShare } },
     ltmEbitMargin: number|null }

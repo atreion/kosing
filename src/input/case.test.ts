@@ -19,10 +19,11 @@ export function dcfCase(over: Record<string, unknown> = {}) {
       daPctRevenuePath: Array.from({ length: 10 }, () => 0.03),
       workingCapitalPctRevenue: 0.1,
       terminal: { kind: "perpetuityGrowth", growth: 0.02, basis: "long-run nominal GDP" },
+      scenarios: null,
       rationale: "steady compounder",
       sourceRefs: ["S1"],
     },
-    overrides: { beta: null, wacc: null, rationale: null },
+    overrides: { beta: null, wacc: null, taxRate: null, rationale: null },
     sensitivity: null,
     ...over,
   };
@@ -116,12 +117,12 @@ test("a warranted discount above 0.9 is rejected", () => {
 });
 
 test("an override needs a rationale", () => {
-  const silent = dcfCase({ overrides: { beta: 1.3, wacc: null, rationale: null } });
+  const silent = dcfCase({ overrides: { beta: 1.3, wacc: null, taxRate: null, rationale: null } });
   const r = CaseSchema.safeParse(silent);
   assert.equal(r.success, false);
   assert.ok(r.error?.issues.some((i) => i.path.join(".") === "overrides.rationale"));
   const spoken = dcfCase({
-    overrides: { beta: 1.3, wacc: null, rationale: "sector beta is stale" },
+    overrides: { beta: 1.3, wacc: null, taxRate: null, rationale: "sector beta is stale" },
   });
   assert.equal(CaseSchema.safeParse(spoken).success, true);
 });
@@ -139,7 +140,9 @@ test("theses may be empty and classification is closed", () => {
 });
 
 test("overrides and sensitivity belong to dcf only", () => {
-  const override = normalisedCase({ overrides: { beta: 1.3, wacc: null, rationale: "x" } });
+  const override = normalisedCase({
+    overrides: { beta: 1.3, wacc: null, taxRate: null, rationale: "x" },
+  });
   const r1 = CaseSchema.safeParse(override);
   assert.equal(r1.success, false);
   assert.ok(r1.error?.issues.some((i) => i.path.join(".") === "overrides"));
@@ -156,7 +159,57 @@ test("a wacc override is a discount rate strictly between 0 and 1", () => {
     assert.equal(r.success, false, `wacc ${wacc}`);
   }
   const ok = CaseSchema.safeParse(
-    dcfCase({ overrides: { beta: null, wacc: 0.07, rationale: "why" } }),
+    dcfCase({ overrides: { beta: null, wacc: 0.07, taxRate: null, rationale: "why" } }),
   );
   assert.equal(ok.success, true);
+});
+
+const scenario = (growth: number, margin: number, rationale: string) => ({
+  revenueGrowthPath: Array.from({ length: 10 }, () => growth),
+  ebitMarginPath: Array.from({ length: 10 }, () => margin),
+  rationale,
+});
+
+function withScenarios(scenarios: unknown) {
+  const c = dcfCase();
+  return { ...c, method: { ...c.method, scenarios } };
+}
+
+test("a dcf case may carry bear and bull scenarios on growth and margin", () => {
+  const both = {
+    bear: scenario(0.01, 0.1, "content lines shrink"),
+    bull: scenario(0.07, 0.13, "AI lifts pricing"),
+  };
+  assert.equal(CaseSchema.safeParse(withScenarios(both)).success, true);
+  assert.equal(CaseSchema.safeParse(withScenarios(null)).success, true);
+  assert.equal(
+    CaseSchema.safeParse(withScenarios({ bear: both.bear })).success,
+    false,
+    "both or neither",
+  );
+  const short = { ...both, bear: { ...both.bear, revenueGrowthPath: [0.01] } };
+  assert.equal(CaseSchema.safeParse(withScenarios(short)).success, false);
+  const noWhy = { ...both, bull: { ...both.bull, rationale: "" } };
+  assert.equal(CaseSchema.safeParse(withScenarios(noWhy)).success, false);
+});
+
+test("a cash-flow tax override is a rate below 1, needs a rationale, and is dcf only", () => {
+  const ok = dcfCase({
+    overrides: { beta: null, wacc: null, taxRate: 0.236, rationale: "one-off exempt gain" },
+  });
+  assert.equal(CaseSchema.safeParse(ok).success, true);
+  const silent = dcfCase({
+    overrides: { beta: null, wacc: null, taxRate: 0.236, rationale: null },
+  });
+  const r = CaseSchema.safeParse(silent);
+  assert.ok(r.error?.issues.some((i) => i.path.join(".") === "overrides.rationale"));
+  for (const taxRate of [-0.1, 1, 1.2]) {
+    const bad = dcfCase({ overrides: { beta: null, wacc: null, taxRate, rationale: "why" } });
+    assert.equal(CaseSchema.safeParse(bad).success, false, String(taxRate));
+  }
+  const nav = normalisedCase({
+    overrides: { beta: null, wacc: null, taxRate: 0.2, rationale: "why" },
+  });
+  const n = CaseSchema.safeParse(nav);
+  assert.ok(n.error?.issues.some((i) => i.path.join(".") === "overrides"));
 });

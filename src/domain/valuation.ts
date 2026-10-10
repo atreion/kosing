@@ -16,6 +16,11 @@ export type Terminal =
       readonly on: "evEbit" | "evEbitda" | "evFcff";
     };
 
+export type DcfScenarioPaths = {
+  readonly revenueGrowthPath: readonly number[];
+  readonly ebitMarginPath: readonly number[];
+};
+
 export type DcfAssumptions = {
   readonly revenueGrowthPath: readonly number[];
   readonly ebitMarginPath: readonly number[];
@@ -23,6 +28,7 @@ export type DcfAssumptions = {
   readonly daPctRevenuePath: readonly number[];
   readonly workingCapitalPctRevenue: number;
   readonly terminal: Terminal;
+  readonly scenarios: { readonly bear: DcfScenarioPaths; readonly bull: DcfScenarioPaths } | null;
 };
 
 export type CyclicalAssumptions = {

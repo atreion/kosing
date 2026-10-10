@@ -47,6 +47,7 @@ export type Resolution =
   | { readonly kind: "betaFromSector"; readonly value: number }
   | { readonly kind: "betaOverridden"; readonly from: number; readonly to: number }
   | { readonly kind: "waccOverridden"; readonly to: number }
+  | { readonly kind: "taxRateOverridden"; readonly from: number; readonly to: number }
   | { readonly kind: "sharesFromOutstanding"; readonly value: number }
   | { readonly kind: "taxRateFromEffective"; readonly value: number }
   | {
@@ -86,9 +87,9 @@ export type Resolution =
       readonly reason: "noDcfValuation" | "nonPositiveBaseRevenue";
     }
   | {
-      readonly kind: "fxShareAssumedZero";
+      readonly kind: "fxExposureIncomplete";
       readonly currency: string;
-      readonly field: "revenueShare" | "costShare";
+      readonly missing: readonly ("revenueShare" | "costShare")[];
     };
 
 /** Advisory, never fatal. */

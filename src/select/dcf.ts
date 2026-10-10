@@ -8,7 +8,7 @@
 
 import type { Company } from "../domain/company.ts";
 import { isNonEmpty } from "../domain/types.ts";
-import type { SensitivityAxes, Valuation } from "../domain/valuation.ts";
+import type { DcfScenarioPaths, SensitivityAxes, Valuation } from "../domain/valuation.ts";
 import type { Resolution } from "../input/errors.ts";
 import type { DcfInputs, YearAssumptions } from "../math/dcf.ts";
 import type { SensitivityInputs } from "../math/sensitivity.ts";
@@ -74,4 +74,27 @@ export function selectDcf(valuation: DcfValuation, company: Company): DcfSelecti
 
 export function selectSensitivity(inputs: DcfInputs, axes: SensitivityAxes): SensitivityInputs {
   return { base: inputs, waccSteps: axes.waccSteps, terminalGrowthSteps: axes.terminalGrowthSteps };
+}
+
+/** A scenario replaces the growth and margin paths and keeps every other base input. */
+export function selectScenarioInputs(base: DcfInputs, paths: DcfScenarioPaths): DcfInputs {
+  const years = base.years.map((y, i) => ({
+    ...y,
+    revenueGrowth: entry(paths.revenueGrowthPath, i),
+    ebitMargin: entry(paths.ebitMarginPath, i),
+  }));
+  if (!isNonEmpty(years)) throw new Error("unreachable: years is NonEmpty");
+  return { ...base, years };
+}
+
+/**
+ * The cost of capital on the beta the researcher did not use. None when the
+ * case overrides the WACC, since the override replaces both.
+ */
+export function selectAlternativeBetaWacc(
+  valuation: DcfValuation,
+): (WaccResult & { beta: number }) | null {
+  const beta = valuation.costOfCapital.alternativeBeta;
+  if (beta === null || valuation.waccOverride !== null) return null;
+  return { ...computeWacc(selectWacc({ ...valuation.costOfCapital, beta })), beta };
 }

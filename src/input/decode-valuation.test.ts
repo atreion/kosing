@@ -37,6 +37,7 @@ test("a beta override replaces the facts' beta on the dcf branch and is recorded
   const withOverride = mutate(loadFixture("acme-dcf.case"), "overrides", {
     beta: 1.3,
     wacc: null,
+    taxRate: null,
     rationale: "sector beta is stale",
   });
   const result = run(acme(), withOverride);
@@ -173,4 +174,46 @@ test("the operating ltm row keeps its end date", () => {
   assert.equal(valuation.method, "dcf");
   if (valuation.method !== "dcf") return;
   assert.equal(valuation.financials.ltm?.endDate, "2026-06-30");
+});
+
+test("a tax override replaces the cash-flow rate on the dcf branch and is recorded", () => {
+  const c = mutate(
+    mutate(loadFixture("acme-dcf.case"), "overrides.taxRate", 0.236),
+    "overrides.rationale",
+    "reported rate depressed by an exempt gain",
+  );
+  const result = run(acme(), c);
+  assert.ok(result.success, JSON.stringify(result.error));
+  const { valuation, resolutions } = result.data;
+  if (valuation.method !== "dcf") throw new Error("unreachable");
+  assert.equal(valuation.costOfCapital.taxRateForCashFlows, 0.236);
+  assert.equal(
+    valuation.costOfCapital.taxRateForDiscounting,
+    0.206,
+    "the discount rate keeps its own",
+  );
+  assert.ok(
+    resolutions.some((r) => r.kind === "taxRateOverridden" && r.from === 0.21 && r.to === 0.236),
+  );
+});
+
+test("scenarios reach the domain as paths, without their rationale", () => {
+  const paths = (g: number, m: number) => ({
+    revenueGrowthPath: Array.from({ length: 10 }, () => g),
+    ebitMarginPath: Array.from({ length: 10 }, () => m),
+  });
+  const c = mutate(loadFixture("acme-dcf.case"), "method.scenarios", {
+    bear: { ...paths(0.01, 0.1), rationale: "down" },
+    bull: { ...paths(0.08, 0.14), rationale: "up" },
+  });
+  const result = run(acme(), c);
+  assert.ok(result.success, JSON.stringify(result.error));
+  if (result.data.valuation.method !== "dcf") throw new Error("unreachable");
+  assert.deepEqual(result.data.valuation.assumptions.scenarios, {
+    bear: paths(0.01, 0.1),
+    bull: paths(0.08, 0.14),
+  });
+  const none = run(acme(), loadFixture("acme-dcf.case"));
+  if (none.data?.valuation.method !== "dcf") throw new Error("unreachable");
+  assert.equal(none.data.valuation.assumptions.scenarios, null);
 });

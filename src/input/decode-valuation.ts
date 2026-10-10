@@ -204,6 +204,11 @@ function sensitivitySteps(steps: readonly number[] | undefined): NonEmpty<number
   return chosen;
 }
 
+/** Written out rather than spread so the wire's rationale stays out of the domain. */
+function scenarioPaths(s: { revenueGrowthPath: number[]; ebitMarginPath: number[] }) {
+  return { revenueGrowthPath: s.revenueGrowthPath, ebitMarginPath: s.ebitMarginPath };
+}
+
 export function decodeValuation(
   facts: Facts,
   investmentCase: Case,
@@ -228,6 +233,14 @@ export function decodeValuation(
         costOfCapital = { ...costOfCapital, beta: overrides.beta };
       }
       if (overrides.wacc !== null) resolutions.push({ kind: "waccOverridden", to: overrides.wacc });
+      if (overrides.taxRate !== null) {
+        resolutions.push({
+          kind: "taxRateOverridden",
+          from: costOfCapital.taxRateForCashFlows,
+          to: overrides.taxRate,
+        });
+        costOfCapital = { ...costOfCapital, taxRateForCashFlows: overrides.taxRate };
+      }
       // Written out rather than spread so the wire's `basis` rationale stays out of the domain.
       const terminal =
         method.terminal.kind === "perpetuityGrowth"
@@ -250,6 +263,13 @@ export function decodeValuation(
             daPctRevenuePath: method.daPctRevenuePath,
             workingCapitalPctRevenue: method.workingCapitalPctRevenue,
             terminal,
+            scenarios:
+              method.scenarios === null
+                ? null
+                : {
+                    bear: scenarioPaths(method.scenarios.bear),
+                    bull: scenarioPaths(method.scenarios.bull),
+                  },
           },
           sensitivity: {
             waccSteps: sensitivitySteps(sensitivity?.waccSteps),

@@ -16,9 +16,15 @@
       "growth": 0.02,
       "basis": "long-run nominal GDP growth in the Nordics"
     },
+    "scenarios": null,
     "rationale": "A niche industrial with pricing power and a decade of margin stability. Growth fades to GDP.",
     "sourceRefs": ["S1", "S2"]
   },
-  "overrides": { "beta": null, "wacc": null, "rationale": null },
+  "overrides": {
+    "beta": null,
+    "wacc": null,
+    "taxRate": null,
+    "rationale": null
+  },
   "sensitivity": null
 }

@@ -160,7 +160,7 @@
       {
         "currency": "USD",
         "revenueShare": 0.4,
-        "costShare": null
+        "costShare": 0.25
       }
     ]
   },

@@ -46,6 +46,22 @@ export type ReverseDcfSection = {
   readonly terminalGrowth: number;
 };
 
+export type ScenarioValue = {
+  readonly valuePerShare: number;
+  readonly enterpriseValue: number;
+  readonly equityValue: number;
+  readonly terminalValuePctOfEv: number;
+};
+
+/** Value on the beta the researcher did not use, so a clearance that flips on it is visible. */
+export type AlternativeBetaValue = {
+  readonly beta: number;
+  readonly costOfEquity: number;
+  readonly wacc: number;
+  /** null when the Gordon formula is undefined at that WACC. */
+  readonly valuePerShare: number | null;
+};
+
 export type DcfSection = {
   readonly method: "dcf";
   readonly basePeriod: BasePeriodRef;
@@ -60,6 +76,13 @@ export type DcfSection = {
   readonly projection: readonly YearRow[];
   readonly terminal: Terminal;
   readonly notes: readonly DcfNote[];
+  /** null when the case has no scenarios; a side is null when its DCF is undefined. */
+  readonly scenarios: {
+    readonly bear: ScenarioValue | null;
+    readonly bull: ScenarioValue | null;
+  } | null;
+  /** null when there is no alternative beta or the WACC is overridden. */
+  readonly alternativeBeta: AlternativeBetaValue | null;
 };
 
 export type NormalisedEarningsSection = {

@@ -142,7 +142,7 @@ test("fx needs a dcf; with one, a move shifts base revenue and every year's marg
   });
   assert.equal(fx.kind, "ready");
   if (fx.kind !== "ready") return;
-  assert.deepEqual(fx.exposures, [{ pair: "USDEUR", revenueShare: 0.4, costShare: 0 }]);
+  assert.deepEqual(fx.exposures, [{ pair: "USDEUR", revenueShare: 0.4, costShare: 0.25 }]);
 
   const unmoved = fx.revalue({ revenueFactor: 1, costFactor: 1 });
   const plain = computeDcf(s.inputs);
@@ -174,10 +174,11 @@ test("fx is unavailable when the dcf base period has no positive revenue", () =>
   assert.deepEqual(fx, { kind: "unavailable", reason: "nonPositiveBaseRevenue" });
 });
 
-test("a null exposure share counts as zero either way round, and says so", () => {
+test("an exposure with an unknown share is not revalued, and says which share is missing", () => {
   const dual = mutate(loadFixture("dual.facts"), "fx.exposures", [
-    { currency: "USD", revenueShare: null, costShare: 0.6 },
+    { currency: "USD", revenueShare: 0.4, costShare: 0.3 },
     { currency: "GBP", revenueShare: 0.2, costShare: null },
+    { currency: "CHF", revenueShare: null, costShare: null },
     { currency: "EUR", revenueShare: null, costShare: null },
   ]);
   const { company, valuation } = pair(dual, mutate(dcfCase(), "ticker", "DUAL"));
@@ -189,12 +190,9 @@ test("a null exposure share counts as zero either way round, and says so", () =>
   });
   assert.equal(fx.kind, "ready");
   if (fx.kind !== "ready") return;
-  assert.deepEqual(fx.exposures, [
-    { pair: "USDEUR", revenueShare: 0, costShare: 0.6 },
-    { pair: "GBPEUR", revenueShare: 0.2, costShare: 0 },
-  ]);
+  assert.deepEqual(fx.exposures, [{ pair: "USDEUR", revenueShare: 0.4, costShare: 0.3 }]);
   assert.deepEqual(fx.resolutions, [
-    { kind: "fxShareAssumedZero", currency: "USD", field: "revenueShare" },
-    { kind: "fxShareAssumedZero", currency: "GBP", field: "costShare" },
+    { kind: "fxExposureIncomplete", currency: "GBP", missing: ["costShare"] },
+    { kind: "fxExposureIncomplete", currency: "CHF", missing: ["revenueShare", "costShare"] },
   ]);
 });

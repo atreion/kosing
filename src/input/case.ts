@@ -25,6 +25,13 @@ export const Terminal = z.discriminatedUnion("kind", [
   }),
 ]);
 
+/** A whole alternative path for the two assumptions a disruption bear case moves. */
+export const DcfScenario = z.strictObject({
+  revenueGrowthPath: TenNumberPath,
+  ebitMarginPath: TenNumberPath,
+  rationale: z.string().min(1),
+});
+
 export const DcfMethod = z.strictObject({
   kind: z.literal("dcf"),
   revenueGrowthPath: TenNumberPath,
@@ -33,6 +40,8 @@ export const DcfMethod = z.strictObject({
   daPctRevenuePath: TenNumberPath,
   workingCapitalPctRevenue: z.number(),
   terminal: Terminal,
+  /** Bear and bull share every other assumption with the base case. */
+  scenarios: z.strictObject({ bear: DcfScenario, bull: DcfScenario }).nullable(),
   rationale: z.string().min(1),
   sourceRefs: SourceRefs,
 });
@@ -69,6 +78,8 @@ export const Overrides = z.strictObject({
   beta: z.number().nullable(),
   /** A discount rate, so strictly between 0 and 1. */
   wacc: z.number().gt(0).lt(1).nullable(),
+  /** The cash-flow tax rate, when the reported effective rate is distorted. */
+  taxRate: z.number().min(0).lt(1).nullable(),
   rationale: z.string().min(1).nullable(),
 });
 
@@ -127,8 +138,9 @@ export const CaseSchema = CaseShape.superRefine((c, ctx) => {
     }
   }
 
-  const { beta, wacc, rationale } = c.overrides;
-  if ((beta !== null || wacc !== null) && rationale === null) {
+  const { beta, wacc, taxRate, rationale } = c.overrides;
+  const anyOverride = beta !== null || wacc !== null || taxRate !== null;
+  if (anyOverride && rationale === null) {
     ctx.addIssue({
       code: "custom",
       path: ["overrides", "rationale"],
@@ -150,7 +162,7 @@ export const CaseSchema = CaseShape.superRefine((c, ctx) => {
 
   // Only a DCF discounts, so only a DCF can have its discount rate overridden or swept.
   if (c.method.kind !== "dcf") {
-    if (beta !== null || wacc !== null) {
+    if (anyOverride) {
       ctx.addIssue({
         code: "custom",
         path: ["overrides"],

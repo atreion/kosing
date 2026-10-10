@@ -8,7 +8,7 @@ import type { Valuation } from "../domain/valuation.ts";
 import { assertNever } from "../exhaustive.ts";
 import type { Decoded } from "../input/decode.ts";
 import type { Resolution } from "../input/errors.ts";
-import { computeDcf } from "../math/dcf.ts";
+import { computeDcf, type DcfInputs } from "../math/dcf.ts";
 import { computeFxSensitivity, type FxPairResult } from "../math/fx.ts";
 import { computeMultiples } from "../math/multiples.ts";
 import { computeNav } from "../math/nav.ts";
@@ -16,7 +16,12 @@ import { computeNormalisedEarnings } from "../math/normalised-earnings.ts";
 import { computeSensitivity, type SensitivityResult } from "../math/sensitivity.ts";
 import { computeWacc } from "../math/wacc.ts";
 import { selectLatestReportedPeriod } from "../select/base-period.ts";
-import { selectDcf, selectSensitivity } from "../select/dcf.ts";
+import {
+  selectAlternativeBetaWacc,
+  selectDcf,
+  selectScenarioInputs,
+  selectSensitivity,
+} from "../select/dcf.ts";
 import { selectDerived } from "../select/derived.ts";
 import { type FxBase, selectFx } from "../select/fx.ts";
 import { selectMultipleInputs } from "../select/multiples.ts";
@@ -25,8 +30,10 @@ import { selectNormalisedEarnings } from "../select/normalised-earnings.ts";
 import { selectWacc } from "../select/wacc.ts";
 import { multipleRows, reverseDcfSection } from "./priced-in.ts";
 import {
+  type AlternativeBetaValue,
   DEFAULT_VALUATOR_OPTIONS,
   type Results,
+  type ScenarioValue,
   type ValuationSection,
   type ValuatorOptions,
 } from "./types.ts";
@@ -39,6 +46,32 @@ type Valued = {
 };
 
 const NOTHING: Valued = { valuation: null, sensitivity: null, fxBase: null, resolutions: [] };
+
+function scenarioValue(inputs: DcfInputs): ScenarioValue | null {
+  const r = computeDcf(inputs);
+  if (r.kind !== "value") return null;
+  return {
+    valuePerShare: r.valuePerShare,
+    enterpriseValue: r.enterpriseValue,
+    equityValue: r.equityValue,
+    terminalValuePctOfEv: r.terminalValuePctOfEv,
+  };
+}
+
+function alternativeBetaValue(
+  valuation: Extract<Valuation, { method: "dcf" }>,
+  base: DcfInputs,
+): AlternativeBetaValue | null {
+  const alt = selectAlternativeBetaWacc(valuation);
+  if (alt === null) return null;
+  const r = computeDcf({ ...base, wacc: alt.wacc });
+  return {
+    beta: alt.beta,
+    costOfEquity: alt.costOfEquity,
+    wacc: alt.wacc,
+    valuePerShare: r.kind === "value" ? r.valuePerShare : null,
+  };
+}
 
 function valueDcf(valuation: Extract<Valuation, { method: "dcf" }>, company: Company): Valued {
   const s = selectDcf(valuation, company);
@@ -57,6 +90,18 @@ function valueDcf(valuation: Extract<Valuation, { method: "dcf" }>, company: Com
       wacc: s.wacc,
       ...value,
       terminal: valuation.assumptions.terminal,
+      scenarios:
+        valuation.assumptions.scenarios === null
+          ? null
+          : {
+              bear: scenarioValue(
+                selectScenarioInputs(s.inputs, valuation.assumptions.scenarios.bear),
+              ),
+              bull: scenarioValue(
+                selectScenarioInputs(s.inputs, valuation.assumptions.scenarios.bull),
+              ),
+            },
+      alternativeBeta: alternativeBetaValue(valuation, s.inputs),
     },
     sensitivity: computeSensitivity(selectSensitivity(s.inputs, valuation.sensitivity)),
     fxBase: { inputs: s.inputs, baseEbit: s.basePeriodEbit },

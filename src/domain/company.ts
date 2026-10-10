@@ -50,6 +50,11 @@ export type CostOfCapital = {
   readonly taxRateForDiscounting: number;
   /** effective, always reported. Taxes the modelled cash flows. */
   readonly taxRateForCashFlows: number;
+  /**
+   * The sector beta when the measured beta was used and a sector beta exists,
+   * so results can show what the other credible beta does to value.
+   */
+  readonly alternativeBeta: number | null;
 };
 
 export type RangeBand = {

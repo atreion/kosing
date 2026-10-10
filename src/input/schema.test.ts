@@ -59,12 +59,14 @@ const UNREPRESENTABLE_RULES: readonly {
   {
     doc: "case",
     rule: "an override needs a rationale",
-    mutation: (v) => mutate(v, "overrides", { beta: 1.3, wacc: null, rationale: null }),
+    mutation: (v) =>
+      mutate(v, "overrides", { beta: 1.3, wacc: null, taxRate: null, rationale: null }),
   },
   {
     doc: "case",
     rule: "overrides apply to dcf only",
-    mutation: (v) => mutate(v, "overrides", { beta: 1.3, wacc: null, rationale: "x" }),
+    mutation: (v) =>
+      mutate(v, "overrides", { beta: 1.3, wacc: null, taxRate: null, rationale: "x" }),
   },
   {
     doc: "case",

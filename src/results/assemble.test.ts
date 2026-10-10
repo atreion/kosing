@@ -178,3 +178,43 @@ test("resolutions are decode's first, then the assembler's, in order", () => {
   assert.deepEqual(kinds.slice(0, 2), ["betaFromSector", "netDebtDerived"]);
   assert.ok(kinds.includes("dcfBasePeriodFromFiscalYear"));
 });
+
+const paths = (g: number, m: number, rationale: string) => ({
+  revenueGrowthPath: Array.from({ length: 10 }, () => g),
+  ebitMarginPath: Array.from({ length: 10 }, () => m),
+  rationale,
+});
+
+test("bear and bull scenarios are valued with the base case's other assumptions", () => {
+  const c = mutate(dcfCase(), "method.scenarios", {
+    bear: paths(0.0, 0.1, "down"),
+    bull: paths(0.08, 0.14, "up"),
+  });
+  const r = assemble(decoded(acme(), c));
+  if (r.valuation?.method !== "dcf") throw new Error("unreachable");
+  const s = r.valuation.scenarios;
+  assert.ok(s?.bear && s.bull);
+  assert.ok(s.bear.valuePerShare < r.valuation.valuePerShare);
+  assert.ok(r.valuation.valuePerShare < s.bull.valuePerShare);
+  assertAllFinite(r);
+  const plain = assemble(decoded(acme(), dcfCase()));
+  if (plain.valuation?.method !== "dcf") throw new Error("unreachable");
+  assert.equal(plain.valuation.scenarios, null);
+});
+
+test("the dcf is also valued on the beta that was not used, unless the wacc is overridden", () => {
+  const measured = mutate(acme(), "costOfCapital.betaCompany", 0.76);
+  const r = assemble(decoded(measured, dcfCase()));
+  if (r.valuation?.method !== "dcf") throw new Error("unreachable");
+  const alt = r.valuation.alternativeBeta;
+  assert.equal(alt?.beta, 1.1);
+  assert.ok(alt && alt.wacc > r.valuation.wacc.wacc);
+  assert.ok(alt && alt.valuePerShare !== null && alt.valuePerShare < r.valuation.valuePerShare);
+  const overridden = mutate(mutate(dcfCase(), "overrides.wacc", 0.07), "overrides.rationale", "x");
+  const o = assemble(decoded(measured, overridden));
+  if (o.valuation?.method !== "dcf") throw new Error("unreachable");
+  assert.equal(o.valuation.alternativeBeta, null);
+  const sector = assemble(decoded(acme(), dcfCase()));
+  if (sector.valuation?.method !== "dcf") throw new Error("unreachable");
+  assert.equal(sector.valuation.alternativeBeta, null);
+});

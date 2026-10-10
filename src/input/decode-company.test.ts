@@ -169,3 +169,21 @@ test("quoted per-share figures convert with the price; reported ones do not", ()
   assert.equal(historicalRanges?.peTrailing.y5Low, 12, "a multiple is a ratio, not a price");
   assert.equal(estimates[0]?.eps, 2.4, "eps is reported in the reporting currency already");
 });
+
+test("the beta not used is kept only when the measured beta won and a sector beta exists", () => {
+  const sectorUsed = decodeCompany(parse(acme()));
+  assert.equal(
+    sectorUsed.data?.company.costOfCapital.alternativeBeta,
+    null,
+    "sector beta used, nothing else to offer",
+  );
+  const measured = decodeCompany(parse(mutate(acme(), "costOfCapital.betaCompany", 0.76)));
+  assert.equal(measured.data?.company.costOfCapital.beta, 0.76);
+  assert.equal(measured.data?.company.costOfCapital.alternativeBeta, 1.1);
+  const noSector = decodeCompany(
+    parse(
+      mutate(mutate(acme(), "costOfCapital.betaCompany", 0.76), "costOfCapital.betaSector", null),
+    ),
+  );
+  assert.equal(noSector.data?.company.costOfCapital.alternativeBeta, null);
+});

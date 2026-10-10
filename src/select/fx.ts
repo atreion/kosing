@@ -3,7 +3,10 @@
  * scales by the revenue factor and base costs (revenue less EBIT) by the
  * cost factor; the resulting change in base margin is applied to every
  * year's margin, so the shock is held for the whole projection. A pair is
- * every exposure in a currency other than the reporting one.
+ * every exposure in a currency other than the reporting one whose revenue and
+ * cost shares are both known. Guessing a missing share as zero overstated
+ * translation sensitivity on the first real runs, so an incomplete exposure is
+ * reported and not revalued.
  */
 
 import type { Exposure, Fx } from "../domain/company.ts";
@@ -40,19 +43,12 @@ function shocked(dcf: FxBase, shock: FxShock): DcfInputs {
   return { ...dcf.inputs, revenueBase: shockedRevenue, years: [first, ...rest] };
 }
 
-/**
- * A null share is unknown, and unknown is treated as no exposure through that
- * line, with a resolution saying so. Revenue and cost are handled alike.
- */
-function shareOrZero(
-  exposure: Exposure,
-  field: "revenueShare" | "costShare",
-  resolutions: Resolution[],
-): number {
-  const value = exposure[field];
-  if (value !== null) return value;
-  resolutions.push({ kind: "fxShareAssumedZero", currency: exposure.currency, field });
-  return 0;
+/** The shares an exposure is missing; an exposure missing either is not revalued. */
+function missingShares(exposure: Exposure): ("revenueShare" | "costShare")[] {
+  const missing: ("revenueShare" | "costShare")[] = [];
+  if (exposure.revenueShare === null) missing.push("revenueShare");
+  if (exposure.costShare === null) missing.push("costShare");
+  return missing;
 }
 
 export function selectFx(fx: Fx, currency: Currency, dcf: FxBase | null): FxSelection {
@@ -60,13 +56,19 @@ export function selectFx(fx: Fx, currency: Currency, dcf: FxBase | null): FxSele
   // The shock is a change in margin, which a base period without revenue does not have.
   if (dcf.inputs.revenueBase <= 0) return { kind: "unavailable", reason: "nonPositiveBaseRevenue" };
   const resolutions: Resolution[] = [];
-  const exposures = fx.exposures
-    .filter((e) => e.currency !== currency)
-    .map((e) => ({
-      pair: `${e.currency}${currency}`,
-      revenueShare: shareOrZero(e, "revenueShare", resolutions),
-      costShare: shareOrZero(e, "costShare", resolutions),
-    }));
+  const exposures: FxExposure[] = [];
+  for (const e of fx.exposures.filter((x) => x.currency !== currency)) {
+    const missing = missingShares(e);
+    if (missing.length > 0) {
+      resolutions.push({ kind: "fxExposureIncomplete", currency: e.currency, missing });
+    } else if (e.revenueShare !== null && e.costShare !== null) {
+      exposures.push({
+        pair: `${e.currency}${currency}`,
+        revenueShare: e.revenueShare,
+        costShare: e.costShare,
+      });
+    }
+  }
   return {
     kind: "ready",
     exposures,
