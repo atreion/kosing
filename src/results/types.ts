@@ -1,0 +1,107 @@
+/**
+ * results.json. One shape regardless of what ran; a section that could not
+ * run is null, and when it had inputs and still could not run, a resolution
+ * says why. Nothing here is a formatted sentence.
+ */
+
+import type { Company } from "../domain/company.ts";
+import type { Classification, IsoDate } from "../domain/types.ts";
+import type { Holding, Terminal } from "../domain/valuation.ts";
+import type { Resolution, Warning } from "../input/errors.ts";
+import type { DcfNote, YearRow } from "../math/dcf.ts";
+import type { FxPairResult } from "../math/fx.ts";
+import type { Metric, Multiples, Position } from "../math/multiples.ts";
+import type { NormalisedEarningsResult } from "../math/normalised-earnings.ts";
+import type { SensitivityResult } from "../math/sensitivity.ts";
+import type { WaccResult } from "../math/wacc.ts";
+import type { BasePeriodRef } from "../select/base-period.ts";
+import type { Derived } from "../select/derived.ts";
+import type { Band } from "../select/multiples.ts";
+import type { RevenueBaseSummary } from "../select/normalised-earnings.ts";
+import { DEFAULT_REVERSE_DCF_OPTIONS, type ReverseDcfOptions } from "../select/reverse-dcf.ts";
+
+export type ValuatorOptions = {
+  readonly reverseDcf: ReverseDcfOptions;
+  readonly fxMoves: readonly number[];
+};
+
+export const DEFAULT_VALUATOR_OPTIONS: ValuatorOptions = {
+  reverseDcf: DEFAULT_REVERSE_DCF_OPTIONS,
+  fxMoves: [-0.1, -0.05, 0.05, 0.1],
+};
+
+export type MultipleRow = {
+  readonly metric: Metric;
+  readonly current: number | null;
+  readonly band5y: Band;
+  readonly band10y: Band;
+  readonly position: Position | null;
+  readonly peerMedian: number | null;
+};
+
+export type ReverseDcfSection = {
+  readonly impliedGrowth: number;
+  readonly basePeriod: BasePeriodRef;
+  readonly horizonYears: number;
+  readonly terminalGrowth: number;
+};
+
+export type DcfSection = {
+  readonly method: "dcf";
+  readonly basePeriod: BasePeriodRef;
+  readonly wacc: WaccResult & { readonly overridden: boolean };
+  readonly valuePerShare: number;
+  readonly enterpriseValue: number;
+  readonly equityValue: number;
+  readonly terminalValue: number;
+  readonly pvTerminalValue: number;
+  readonly terminalValuePctOfEv: number;
+  readonly pvExplicitPeriod: number;
+  readonly projection: readonly YearRow[];
+  readonly terminal: Terminal;
+  readonly notes: readonly DcfNote[];
+};
+
+export type NormalisedEarningsSection = {
+  readonly method: "normalisedEarnings";
+  readonly revenueBase: RevenueBaseSummary;
+  readonly scenarios: NormalisedEarningsResult;
+  readonly ltmEbitMargin: number | null;
+};
+
+export type NavSection = {
+  readonly method: "nav";
+  readonly grossAssetValue: number;
+  readonly parentNetDebt: number;
+  readonly nav: number;
+  readonly discountApplied: number;
+  readonly equityValue: number;
+  readonly valuePerShare: number;
+  readonly lookThroughNav: number | null;
+  readonly holdings: readonly Holding[];
+};
+
+export type ValuationSection = DcfSection | NormalisedEarningsSection | NavSection;
+
+export type Results = {
+  readonly schemaVersion: "1.0";
+  readonly inputs: {
+    readonly ticker: string;
+    readonly factsAsOf: IsoDate;
+    readonly caseFactsAsOf: IsoDate | null;
+    readonly classification: Classification | null;
+    readonly theses: readonly string[];
+    readonly company: Company;
+  };
+  /** From facts alone; the wacc here is never overridden. */
+  readonly derived: Derived & { readonly multiples: Multiples; readonly wacc: WaccResult };
+  readonly pricedIn: {
+    readonly reverseDcf: ReverseDcfSection | null;
+    readonly multiples: readonly MultipleRow[];
+  };
+  readonly valuation: ValuationSection | null;
+  readonly sensitivity: SensitivityResult | null;
+  readonly fx: readonly FxPairResult[] | null;
+  readonly resolutions: readonly Resolution[];
+  readonly warnings: readonly Warning[];
+};

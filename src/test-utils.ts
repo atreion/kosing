@@ -24,3 +24,14 @@ export function assertAllClose(
     assertClose(actualValue, expectedValue, tolerance, key);
   }
 }
+
+/** Walks any JSON-like value; fails on the first NaN or infinite number, naming its path. */
+export function assertAllFinite(value: unknown, path = "$"): void {
+  if (typeof value === "number") {
+    assert.ok(Number.isFinite(value), `${path} is ${value}`);
+  } else if (Array.isArray(value)) {
+    for (const [i, v] of value.entries()) assertAllFinite(v, `${path}[${i}]`);
+  } else if (typeof value === "object" && value !== null) {
+    for (const [k, v] of Object.entries(value)) assertAllFinite(v, `${path}.${k}`);
+  }
+}

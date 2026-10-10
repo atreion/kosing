@@ -52,3 +52,11 @@ export {
   type YearRow,
 } from "./math/dcf.ts";
 export { computeWacc, type WaccInputs, type WaccResult } from "./math/wacc.ts";
+export { assemble } from "./results/assemble.ts";
+export {
+  DEFAULT_VALUATOR_OPTIONS,
+  type Results,
+  type ValuationSection,
+  type ValuatorOptions,
+} from "./results/types.ts";
+export { valuate } from "./valuate.ts";

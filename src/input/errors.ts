@@ -75,7 +75,9 @@ export type Resolution =
         | "noUsableBasePeriod"
         | "terminalGrowthNotBelowWacc"
         | "noGrowthInBracketMatchesPrice";
-    };
+    }
+  | { readonly kind: "dcfUnavailable"; readonly reason: "terminalGrowthNotBelowWacc" }
+  | { readonly kind: "fxUnavailable"; readonly reason: "noDcfValuation" };
 
 /** Advisory, never fatal. */
 export type Warning = {
