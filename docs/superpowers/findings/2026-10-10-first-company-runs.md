@@ -53,3 +53,15 @@ to a reader of the results, and what happened to it. "Fix pass" means the
 | Id | Finding | Disposition |
 | --- | --- | --- |
 | F23 | The WKL case and advice say NOPAT is overstated by "about 3.7% of EBIT"; it is 2.9% of EBIT (3.7% of NOPAT). | Fix pass: corrected when the WKL case is rewritten for F1 and F7. |
+
+## Findings from the review of the fix pass
+
+| Id | Finding | Where | Disposition |
+| --- | --- | --- | --- |
+| F24 | Under a beta override, the alternative beta repeated the override, so the advisor would report two clearances on one beta. | `src/input/decode-valuation.ts` | Fixed: the alternative is the beta facts resolved, null when the override equals it. |
+| F25 | Bear and bull paths that value in the wrong order passed silently. | `src/results/assemble.ts` | Fixed: a `scenarioOrderInverted` warning. |
+| F26 | A broken `.env` still stops a `DATA_PATH` command even when the variable is set in the environment, and it does so with a stack trace. | `src/cli.ts` | Deferred: read `.env` only when the environment lacks the variable, and report a read error as exit 2. |
+| F27 | No test covers an unresolved id inside `estimates[].sourceRefs`. | `src/input/facts.test.ts` | Deferred. |
+| F28 | The FX selector checks the missing shares twice. | `src/select/fx.ts` | Deferred: return the narrowed shares from one helper. |
+| F29 | The historical skills plan still describes `interestExpense`. | `docs/superpowers/plans/2026-10-10-skills.md` | Deferred: plans are a record of what was decided then; the brief governs. |
+| F30 | Zod's message for a missing nullable key does not say that `null` is accepted, which is the first error a rewrite of an older case meets. | `src/input/errors.ts` | Deferred. |
