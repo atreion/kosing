@@ -1,23 +1,39 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import { test } from "node:test";
 import { isMain, runCli } from "./cli.ts";
 import { loadFixture, mutate } from "./test-fixtures.ts";
 
-function capture(files: Record<string, string> = {}) {
+type CaptureOptions = {
+  readonly env?: Readonly<Record<string, string | undefined>>;
+  readonly envFile?: string | null;
+  readonly dirs?: readonly string[];
+};
+
+function capture(files: Record<string, string> = {}, options: CaptureOptions = {}) {
   const out: string[] = [];
   const err: string[] = [];
+  const fs: Record<string, string> = { ...files };
   return {
     io: {
       stdout: (s: string) => out.push(s),
       stderr: (s: string) => err.push(s),
       readFile: (path: string) => {
-        const text = files[path];
+        const text = fs[path];
         if (text === undefined) throw new Error(`ENOENT: ${path}`);
         return text;
+      },
+      env: options.env ?? {},
+      envFile: options.envFile ?? null,
+      isDirectory: (path: string) => (options.dirs ?? []).includes(path),
+      fileExists: (path: string) => path in fs,
+      writeFile: (path: string, text: string) => {
+        fs[path] = text;
       },
     },
     out,
     err,
+    fs,
   };
 }
 
@@ -111,4 +127,114 @@ test("the entry guard recognises its own path even when the path has a space", (
   assert.equal(isMain("file:///a/nospace/cli.ts", "/a/nospace/cli.ts"), true);
   assert.equal(isMain("file:///a/cli.ts", "/a/other.ts"), false);
   assert.equal(isMain("file:///a/cli.ts", undefined), false);
+});
+
+const DATA = "/data";
+const ACME = join(DATA, "companies", "ACME.STO");
+const withData = { env: { DATA_PATH: DATA }, dirs: [DATA] };
+
+function acmeFiles(withCase: boolean): Record<string, string> {
+  const files: Record<string, string> = { [join(ACME, "facts.json")]: fixture("acme.facts") };
+  if (withCase) files[join(ACME, "case.json")] = fixture("acme-dcf.case");
+  return files;
+}
+
+test("where prints the data path, from the environment or from .env, environment first", () => {
+  const fromEnv = capture({}, withData);
+  assert.equal(runCli(["where"], fromEnv.io), 0);
+  assert.equal(fromEnv.out.join(""), "/data\n");
+
+  const fromFile = capture({}, { envFile: "DATA_PATH=/file\n", dirs: ["/file"] });
+  assert.equal(runCli(["where"], fromFile.io), 0);
+  assert.equal(fromFile.out.join(""), "/file\n");
+
+  const both = capture(
+    {},
+    { env: { DATA_PATH: DATA }, envFile: "DATA_PATH=/file\n", dirs: [DATA, "/file"] },
+  );
+  runCli(["where"], both.io);
+  assert.equal(both.out.join(""), "/data\n");
+});
+
+test("where <ID> prints the company directory and echoes the data path on stderr", () => {
+  const c = capture({}, withData);
+  assert.equal(runCli(["where", "BRK.B.NYSE"], c.io), 0);
+  assert.equal(c.out.join(""), `${join(DATA, "companies", "BRK.B.NYSE")}\n`);
+  assert.ok(c.err.join("").includes("DATA_PATH=/data"));
+});
+
+test("an unset, relative or missing DATA_PATH is exit 2 with a message naming it", () => {
+  for (const options of [
+    {},
+    { env: { DATA_PATH: "relative/dir" }, dirs: ["relative/dir"] },
+    { env: { DATA_PATH: "/nowhere" } },
+  ]) {
+    for (const argv of [["where"], ["where", "ACME.STO"], ["value", "ACME.STO"]]) {
+      const c = capture(acmeFiles(true), options);
+      assert.equal(runCli(argv, c.io), 2, `${argv.join(" ")} ${JSON.stringify(options)}`);
+      assert.ok(c.err.join("").includes("DATA_PATH"));
+      assert.deepEqual(c.out, []);
+    }
+  }
+});
+
+test("a malformed or escaping id is a usage error before any path is built", () => {
+  for (const id of ["ACME", "../x.STO", "a/b.STO", "ACME.sto"]) {
+    for (const command of ["where", "value"]) {
+      const c = capture({}, withData);
+      assert.equal(runCli([command, id], c.io), 2, `${command} ${id}`);
+      assert.ok(c.err.join("").includes("usage"));
+      assert.deepEqual(c.fs, {});
+    }
+  }
+});
+
+test("value <ID> writes results.json beside the documents and prints its path", () => {
+  const c = capture(acmeFiles(true), withData);
+  assert.equal(runCli(["value", "ACME.STO"], c.io), 0);
+  const written = c.fs[join(ACME, "results.json")];
+  assert.ok(written !== undefined);
+  assert.equal(JSON.parse(written).valuation.method, "dcf");
+  assert.equal(c.out.join(""), `${join(ACME, "results.json")}\n`);
+  assert.ok(c.err.join("").includes("DATA_PATH=/data"));
+});
+
+test("value <ID> without case.json is the screen", () => {
+  const c = capture(acmeFiles(false), withData);
+  assert.equal(runCli(["value", "ACME.STO"], c.io), 0);
+  assert.equal(JSON.parse(c.fs[join(ACME, "results.json")] ?? "{}").valuation, null);
+});
+
+test("a company directory without facts.json is exit 1 naming the facts, nothing written", () => {
+  const c = capture({}, withData);
+  assert.equal(runCli(["value", "ACME.STO"], c.io), 1);
+  const errors = JSON.parse(c.err.join("").split("\n").slice(1).join("\n"));
+  assert.equal(errors[0].file, "facts");
+  assert.equal(errors[0].rule, "file.unreadable");
+  assert.equal(c.fs[join(ACME, "results.json")], undefined);
+});
+
+test("facts for another company than the id is exit 1 and nothing is written", () => {
+  const files = { [join(DATA, "companies", "BETA.STO", "facts.json")]: fixture("acme.facts") };
+  const c = capture(files, withData);
+  assert.equal(runCli(["value", "BETA.STO"], c.io), 1);
+  const errors = JSON.parse(c.err.join("").split("\n").slice(1).join("\n"));
+  assert.deepEqual(
+    errors.map((e: { rule: string; path: string }) => [e.rule, e.path]),
+    [["semantic.companyIdMismatch", "company"]],
+  );
+  assert.equal(c.fs[join(DATA, "companies", "BETA.STO", "results.json")], undefined);
+});
+
+test("a failed run leaves an earlier results.json byte for byte", () => {
+  const files = {
+    ...acmeFiles(false),
+    [join(ACME, "facts.json")]: JSON.stringify(
+      mutate(loadFixture("acme.facts"), "market.price", -1),
+    ),
+    [join(ACME, "results.json")]: "earlier",
+  };
+  const c = capture(files, withData);
+  assert.equal(runCli(["value", "ACME.STO"], c.io), 1);
+  assert.equal(c.fs[join(ACME, "results.json")], "earlier");
 });
