@@ -77,7 +77,8 @@ Read:
    `multipleCeiling` when it is set; overrides and sensitivity are allowed for
    `dcf` only, and sensitivity steps each include 0.
 5. **Run `kosing value <ID>` once.** On exit 1, fix `case.json` at each `path`
-   (or hand back for a `facts` error) and run again. Then read
+   (or hand back for a `facts` error) and run again. On exit 3,
+   `results.json` could not be written: report the message and stop. Then read
    `results.json`. Changing an assumption after seeing the value needs a
    reason written into `rationale`, such as an error found or a fact misread.
    Moving an assumption toward the price is tuning, and is not allowed.

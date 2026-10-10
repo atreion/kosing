@@ -152,6 +152,8 @@ kosing value <ID>               reads companies/<ID>/facts.json and, when presen
                                 writes companies/<ID>/results.json; prints its path; exit 0
                                 decode or id errors: DecodeError[] on stderr as JSON, exit 1,
                                 and results.json is left untouched
+                                results.json not writable: a message on stderr, exit 3; the
+                                write is atomic, so an earlier file is never truncated
 ```
 
 The existing `kosing value --facts F [--case C]` and `kosing schema facts |
@@ -280,6 +282,12 @@ Writes `advice.md` for one company. No web research; never edits facts or case.
    the required-discount working, checklist failures by id, the resolutions and
    warnings that matter, and what would change the verdict.
 6. Commit `advice.md` and `results.json`.
+
+**Verdict rules added at review:** a failed applicable question bars
+`accumulate`; it means `pass` for a name not held and `watching` at most for a
+held one. A partial fail is a fail, reported with the revenue share it covers.
+No case means `tooHard`; `valuation: null` with a case present goes back to the
+analyst.
 
 **Rules carried from invest unchanged:** not clearing the required discount
 bars `accumulate` unless an override reason is written in `advice.md`; clearing

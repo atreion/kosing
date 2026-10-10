@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { isMain, runCli } from "./cli.ts";
+import { isMain, runCli, writeFileAtomic } from "./cli.ts";
 import { loadFixture, mutate } from "./test-fixtures.ts";
 
 type CaptureOptions = {
@@ -237,4 +239,30 @@ test("a failed run leaves an earlier results.json byte for byte", () => {
   const c = capture(files, withData);
   assert.equal(runCli(["value", "ACME.STO"], c.io), 1);
   assert.equal(c.fs[join(ACME, "results.json")], "earlier");
+});
+
+test("a results.json that cannot be written is exit 3 with a message, not a decode error", () => {
+  const c = capture(acmeFiles(true), withData);
+  const io = {
+    ...c.io,
+    writeFile: () => {
+      throw new Error("EACCES: permission denied");
+    },
+  };
+  assert.equal(runCli(["value", "ACME.STO"], io), 3);
+  const err = c.err.join("");
+  assert.ok(err.includes(join(ACME, "results.json")), err);
+  assert.ok(err.includes("EACCES"), err);
+  assert.ok(!err.includes('"rule"'), "not reported as DecodeError[]");
+  assert.deepEqual(c.out, []);
+});
+
+test("writeFileAtomic replaces the file whole and leaves no temporary behind", () => {
+  const dir = mkdtempSync(join(tmpdir(), "kosing-atomic-"));
+  const target = join(dir, "results.json");
+  writeFileSync(target, "earlier");
+  writeFileAtomic(target, "later");
+  assert.equal(readFileSync(target, "utf8"), "later");
+  assert.deepEqual(readdirSync(dir), ["results.json"]);
+  rmSync(dir, { recursive: true, force: true });
 });

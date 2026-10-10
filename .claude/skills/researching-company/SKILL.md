@@ -57,7 +57,9 @@ Run every command from the Kosing repo root. Read before searching or writing:
    Exit 0 writes `results.json`: that is the screen, and it means the facts
    decode. Exit 1 prints `DecodeError[]` as JSON: fix `facts.json` at each
    `path` and run again. Never weaken or invent a figure to get past an error.
-   If the honest answer is unknown, it is `null` with a gap.
+   If the honest answer is unknown, it is `null` with a gap. Exit 3 means
+   `results.json` could not be written: nothing in the facts is wrong; report
+   the message and stop.
 6. **Commit in the data repo**, only the files this skill wrote:
 
    ```

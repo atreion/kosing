@@ -4,7 +4,7 @@
  * call it.
  */
 
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type CompanyId, companyDir, parseCompanyId, resolveDataPath } from "./data-path.ts";
@@ -28,6 +28,7 @@ export type CliIo = {
 
 const USAGE = `usage:
   kosing value <TICKER.EXCHANGE>      value one company in DATA_PATH; writes its results.json
+                                      (exit 3 when results.json cannot be written)
   kosing value --facts F [--case C]   results.json on stdout, exit 0; DecodeError[] on stderr, exit 1
   kosing where [TICKER.EXCHANGE]      print DATA_PATH, or one company's directory in it
   kosing schema facts | case          print the JSON Schema for that document
@@ -146,7 +147,13 @@ function runValueId(id: CompanyId, io: CliIo): number {
   const mismatch = checkCompanyId(id, evaluated.results);
   if (mismatch.length > 0) return reportErrors(io, mismatch);
   const out = join(dir, "results.json");
-  io.writeFile(out, `${JSON.stringify(evaluated.results, null, 2)}\n`);
+  try {
+    io.writeFile(out, `${JSON.stringify(evaluated.results, null, 2)}\n`);
+  } catch (e) {
+    // Not a DecodeError: nothing in facts or case is wrong, so exit 1 would send the reader there.
+    io.stderr(`could not write ${out}: ${message(e)}\n`);
+    return 3;
+  }
   io.stdout(`${out}\n`);
   return 0;
 }
@@ -201,6 +208,16 @@ export function isMain(importMetaUrl: string, argv1: string | undefined): boolea
   return argv1 !== undefined && importMetaUrl === pathToFileURL(argv1).href;
 }
 
+/**
+ * Writes beside the target and renames over it, so a failed write (disk full,
+ * killed process) leaves the earlier file whole rather than truncated.
+ */
+export function writeFileAtomic(path: string, text: string): void {
+  const temporary = `${path}.tmp-${process.pid}`;
+  writeFileSync(temporary, text);
+  renameSync(temporary, path);
+}
+
 /** .env at the repo root, found from this file rather than the working directory. */
 function readEnvFile(): string | null {
   try {
@@ -220,6 +237,6 @@ if (isMain(import.meta.url, process.argv[1])) {
     envFile: readEnvFile(),
     isDirectory: (path) => existsSync(path) && statSync(path).isDirectory(),
     fileExists: (path) => existsSync(path),
-    writeFile: (path, text) => writeFileSync(path, text),
+    writeFile: writeFileAtomic,
   });
 }

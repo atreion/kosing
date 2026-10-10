@@ -30,7 +30,8 @@ Read:
 
 1. **Freshness.** Run `npm run --silent kosing -- value <ID>`. On exit 1,
    stop: hand a `facts` error to `researching-company` and a `case` error to
-   `building-case`. Never read `results.json` after a failed run; it is stale.
+   `building-case`. On exit 3, `results.json` could not be written: report the
+   message and stop. Never read `results.json` after a failed run; it is stale.
    Then read `$D/results.json`, every resolution and every warning. A
    `casePredatesFacts` warning is stated first: the case may not reflect the
    current facts.
@@ -67,7 +68,16 @@ Read:
      unless an override reason is written in `advice.md`. Never override
      silently.
    - Clearing it compels nothing. The checklist and the four-sentence test
-     still govern, and a failed applicable question still stops the name.
+     still govern.
+   - A failed applicable question bars `accumulate`. For a name the user does
+     not hold, it means `pass`. For a name the user holds, it means `watching`
+     at most, and `advice.md` says what would clear the question. Ask the user
+     whether they hold the name when they have not said.
+   - A partial fail, where the question fails for part of the business, is a
+     fail. Report it with the share of revenue it covers.
+   - No `case.json` (the analyst found no method) means `tooHard`. A
+     `valuation: null` with a case present is not a verdict: hand back to
+     `building-case` with the resolution that explains it.
    - A `pass` names the failed question, or how far the price missed the
      entry price.
 6. **Write `$D/advice.md`** with these headings, in this order:
