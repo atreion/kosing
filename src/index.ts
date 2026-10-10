@@ -1,25 +1,4 @@
-export {
-  computeDcf,
-  type DcfAssumptions,
-  type DcfInputs,
-  type DcfNote,
-  type DcfResult,
-  type ExitMultipleBasis,
-  type TerminalValueMethod,
-  type YearAssumptions,
-  type YearlyCashFlow,
-} from "./dcf.ts";
-export {
-  type DcfRawAssumptions,
-  type DcfRawInputs,
-  type DcfRawTerminalValueMethod,
-  type DcfValidationError,
-  parseDcfAssumptions,
-  parseDcfInputs,
-  type TerminalGrowthNotBelowWaccError,
-} from "./dcf-parse.ts";
-// The valuator's decode surface. The domain's DcfAssumptions is not exported
-// here yet: it collides with dcf.ts's until plan 2 migrates the math.
+// The valuator's public surface. Everything the CLI does is callable in-process.
 export type {
   BalanceSheet,
   Company,
@@ -41,6 +20,7 @@ export type {
   Financials,
   FiscalYear,
   OperatingFinancials,
+  OperatingLtm,
   Period,
   ReportedFiscalYear,
   ReportedLtm,
@@ -50,6 +30,7 @@ export type { Basis, Classification, Currency, IsoDate, NonEmpty, Unit } from ".
 export type {
   CyclicalAssumptions,
   CyclicalRevenueBase,
+  DcfAssumptions,
   Holding,
   NavAssumptions,
   ScenarioTriple,
@@ -62,31 +43,12 @@ export { type Decoded, decode } from "./input/decode.ts";
 export type { DecodeError, DecodeResult, Resolution, Warning } from "./input/errors.ts";
 export type { Facts } from "./input/facts.ts";
 export { emitJsonSchema } from "./input/schema.ts";
-export { err, ok, type Result } from "./result.ts";
 export {
-  type NonNegativeInteger,
-  type NonNegativeNumber,
-  type NotNonNegativeError,
-  type NotNonNegativeIntegerError,
-  type NotPositiveError,
-  type NotPositiveIntegerError,
-  type NotUnitIntervalError,
-  type PositiveInteger,
-  type PositiveNumber,
-  parseNonNegativeInteger,
-  parseNonNegativeNumber,
-  parsePathLength,
-  parsePositiveInteger,
-  parsePositiveNumber,
-  parseUnitInterval,
-  type UnitInterval,
-  type ValidationError,
-  type WrongLengthError,
-} from "./validate.ts";
-export {
-  computeWacc,
-  parseWaccInputs,
-  type WaccInputs,
-  type WaccRawInputs,
-  type WaccResult,
-} from "./wacc.ts";
+  computeDcf,
+  type DcfInputs,
+  type DcfOutcome,
+  type DcfValue,
+  type YearAssumptions,
+  type YearRow,
+} from "./math/dcf.ts";
+export { computeWacc, type WaccInputs, type WaccResult } from "./math/wacc.ts";

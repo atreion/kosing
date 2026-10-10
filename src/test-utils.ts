@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import type { Result } from "./result.ts";
 
 export function assertClose(
   actual: number,
@@ -24,12 +23,4 @@ export function assertAllClose(
     assert.ok(actualValue !== undefined, `${key} is missing`);
     assertClose(actualValue, expectedValue, tolerance, key);
   }
-}
-
-export function unwrap<T, E>(result: Result<T, E>): T {
-  if (!result.ok) {
-    assert.fail(JSON.stringify(result.error));
-  }
-
-  return result.value;
 }

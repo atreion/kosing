@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Deterministic financial math (DCF and friends). A TypeScript port of the invest workbench.",
+  "description": "The investment workbench's deterministic valuator: facts and a case in, results out.",
   "engines": {
     "node": ">=22.18"
   },
