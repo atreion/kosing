@@ -65,3 +65,4 @@ to a reader of the results, and what happened to it. "Fix pass" means the
 | F28 | The FX selector checks the missing shares twice. | `src/select/fx.ts` | Deferred: return the narrowed shares from one helper. |
 | F29 | The historical skills plan still describes `interestExpense`. | `docs/superpowers/plans/2026-10-10-skills.md` | Deferred: plans are a record of what was decided then; the brief governs. |
 | F30 | Zod's message for a missing nullable key does not say that `null` is accepted, which is the first error a rewrite of an older case meets. | `src/input/errors.ts` | Deferred. |
+| F31 | A research refresh cannot validate with `kosing value <ID>` while the company's existing case does not decode (for example after a format change), because the command decodes the case too. | `researching-company/SKILL.md`, `src/cli.ts` | Deferred: the researcher can validate with `kosing value --facts <path>`; a facts-only form of `value <ID>` would make that explicit. |
