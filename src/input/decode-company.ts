@@ -91,21 +91,40 @@ function decodeFinancials(financials: Facts["financials"], scale: Scale): Financ
   return { ltm, fiscalYears: years };
 }
 
-/** The share count prefers diluted; a diluted count of zero is a share count. */
-function decodeMarket(facts: Facts, convert: Convert, resolutions: Resolution[]): Market {
+/**
+ * The share count prefers diluted; a diluted count of zero is a share count,
+ * not a missing one, which is exactly why it is an error rather than a fallback.
+ */
+function decodeMarket(
+  facts: Facts,
+  convert: Convert,
+  resolutions: Resolution[],
+): DecodeResult<Market> {
   const { market } = facts;
   let shares = market.sharesDilutedM;
+  let suppliedBy: "market.sharesDilutedM" | "market.sharesOutstandingM" = "market.sharesDilutedM";
   if (shares === null) {
     shares = market.sharesOutstandingM;
+    suppliedBy = "market.sharesOutstandingM";
     resolutions.push({ kind: "sharesFromOutstanding", value: shares });
   }
-  return {
+  if (shares === 0) {
+    return failed([
+      decodeError(
+        "facts",
+        "semantic.zeroShares",
+        suppliedBy,
+        "a share count of 0 cannot price a share",
+      ),
+    ]);
+  }
+  return decoded({
     price: convert(market.price),
     shares,
     week52High: convertNullable(convert, market.week52High),
     week52Low: convertNullable(convert, market.week52Low),
     asOf: market.asOf,
-  };
+  });
 }
 
 function decodeCostOfCapital(
@@ -170,12 +189,14 @@ export function decodeCompany(
   });
 
   const convert = quoteConversion(facts, resolutions);
+  const market = decodeMarket(facts, convert, resolutions);
+  if (!market.success) return failed(market.error);
 
   const company: Company = {
     identity: { ...facts.company },
     currency: facts.currency,
     asOf: facts.asOf,
-    market: decodeMarket(facts, convert, resolutions),
+    market: market.data,
     financials: decodeFinancials(facts.financials, scale),
     balanceSheet: {
       asOf: bs.asOf,
@@ -186,6 +207,7 @@ export function decodeCompany(
       longTermDebt: scale.nullable(bs.longTermDebt),
       goodwill: scale.nullable(bs.goodwill),
       intangiblesExGoodwill: scale.nullable(bs.intangiblesExGoodwill),
+      totalEquity: scale.nullable(bs.totalEquity),
     },
     netDebt,
     otherClaims: {

@@ -63,3 +63,10 @@ test("resolutions from both decoders are concatenated in order", () => {
     ["betaFromSector", "netDebtDerived", "revenueBaseAveraged"],
   );
 });
+
+test("caseFactsAsOf is echoed from the case and null without one", () => {
+  const withCase = decode(loadFixture("acme.facts"), loadFixture("acme-dcf.case"));
+  assert.equal(withCase.data?.caseFactsAsOf, "2026-10-01");
+  const alone = decode(loadFixture("acme.facts"));
+  assert.equal(alone.data?.caseFactsAsOf, null);
+});

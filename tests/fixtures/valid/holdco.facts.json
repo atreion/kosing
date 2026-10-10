@@ -79,6 +79,7 @@
     "pensionObligations": null,
     "goodwill": null,
     "intangiblesExGoodwill": null,
+    "totalEquity": 30000,
     "sourceRef": "S1"
   },
   "costOfCapital": {

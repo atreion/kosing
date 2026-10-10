@@ -27,6 +27,8 @@ export type BalanceSheet = {
   readonly longTermDebt: number | null;
   readonly goodwill: number | null;
   readonly intangiblesExGoodwill: number | null;
+  /** Book equity, for the current price-to-book multiple. */
+  readonly totalEquity: number | null;
 };
 
 /** Claims on the enterprise reported beside net debt, not folded into it. */

@@ -92,6 +92,7 @@ export const BalanceSheet = z.strictObject({
   pensionObligations: nullableNumber,
   goodwill: nullableNumber,
   intangiblesExGoodwill: nullableNumber,
+  totalEquity: nullableNumber,
   sourceRef: SourceId,
 });
 

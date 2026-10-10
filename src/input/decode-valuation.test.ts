@@ -165,3 +165,12 @@ test("a ticker mismatch and an unresolvable case source ref are both reported", 
     ],
   );
 });
+
+test("the operating ltm row keeps its end date", () => {
+  const result = run(acme(), loadFixture("acme-dcf.case"));
+  assert.ok(result.success);
+  const { valuation } = result.data;
+  assert.equal(valuation.method, "dcf");
+  if (valuation.method !== "dcf") return;
+  assert.equal(valuation.financials.ltm?.endDate, "2026-06-30");
+});

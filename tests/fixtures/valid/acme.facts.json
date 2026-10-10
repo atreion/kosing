@@ -161,6 +161,7 @@
     "pensionObligations": 450,
     "goodwill": 3200,
     "intangiblesExGoodwill": 800,
+    "totalEquity": 6200,
     "sourceRef": "S4"
   },
   "costOfCapital": {

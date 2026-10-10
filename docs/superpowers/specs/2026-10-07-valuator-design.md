@@ -294,6 +294,7 @@ balanceSheet {
   pensionObligations          number | null
   goodwill                     number | null
   intangiblesExGoodwill      number | null
+  totalEquity                 number | null
   sourceRef                   id
 }
 
@@ -459,6 +460,7 @@ type Decoded = {
   company: Company;              // from facts alone; always constructible from valid facts
   valuation: Valuation | null;   // from facts + case; null when no case was given
   classification: Classification | null;  // passed through for the advisor
+  caseFactsAsOf: IsoDate | null;          // echoed in results
   theses: readonly string[];              // passed through for the advisor; empty without a case
   resolutions: Resolution[];
   warnings: Warning[];
@@ -513,6 +515,7 @@ Each is a `semantic.*` error. Together they are the reason the domain's
 | `semantic.revenueBaseUnsatisfiable` | `ltm` policy with `financials.ltm` present; `averageFy(n)` with at least `n` fiscal years |
 | `semantic.navRequiresHoldings` | `nav` with `facts.holdings` non-null and `items` non-empty |
 | `semantic.holdingWithoutValue` | every holding has a non-null `fairValue`; the error names the holding |
+| `semantic.zeroShares` | the resolved share count is not 0; the error names the field that supplied it |
 | `semantic.sourceRef` | every `sourceRefs` entry in the case resolves in `facts.sources` |
 
 ### Warnings
@@ -571,7 +574,8 @@ type Period = { revenue: number; ebit: number; netIncome: number | null; ebitda:
                 depreciationAmortization: number | null; ocf: number | null;
                 capex: number | null; fcf: number | null };
 type FiscalYear = Period & { fy: number; endDate: IsoDate };
-type OperatingFinancials = { ltm: Period | null; fiscalYears: NonEmpty<FiscalYear> };
+type OperatingLtm = Period & { endDate: IsoDate };
+type OperatingFinancials = { ltm: OperatingLtm | null; fiscalYears: NonEmpty<FiscalYear> };
 
 type Valuation =
   | { method: "dcf"; financials: OperatingFinancials; assumptions: DcfAssumptions;

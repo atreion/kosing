@@ -106,8 +106,16 @@ export const balanceSheet = {
   pensionObligations: 300,
   goodwill: 2500,
   intangiblesExGoodwill: null,
+  totalEquity: 6200,
   sourceRef: "S1",
 };
+
+test("totalEquity is a nullable aggregate on the balance sheet", () => {
+  assert.equal(BalanceSheet.safeParse({ ...balanceSheet, totalEquity: null }).success, true);
+  assert.equal(BalanceSheet.safeParse({ ...balanceSheet, totalEquity: "big" }).success, false);
+  const { totalEquity: _t, ...without } = balanceSheet;
+  assert.equal(BalanceSheet.safeParse(without).success, false, "every key is present");
+});
 
 test("balance sheet rejects negative debt", () => {
   assert.equal(BalanceSheet.safeParse(balanceSheet).success, true);

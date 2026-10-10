@@ -26,14 +26,36 @@ test("acme decodes with the sector beta and derived net debt recorded", () => {
   assert.deepEqual(resolutions.map((r) => r.kind).sort(), ["betaFromSector", "netDebtDerived"]);
 });
 
-test("diluted shares win over outstanding, and zero is a share count", () => {
+test("diluted shares win over outstanding", () => {
   const diluted = decodeCompany(parse(acme()));
   assert.equal(diluted.data?.company.market.shares, 115);
+  const dualShares = decodeCompany(parse(dual()));
+  assert.equal(dualShares.data?.company.market.shares, 48);
+});
 
-  const zero = decodeCompany(parse(dual()));
-  assert.ok(zero.success);
-  assert.equal(zero.data.company.market.shares, 0, "sharesDilutedM: 0 is used, not missing");
-  assert.ok(!zero.data.resolutions.some((r) => r.kind === "sharesFromOutstanding"));
+test("zero is a share count, and a zero share count is an error at the field that supplied it", () => {
+  const diluted = decodeCompany(parse(mutate(acme(), "market.sharesDilutedM", 0)));
+  assert.equal(diluted.success, false);
+  assert.deepEqual(
+    diluted.error?.map((e) => [e.rule, e.path]),
+    [["semantic.zeroShares", "market.sharesDilutedM"]],
+    "0 was used as the diluted count, not treated as missing",
+  );
+
+  const outstanding = decodeCompany(
+    parse(mutate(mutate(acme(), "market.sharesDilutedM", null), "market.sharesOutstandingM", 0)),
+  );
+  assert.deepEqual(
+    outstanding.error?.map((e) => [e.rule, e.path]),
+    [["semantic.zeroShares", "market.sharesOutstandingM"]],
+  );
+});
+
+test("totalEquity rescales with the other aggregates", () => {
+  const result = decodeCompany(parse(dual()));
+  assert.equal(result.data?.company.balanceSheet.totalEquity, 400);
+  const nothing = decodeCompany(parse(mutate(acme(), "balanceSheet.totalEquity", null)));
+  assert.equal(nothing.data?.company.balanceSheet.totalEquity, null);
 });
 
 test("a null diluted count falls back and records why", () => {

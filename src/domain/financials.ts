@@ -36,7 +36,10 @@ export type FiscalYear = Period & {
   readonly endDate: IsoDate;
 };
 
+/** The LTM row the math uses, dated so results can name the base period. */
+export type OperatingLtm = Period & { readonly endDate: IsoDate };
+
 export type OperatingFinancials = {
-  readonly ltm: Period | null;
+  readonly ltm: OperatingLtm | null;
   readonly fiscalYears: NonEmpty<FiscalYear>;
 };

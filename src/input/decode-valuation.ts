@@ -9,6 +9,7 @@ import type { Company } from "../domain/company.ts";
 import type {
   FiscalYear,
   OperatingFinancials,
+  OperatingLtm,
   Period,
   ReportedPeriod,
 } from "../domain/financials.ts";
@@ -90,10 +91,11 @@ function toOperatingFinancials(company: Company): DecodeResult<OperatingFinancia
     if (period.success) years.push({ ...period.data, fy: year.fy, endDate: year.endDate });
     else errors.push(...period.error);
   }
-  let ltm: Period | null = null;
+  let ltm: OperatingLtm | null = null;
   if (company.financials.ltm !== null) {
-    const period = toPeriod(company.financials.ltm, "financials.ltm");
-    if (period.success) ltm = period.data;
+    const reported = company.financials.ltm;
+    const period = toPeriod(reported, "financials.ltm");
+    if (period.success) ltm = { ...period.data, endDate: reported.endDate };
     else errors.push(...period.error);
   }
   if (errors.length > 0) return failed(errors);
