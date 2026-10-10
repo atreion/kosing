@@ -7,7 +7,7 @@ import type { Company } from "../domain/company.ts";
 import type { Valuation } from "../domain/valuation.ts";
 import { assertNever } from "../exhaustive.ts";
 import type { Decoded } from "../input/decode.ts";
-import type { Resolution } from "../input/errors.ts";
+import type { Resolution, Warning } from "../input/errors.ts";
 import { computeDcf, type DcfInputs } from "../math/dcf.ts";
 import { computeFxSensitivity, type FxPairResult } from "../math/fx.ts";
 import { computeMultiples } from "../math/multiples.ts";
@@ -142,6 +142,26 @@ function value(valuation: Valuation, company: Company): Valued {
   }
 }
 
+/**
+ * Decode cannot order whole paths, only the values they produce can be
+ * ordered, so an analyst's sign slip is caught here rather than letting V1 be
+ * answered from the wrong side.
+ */
+function scenarioWarnings(valuation: ValuationSection | null): Warning[] {
+  if (valuation?.method !== "dcf" || valuation.scenarios === null) return [];
+  const { bear, bull } = valuation.scenarios;
+  if (bear === null || bull === null) return [];
+  const base = valuation.valuePerShare;
+  if (bear.valuePerShare <= base && base <= bull.valuePerShare) return [];
+  return [
+    {
+      rule: "scenarioOrderInverted",
+      path: "method.scenarios",
+      message: `bear ${bear.valuePerShare.toFixed(2)}, base ${base.toFixed(2)}, bull ${bull.valuePerShare.toFixed(2)} per share are not in order`,
+    },
+  ];
+}
+
 function fxSection(
   company: Company,
   fxBase: FxBase | null,
@@ -190,6 +210,6 @@ export function assemble(
       ...valued.resolutions,
       ...fx.resolutions,
     ],
-    warnings: decoded.warnings,
+    warnings: [...decoded.warnings, ...scenarioWarnings(valued.valuation)],
   };
 }

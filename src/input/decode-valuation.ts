@@ -230,7 +230,9 @@ export function decodeValuation(
       let costOfCapital = company.costOfCapital;
       if (overrides.beta !== null) {
         resolutions.push({ kind: "betaOverridden", from: costOfCapital.beta, to: overrides.beta });
-        costOfCapital = { ...costOfCapital, beta: overrides.beta };
+        // The alternative is the beta facts resolved, so results show what the override changed.
+        const alternativeBeta = costOfCapital.beta === overrides.beta ? null : costOfCapital.beta;
+        costOfCapital = { ...costOfCapital, beta: overrides.beta, alternativeBeta };
       }
       if (overrides.wacc !== null) resolutions.push({ kind: "waccOverridden", to: overrides.wacc });
       if (overrides.taxRate !== null) {

@@ -217,3 +217,23 @@ test("scenarios reach the domain as paths, without their rationale", () => {
   if (none.data?.valuation.method !== "dcf") throw new Error("unreachable");
   assert.equal(none.data.valuation.assumptions.scenarios, null);
 });
+
+test("under a beta override the alternative is the beta facts resolved, unless they are equal", () => {
+  const measured = mutate(acme(), "costOfCapital.betaCompany", 0.76);
+  const override = (beta: number) =>
+    mutate(
+      mutate(loadFixture("acme-dcf.case"), "overrides.beta", beta),
+      "overrides.rationale",
+      "why",
+    );
+  const toSector = run(measured, override(1.1));
+  if (toSector.data?.valuation.method !== "dcf") throw new Error("unreachable");
+  assert.equal(toSector.data.valuation.costOfCapital.beta, 1.1);
+  assert.equal(toSector.data.valuation.costOfCapital.alternativeBeta, 0.76);
+  const toThird = run(measured, override(0.9));
+  if (toThird.data?.valuation.method !== "dcf") throw new Error("unreachable");
+  assert.equal(toThird.data.valuation.costOfCapital.alternativeBeta, 0.76);
+  const same = run(measured, override(0.76));
+  if (same.data?.valuation.method !== "dcf") throw new Error("unreachable");
+  assert.equal(same.data.valuation.costOfCapital.alternativeBeta, null);
+});

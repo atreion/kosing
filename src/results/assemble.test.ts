@@ -49,7 +49,11 @@ test("inputs echo the case and the decoded company", () => {
   assert.equal(r.inputs.classification, "garp");
   assert.deepEqual(r.inputs.theses, ["ai-disruption-overreaction", "eu-digital-sovereignty"]);
   assert.equal(r.inputs.company, d.company);
-  assert.equal(r.warnings, d.warnings);
+  assert.deepEqual(
+    r.warnings,
+    d.warnings,
+    "no scenarios, so nothing is added to decode's warnings",
+  );
 });
 
 test("derived carries market cap, EV, net debt, other claims, multiples and the facts' wacc", () => {
@@ -217,4 +221,23 @@ test("the dcf is also valued on the beta that was not used, unless the wacc is o
   const sector = assemble(decoded(acme(), dcfCase()));
   if (sector.valuation?.method !== "dcf") throw new Error("unreachable");
   assert.equal(sector.valuation.alternativeBeta, null);
+});
+
+test("scenarios that value in the wrong order raise a warning, not a silent swap", () => {
+  const inverted = mutate(dcfCase(), "method.scenarios", {
+    bear: paths(0.2, 0.3, "labelled bear"),
+    bull: paths(0.0, 0.05, "labelled bull"),
+  });
+  const r = assemble(decoded(acme(), inverted));
+  assert.deepEqual(
+    r.warnings.filter((w) => w.rule === "scenarioOrderInverted").map((w) => w.path),
+    ["method.scenarios"],
+  );
+  const ordered = mutate(dcfCase(), "method.scenarios", {
+    bear: paths(0.0, 0.1, "down"),
+    bull: paths(0.08, 0.14, "up"),
+  });
+  assert.ok(
+    !assemble(decoded(acme(), ordered)).warnings.some((w) => w.rule === "scenarioOrderInverted"),
+  );
 });

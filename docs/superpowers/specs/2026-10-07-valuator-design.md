@@ -539,6 +539,7 @@ Advisory, never fatal, computed over the decoded `Company` with fixed paths.
 | --- | --- |
 | `casePredatesFacts` | `case.factsAsOf` is set and earlier than `facts.asOf` |
 | `ltmOlderThanFiscalYear` | `financials.ltm.endDate` is earlier than the latest fiscal year's `endDate` |
+| `scenarioOrderInverted` | a `dcf` case's bear, base and bull values per share are not in ascending order; raised by results, path `method.scenarios` |
 
 Python's `rf_basis_consistency` warning (a substring heuristic matching
 `risk_free_basis` against a per-currency table of country hints) is not
@@ -687,7 +688,8 @@ valuation   null | one of:
     scenarios: { bear: ScenarioValue | null, bull: ScenarioValue | null } | null,
     alternativeBeta: { beta, costOfEquity, wacc, valuePerShare: number | null } | null }
     — ScenarioValue: { valuePerShare, enterpriseValue, equityValue, terminalValuePctOfEv };
-      alternativeBeta is null without an alternative beta or under a WACC override
+      alternativeBeta is null without an alternative beta or under a WACC override; under a
+      beta override it is the beta facts resolved (null when the override equals it)
   { method: "normalisedEarnings", revenueBase: { kind, value, window|null },
     scenarios: { bear, base, bull: { ebit, ev, equity, valuePerShare } },
     ltmEbitMargin: number|null }
