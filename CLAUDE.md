@@ -4,7 +4,7 @@ The investment workbench, replacing the Python `../invest` repository piece by
 piece until nothing is left there. A funnel of four roles: a researcher (AI)
 writes `facts.json`, an analyst (AI) writes `case.json`, the valuator (this
 code, deterministic) computes `results.json`, an advisor (AI) reads it. The
-valuator is the first piece. Design: `docs/superpowers/specs/2026-10-07-valuator-design.md`.
+valuator is built (plans 1 and 2); the researcher, analyst and advisor skills are next. Design: `docs/superpowers/specs/2026-10-07-valuator-design.md`.
 
 ## Working agreement
 

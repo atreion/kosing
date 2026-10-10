@@ -497,7 +497,9 @@ Every fallback is data, formatted into a sentence only when an AI reads it.
 | `revenueBaseFromLtm` | normalised earnings with the `ltm` policy |
 | `revenueBaseAveraged` | normalised earnings with `averageFy`; carries the window |
 | `dcfBasePeriodFromFiscalYear` | the DCF selector used the latest fiscal year because `ltm` is null |
-| `reverseDcfUnavailable` | no usable base period exists, meaning none with non-null revenue, EBIT, capex and depreciationAmortization, which a projection needs; carries the reason |
+| `reverseDcfUnavailable` | no usable base period exists, meaning none with non-null revenue, EBIT, capex and depreciationAmortization, which a projection needs; carries one of `noUsableBasePeriod`, `terminalGrowthNotBelowWacc`, `noGrowthInBracketMatchesPrice` |
+| `dcfUnavailable` | the case's terminal growth is not below the WACC that applies; carries the reason |
+| `fxUnavailable` | facts carry `fx` but there is no DCF valuation to revalue |
 
 Share count fallback and beta fallback use explicit null checks, never `||`. A
 share count of `0` is a share count.
@@ -620,15 +622,15 @@ analyst conventionally supplied.
 | Module | Inputs from | Computes |
 | --- | --- | --- |
 | `wacc` | `Company`, or the `dcf` branch's cost of capital | cost of equity (CAPM with country premium), after-tax cost of debt, WACC; the `dcf` branch's `waccOverride` replaces the result |
-| `reverse-dcf` | `Company` | the constant revenue growth over the horizon that makes DCF value equal the current price, holding the base period's EBIT margin, capex and D&A ratios and the computed WACC; `null` with a reason when no usable base period exists |
+| `reverse-dcf` | `Company` | the constant revenue growth over the horizon that makes DCF value equal the current price, holding the base period's EBIT margin, capex and D&A ratios and the computed WACC; `null` with a reason when no usable base period exists; horizon and terminal growth are selector options echoed in results; unsolvable with a reason when the bracket [-0.5, 1.0] does not straddle the price |
 | `multiples` | `Company` | current P/E, EV/EBIT, EV/EBITDA, EV/revenue, P/B from derived figures; position of each against its historical band and the peer set |
-| `fx` | `Company` | value per share under spot moves of ±5 %, ±10 % on each relevant pair, when `fx` is present |
-| `dcf` | `Company` + `dcf` valuation | ten-year projection, terminal value by the chosen method, EV, equity value, value per share, terminal-value share of EV; the existing `computeDcf` |
-| `sensitivity` | the `dcf` inputs + axes | value per share over the WACC × terminal-growth grid, with the base case at the centre |
+| `fx` | `Company` + the `dcf` valuation's inputs | value per share under spot moves of ±5 %, ±10 % on each exposure in a currency other than the reporting one, as a translation shock through the DCF; `null` with `fxUnavailable` when there is no DCF valuation |
+| `dcf` | `Company` + `dcf` valuation | ten-year projection, terminal value by the chosen method, EV, equity value, value per share, terminal-value share of EV; terminal value reported both undiscounted and at present value; a typed `undefined` outcome when terminal growth is not below WACC |
+| `sensitivity` | the `dcf` inputs + axes | value per share over the WACC × terminal-growth grid, with the base case at the centre; cells the Gordon formula cannot define are `null`; with an exit-multiple terminal the growth axis is `null` and the grid is n × 1 |
 | `normalised-earnings` | `Company` + `normalisedEarnings` valuation | revenue base × margin × multiple → EV → equity → per share, for bear, base and bull; LTM margin as a comparison reference when present |
 | `nav` | `Company` + `nav` valuation | sum of fair values, less parent net debt, less the warranted discount, per share; look-through NAV reported beside it when supplied |
 
-`linearFade(from, to, years)` remains a shared helper for building paths.
+No shared path helper exists yet; the case supplies ten-number paths and the reverse DCF uses constant growth.
 `require_positive` and every other re-check inside the math disappears: inputs
 arrive branded from decode and the math never re-validates.
 
@@ -660,13 +662,14 @@ derived {
   wacc        { costOfEquity, afterTaxCostOfDebt, wacc }   — from facts alone, never overridden
 }
 pricedIn {
-  reverseDcf   { impliedGrowth, basePeriod: { kind, fy|null, endDate }, horizonYears } | null
+  reverseDcf   { impliedGrowth, basePeriod: { kind: "ltm"|"fiscalYear", fy: number|null, endDate },
+                 horizonYears, terminalGrowth } | null
   multiples     [{ metric, current, band5y, band10y, position: "below"|"within"|"above"|null,
                    peerMedian: number|null }, ...]
 }
 valuation   null | one of:
-  { method: "dcf", wacc: { costOfEquity, afterTaxCostOfDebt, wacc, overridden: boolean },
-    valuePerShare, enterpriseValue, equityValue, terminalValue,
+  { method: "dcf", basePeriod, wacc: { costOfEquity, afterTaxCostOfDebt, wacc, overridden: boolean },
+    valuePerShare, enterpriseValue, equityValue, terminalValue, pvTerminalValue,
     terminalValuePctOfEv, pvExplicitPeriod, projection: [YearRow × 10],
     terminal: { kind, ... }, notes: [...] }
   { method: "normalisedEarnings", revenueBase: { kind, value, window|null },
@@ -674,8 +677,9 @@ valuation   null | one of:
     ltmEbitMargin: number|null }
   { method: "nav", grossAssetValue, parentNetDebt, nav, discountApplied,
     valuePerShare, lookThroughNav: number|null, holdings: [...] }
-sensitivity   { axes: { wacc: [...], terminalGrowth: [...] }, grid: [[number]], base: [i, j] } | null
-fx            [{ pair, moves: [{ pct, valuePerShare }, ...] }, ...] | null
+sensitivity   { axes: { wacc: [...], terminalGrowth: [...] | null }, grid: [[number | null]], base: [i, j] } | null
+fx            [{ pair, moves: [{ pct, valuePerShare: number | null }, ...] }, ...] | null
+              — null without fx or without a DCF valuation; [] with fx but no relevant exposure
 resolutions   [Resolution, ...]
 warnings      [Warning, ...]
 ```
@@ -771,13 +775,18 @@ src/
     financials.ts       Financials, Period, FiscalYear, OperatingFinancials
     valuation.ts        Valuation, CyclicalRevenueBase, Holding, the assumption types
   select/             DOMAIN to MATH, pure and total
-    wacc.ts  reverse-dcf.ts  multiples.ts  fx.ts  dcf.ts  sensitivity.ts  normalised-earnings.ts  nav.ts
-  math/               MATH, pure
-    wacc.ts  reverse-dcf.ts  multiples.ts  fx.ts  dcf.ts  sensitivity.ts  normalised-earnings.ts  nav.ts
-    linear-fade.ts
+    base-period.ts  wacc.ts  derived.ts  multiples.ts  reverse-dcf.ts
+    dcf.ts (with sensitivity)  normalised-earnings.ts  nav.ts  fx.ts
+  math/               MATH, pure, own input types
+    wacc.ts  dcf.ts  reverse-dcf.ts  sensitivity.ts  multiples.ts
+    normalised-earnings.ts  nav.ts  fx.ts
   results/
-    assemble.ts         Decoded + math outputs to results.json
+    types.ts            Results and its sections, ValuatorOptions
+    priced-in.ts        multiples rows, reverse DCF section
+    assemble.ts         Decoded + options to results.json
+  valuate.ts          facts + case to results, in-process
   cli.ts
+  cli.e2e.test.ts     spawns the real process
   exhaustive.ts
   test-utils.ts
   index.ts
@@ -795,7 +804,7 @@ and shared by two branches.
 
 **As-is.** `src/domain/types.ts` minus `DeferredClassification`.
 `src/exhaustive.ts`, `src/test-utils.ts`. The arithmetic in `dcf.ts` and
-`wacc.ts`, which move to `src/math/` and lose their parse layers.
+`wacc.ts` moved to `src/math/` and lost its parse layers (plan 2).
 
 **Reshaped.** The three wire files written against the old schema
 (`src/dossier/primitives.ts`, `financials.ts`, `market.ts`) are raw material for
@@ -823,10 +832,10 @@ was built, and Claude says what it is unsure of.
 Two plans from this spec, core first. The skills spec cannot start until plan 1
 has emitted a schema for the researcher to target.
 
-1. **Inputs and decode.** `src/input/`, `src/domain/`, `kosing schema`,
+1. **Inputs and decode.** Done: `docs/superpowers/plans/2026-10-08-valuator-inputs-and-decode.md`. `src/input/`, `src/domain/`, `kosing schema`,
    fixtures, boundary tests. Done when a hand-written valid pair decodes into
    `Decoded` and every invalid fixture is rejected by rule name and path.
-2. **Math, results, CLI.** The six remaining math modules, selectors,
+2. **Math, results, CLI.** Done: `docs/superpowers/plans/2026-10-10-valuator-math-and-results.md`. The six remaining math modules, selectors,
    `src/results/`, `kosing value`, properties, worked examples, the end-to-end
    run. Done when the end-to-end test passes and the Nova golden is gone.
 
