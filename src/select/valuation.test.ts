@@ -156,3 +156,45 @@ test("fx needs a dcf; with one, a move shifts base revenue and every year's marg
     "more revenue at the same costs is worth more",
   );
 });
+
+test("fx is unavailable when the dcf base period has no positive revenue", () => {
+  const zero = mutate(
+    mutate(loadFixture("dual.facts"), "financials.fiscalYears.0.revenue", 0),
+    "financials.fiscalYears.0.ebit",
+    0,
+  );
+  const { company, valuation } = pair(zero, mutate(dcfCase(), "ticker", "DUAL"));
+  if (valuation.method !== "dcf" || company.fx === null) throw new Error("unreachable");
+  const s = selectDcf(valuation, company);
+  assert.equal(s.inputs.revenueBase, 0, "fiscalYears.0 is 2025 in file order");
+  const fx = selectFx(company.fx, company.currency, {
+    inputs: s.inputs,
+    baseEbit: s.basePeriodEbit,
+  });
+  assert.deepEqual(fx, { kind: "unavailable", reason: "nonPositiveBaseRevenue" });
+});
+
+test("a null exposure share counts as zero either way round, and says so", () => {
+  const dual = mutate(loadFixture("dual.facts"), "fx.exposures", [
+    { currency: "USD", revenueShare: null, costShare: 0.6 },
+    { currency: "GBP", revenueShare: 0.2, costShare: null },
+    { currency: "EUR", revenueShare: null, costShare: null },
+  ]);
+  const { company, valuation } = pair(dual, mutate(dcfCase(), "ticker", "DUAL"));
+  if (valuation.method !== "dcf" || company.fx === null) throw new Error("unreachable");
+  const s = selectDcf(valuation, company);
+  const fx = selectFx(company.fx, company.currency, {
+    inputs: s.inputs,
+    baseEbit: s.basePeriodEbit,
+  });
+  assert.equal(fx.kind, "ready");
+  if (fx.kind !== "ready") return;
+  assert.deepEqual(fx.exposures, [
+    { pair: "USDEUR", revenueShare: 0, costShare: 0.6 },
+    { pair: "GBPEUR", revenueShare: 0.2, costShare: 0 },
+  ]);
+  assert.deepEqual(fx.resolutions, [
+    { kind: "fxShareAssumedZero", currency: "USD", field: "revenueShare" },
+    { kind: "fxShareAssumedZero", currency: "GBP", field: "costShare" },
+  ]);
+});

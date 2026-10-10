@@ -426,7 +426,7 @@ method   one of:
 
 overrides {
   beta        number | null
-  wacc        number | null — replaces the computed WACC outright
+  wacc        number in (0, 1) | null — replaces the computed WACC outright
   rationale   string | null — required when either is non-null
 }
 
@@ -497,9 +497,10 @@ Every fallback is data, formatted into a sentence only when an AI reads it.
 | `revenueBaseFromLtm` | normalised earnings with the `ltm` policy |
 | `revenueBaseAveraged` | normalised earnings with `averageFy`; carries the window |
 | `dcfBasePeriodFromFiscalYear` | the DCF selector used the latest fiscal year because `ltm` is null |
-| `reverseDcfUnavailable` | no usable base period exists, meaning none with non-null revenue, EBIT, capex and depreciationAmortization, which a projection needs; carries one of `noUsableBasePeriod`, `terminalGrowthNotBelowWacc`, `noGrowthInBracketMatchesPrice` |
-| `dcfUnavailable` | the case's terminal growth is not below the WACC that applies; carries the reason |
-| `fxUnavailable` | facts carry `fx` but there is no DCF valuation to revalue |
+| `reverseDcfUnavailable` | no usable base period exists, meaning none with non-null revenue, EBIT, capex and depreciationAmortization, which a projection needs; carries one of `noUsableBasePeriod`, `discountRateNotPositive`, `terminalGrowthNotBelowWacc`, `noGrowthInBracketMatchesPrice` |
+| `dcfUnavailable` | the WACC that applies is not positive, or the case's terminal growth is not below it by more than 1e-9; carries the reason |
+| `fxUnavailable` | facts carry `fx` but there is no DCF valuation to revalue, or its base period has no positive revenue; carries the reason |
+| `fxShareAssumedZero` | an exposure's `revenueShare` or `costShare` is null and is treated as 0; carries the currency and the field |
 
 Share count fallback and beta fallback use explicit null checks, never `||`. A
 share count of `0` is a share count.

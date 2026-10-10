@@ -37,7 +37,10 @@ export type ReverseDcfOutcome =
   | { readonly kind: "solved"; readonly impliedGrowth: number }
   | {
       readonly kind: "unsolvable";
-      readonly reason: "terminalGrowthNotBelowWacc" | "noGrowthInBracketMatchesPrice";
+      readonly reason:
+        | "discountRateNotPositive"
+        | "terminalGrowthNotBelowWacc"
+        | "noGrowthInBracketMatchesPrice";
     };
 
 export function dcfInputsAtGrowth(inputs: ReverseDcfInputs, growth: number): DcfInputs {
@@ -62,6 +65,7 @@ export function dcfInputsAtGrowth(inputs: ReverseDcfInputs, growth: number): Dcf
 }
 
 export function solveImpliedGrowth(inputs: ReverseDcfInputs): ReverseDcfOutcome {
+  if (inputs.wacc <= 0) return { kind: "unsolvable", reason: "discountRateNotPositive" };
   if (inputs.terminalGrowth >= inputs.wacc) {
     return { kind: "unsolvable", reason: "terminalGrowthNotBelowWacc" };
   }

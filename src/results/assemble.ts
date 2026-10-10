@@ -107,7 +107,7 @@ function fxSection(
   if (s.kind === "unavailable") {
     return { fx: null, resolutions: [{ kind: "fxUnavailable", reason: s.reason }] };
   }
-  return { fx: computeFxSensitivity(s.exposures, moves, s.revalue), resolutions: [] };
+  return { fx: computeFxSensitivity(s.exposures, moves, s.revalue), resolutions: s.resolutions };
 }
 
 export function assemble(

@@ -100,3 +100,13 @@ test("an exit-multiple terminal sweeps wacc only", () => {
   assert.ok(r.grid.every((row) => row.length === 1));
   assert.deepEqual(r.base, [2, 0]);
 });
+
+test("a cell whose spread is float noise is null, in either rounding direction", () => {
+  const r = computeSensitivity({
+    base: { ...base, wacc: 0.05, terminal: { kind: "perpetuityGrowth", growth: 0.01 } },
+    waccSteps: [-0.02, 0],
+    terminalGrowthSteps: [0, 0.02],
+  });
+  assert.equal(r.grid[0]?.[1], null, "wacc 0.03 with growth 0.03");
+  for (const row of r.grid) for (const c of row) assert.ok(c === null || Number.isFinite(c));
+});

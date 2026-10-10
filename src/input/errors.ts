@@ -73,11 +73,23 @@ export type Resolution =
       readonly kind: "reverseDcfUnavailable";
       readonly reason:
         | "noUsableBasePeriod"
+        | "discountRateNotPositive"
         | "terminalGrowthNotBelowWacc"
         | "noGrowthInBracketMatchesPrice";
     }
-  | { readonly kind: "dcfUnavailable"; readonly reason: "terminalGrowthNotBelowWacc" }
-  | { readonly kind: "fxUnavailable"; readonly reason: "noDcfValuation" };
+  | {
+      readonly kind: "dcfUnavailable";
+      readonly reason: "discountRateNotPositive" | "terminalGrowthNotBelowWacc";
+    }
+  | {
+      readonly kind: "fxUnavailable";
+      readonly reason: "noDcfValuation" | "nonPositiveBaseRevenue";
+    }
+  | {
+      readonly kind: "fxShareAssumedZero";
+      readonly currency: string;
+      readonly field: "revenueShare" | "costShare";
+    };
 
 /** Advisory, never fatal. */
 export type Warning = {

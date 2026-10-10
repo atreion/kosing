@@ -67,7 +67,8 @@ export const Method = z.discriminatedUnion("kind", [
 
 export const Overrides = z.strictObject({
   beta: z.number().nullable(),
-  wacc: z.number().nullable(),
+  /** A discount rate, so strictly between 0 and 1. */
+  wacc: z.number().gt(0).lt(1).nullable(),
   rationale: z.string().min(1).nullable(),
 });
 

@@ -72,7 +72,7 @@ export type DcfValue = {
 
 export type DcfUndefined = {
   readonly kind: "undefined";
-  readonly reason: "terminalGrowthNotBelowWacc";
+  readonly reason: "discountRateNotPositive" | "terminalGrowthNotBelowWacc";
 };
 
 export type DcfOutcome = DcfValue | DcfUndefined;
@@ -160,11 +160,20 @@ export function terminalValue(finalYear: YearRow, wacc: number, terminal: Termin
 
 const TERMINAL_DOMINANCE = 0.75;
 
+/**
+ * The smallest wacc - growth the Gordon formula accepts. A sensitivity cell
+ * builds both sides as base + step, and two roundings can leave a spread of
+ * 2e-18 where the true spread is 0, which would price the company at 1e17.
+ * No real case has a spread anywhere near a billionth.
+ */
+const GORDON_MIN_SPREAD = 1e-9;
+
 function gordonIsDefined(wacc: number, terminal: Terminal): boolean {
-  return terminal.kind !== "perpetuityGrowth" || terminal.growth < wacc;
+  return terminal.kind !== "perpetuityGrowth" || wacc - terminal.growth > GORDON_MIN_SPREAD;
 }
 
 export function computeDcf(inputs: DcfInputs): DcfOutcome {
+  if (inputs.wacc <= 0) return { kind: "undefined", reason: "discountRateNotPositive" };
   if (!gordonIsDefined(inputs.wacc, inputs.terminal)) {
     return { kind: "undefined", reason: "terminalGrowthNotBelowWacc" };
   }

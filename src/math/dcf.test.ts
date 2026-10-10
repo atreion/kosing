@@ -225,3 +225,23 @@ test("property: value is continuous in wacc, growth and the growth path", () => 
   const dPath = Math.abs(value({ ...base, years: bumped }) - v);
   for (const d of [dWacc, dGrowth, dPath]) assert.ok(d < 1e-3 * Math.abs(v), `delta ${d}`);
 });
+
+test("a non-positive discount rate is undefined, whatever the terminal", () => {
+  const exit = { kind: "exitMultiple", multiple: 10, on: "evEbit" } as const;
+  for (const wacc of [0, -0.01, -1]) {
+    assert.deepEqual(computeDcf({ ...base, wacc, terminal: exit }), {
+      kind: "undefined",
+      reason: "discountRateNotPositive",
+    });
+  }
+});
+
+test("a Gordon spread lost in float rounding is undefined, not a 1e17 value", () => {
+  // 0.05 - 0.02 rounds to 0.030000000000000002; 0.01 + 0.02 rounds to 0.03.
+  const r = computeDcf({
+    ...base,
+    wacc: 0.05 - 0.02,
+    terminal: { kind: "perpetuityGrowth", growth: 0.01 + 0.02 },
+  });
+  assert.deepEqual(r, { kind: "undefined", reason: "terminalGrowthNotBelowWacc" });
+});

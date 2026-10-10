@@ -149,3 +149,14 @@ test("overrides and sensitivity belong to dcf only", () => {
   assert.equal(r2.success, false);
   assert.ok(r2.error?.issues.some((i) => i.path.join(".") === "sensitivity"));
 });
+
+test("a wacc override is a discount rate strictly between 0 and 1", () => {
+  for (const wacc of [-1, -0.5, 0, 1, 1.5]) {
+    const r = CaseSchema.safeParse(dcfCase({ overrides: { beta: null, wacc, rationale: "why" } }));
+    assert.equal(r.success, false, `wacc ${wacc}`);
+  }
+  const ok = CaseSchema.safeParse(
+    dcfCase({ overrides: { beta: null, wacc: 0.07, rationale: "why" } }),
+  );
+  assert.equal(ok.success, true);
+});
