@@ -38,7 +38,14 @@ Run every command from the Kosing repo root. Read before searching or writing:
      `market.sharesOutstandingM` when diluted is null) is not 0.
 3. **Write `facts.json`.** Every key is present. Anything unknown is `null`
    and also gets a `gaps` entry with the field's path and the reason. Every
-   figure cites a source by id. Units and signs follow the brief.
+   figure cites a source by id. Units and signs follow the brief. A figure
+   taken from a `tertiary` source also gets a `gaps` entry saying why the
+   primary source could not be used.
+
+   Research may be split across several agents. Each writes its own sources;
+   before writing `facts.json`, merge them into one `S1`, `S2`, … sequence in
+   which one document (one URL) has one id, and renumber every reference,
+   including the citations in `research.md`.
 4. **Write `research.md`** with exactly these sections, citing the same `S`
    ids as the facts inline:
    - `## What the business does`: products, customers, how it makes money, segments.

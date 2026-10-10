@@ -16,13 +16,25 @@ authoritative on meaning.
   (`estimates[].eps`) are in `currency`.
 - Share counts are millions, whatever `unit` says.
 - Percentages are fractions: `0.21`, not `21`.
-- Figures keep the sign the statements give them: `capex`, `dividendsPaid`,
-  `interestExpense` and `taxExpense` are negative when they are outflows.
-- `totalDebt` is interest-bearing debt. Operating leases and pensions have
-  their own fields and stay out of `totalDebt`.
+- Figures keep the sign the statements give them: `capex`, `dividendsPaid`
+  and `taxExpense` are negative when they are outflows. `netFinancialResult`
+  is the net financial result as reported: negative when a net cost, positive
+  when net income.
+- `totalDebt` is interest-bearing debt at its carrying amount, as the balance
+  sheet shows it, not the nominal amount from a liquidity table. Operating
+  leases and pensions have their own fields and stay out of `totalDebt`.
 - `totalEquity` is book equity attributable to shareholders.
-- `ltm` is the trailing twelve months to the latest reported quarter. Leave it
-  null when the company does not report quarters.
+- `ltm` is the trailing twelve months to the latest reported quarter or half.
+  Its `sourceRefs` cite every document it was built from, usually the last
+  annual report and the latest interim. Leave it null when the company reports
+  neither quarters nor halves.
+- `market.sharesOutstandingM` is the latest reported count, less any shares
+  the company has disclosed buying back since that date (cite the buyback
+  notice). Do not add reissuances unless they are disclosed too.
+- Each `estimates` row states its `basis`: `reported` when consensus EBIT and
+  EPS are on the IFRS or GAAP basis, `adjusted` when they are on the
+  company's non-GAAP basis. Its `sourceRefs` list every source the row draws
+  on; take revenue, EBIT and EPS from one source when one source has all three.
 
 ## Cost of capital
 
@@ -39,7 +51,10 @@ authoritative on meaning.
   the sector figure, so decode records the substitution, and write both values
   under `## Source conflicts`.
 - `taxRateEffective` from the latest annual report; `taxRateStatutory` is the
-  country's corporate rate.
+  combined rate the company's own tax reconciliation uses when it publishes
+  one, otherwise the country's headline corporate rate. When a one-off (a
+  tax-exempt gain, a settlement) distorts the effective rate, say so under
+  `## Source conflicts` with the underlying rate, so the analyst can override it.
 - `equityWeight` and `debtWeight` at market values on `weightsAsOf`: market
   capitalisation against total debt.
 
@@ -49,8 +64,35 @@ authoritative on meaning.
 in a currency the company does not report in. Then `fx.spotRates` carries that
 pair, in either direction, dated and sourced. `fx.exposures` lists each
 currency with a material share of revenue or costs, with the shares the
-company reports; an unreported share is null. `fx` is null for a company with
-one currency and no material foreign exposure.
+company reports; an unreported share is null. An exposure is only revalued
+when both its revenue and cost shares are known, so look for the cost share
+too: an annual report's FX sensitivity table or cost-by-region note often
+gives it. `fx` is null for a company with one currency and no material
+foreign exposure.
+
+## Software names
+
+For a company selling software or information by subscription, `research.md`
+also records, each sourced:
+
+- the moat type for each major product line: a system of record (the
+  customer's books, contracts, regulated records) or an application layer on
+  top of one;
+- revenue by pricing model, with shares: per seat or user, per entity or
+  site, consumption, licence and support, transactional;
+- seat or user counts, retention or renewal rates, and net revenue retention
+  where disclosed;
+- AI monetisation: products, disclosed uptake, and whether it is priced
+  separately.
+
+Put these under `## Customers and revenue quality`. The advisor reports a
+partial checklist failure with the share of revenue it covers, and these
+figures are where that share comes from.
+
+## Price-to-book
+
+When buybacks or write-downs have shrunk book equity, price-to-book stops
+being comparable with its own history. Say so under `## Source conflicts`.
 
 ## Source hierarchy
 

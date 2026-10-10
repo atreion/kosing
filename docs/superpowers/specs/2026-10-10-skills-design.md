@@ -294,6 +294,31 @@ bars `accumulate` unless an override reason is written in `advice.md`; clearing
 it compels nothing, and the checklist and the four-sentence test still govern;
 a `pass` names the failed question or how far the price missed.
 
+## Amendments after the first runs
+
+The first runs on Wolters Kluwer and SAP (2026-10-10) found gaps recorded in
+`docs/superpowers/findings/2026-10-10-first-company-runs.md`. The skills now
+also do the following.
+
+- **Researcher.** Records, for software and subscription-information names,
+  the moat type per product line, revenue by pricing model, seat counts,
+  retention and AI monetisation. Uses the carrying amount of debt, the
+  company's own reconciliation rate for statutory tax, and a share count net
+  of buybacks disclosed after the period end. Cites every document behind the
+  LTM row and states each estimate's basis. Gives every tertiary figure a gap
+  entry. Merges parallel research into one source sequence.
+- **Analyst.** Writes bear and bull growth and margin paths on every `dcf`
+  case, the bear being the AI-cycle exposure's own bear case as the market
+  outlook defines it. Overrides the cash-flow tax rate when a named one-off
+  distorts the reported one. Fixes a case that no longer decodes when
+  rewriting it.
+- **Advisor.** Answers V1 from the bear scenario. States the required
+  discount on both betas when results carry an alternative. Opens with the
+  two-by-four or marginal call. Learns whether the user holds a name from the
+  user, then the standing documents, and asks only when neither says. Notes
+  that the reverse DCF and multiples include one-offs, and names FX exposures
+  left out for missing shares.
+
 ## The orchestrator: `profiling-company`
 
 Runs researcher, analyst and advisor for one name, skipping a stage whose

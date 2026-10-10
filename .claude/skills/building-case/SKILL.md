@@ -31,7 +31,9 @@ Read:
 
 1. **Check the facts.** Run `npm run --silent kosing -- value <ID>`. If there
    is no `facts.json`, or the run exits 1 on a `facts` error, hand back to
-   `researching-company` and stop.
+   `researching-company` and stop. On a rewrite, an exit 1 on a `case` error
+   means the existing case no longer decodes (often because the format moved
+   on): fix it in this run as part of the rewrite.
 2. **Classify.** Choose the classification from `research.md` and the facts.
    It decides the method.
 
@@ -68,14 +70,27 @@ Read:
    - `rationale` says what the base case assumes and why, including the weight
      given to management guidance. For `dcf`, `terminal.basis` argues the
      terminal figure for this company.
+   - For `dcf`, write `scenarios` with a bear and a bull path for revenue
+     growth and EBIT margin. The bear case is the exposure's own bear case,
+     as the market outlook defines it for the `Level:` in `research.md`:
+     pricing or retention erosion for `disruption`, a capex-cut revenue
+     decline for `picks_and_shovels`, a demand air-pocket for
+     `wealth_effect`, a normal recession for `second_order_only`. The bull
+     case is what the business does if the threat does not land. Each has
+     its own `rationale`. `scenarios` is null only when the rationale says
+     why no credible alternative path exists.
    - `overrides` stay null unless there is a reason, which goes in
-     `overrides.rationale`. A WACC override is a rate strictly between 0 and 1.
+     `overrides.rationale`. A WACC override is a rate strictly between 0 and
+     1. `overrides.taxRate` replaces the cash-flow tax rate when the
+     reported effective rate is distorted by a one-off the research names;
+     it does not change the rate that discounts.
    - `sensitivity` stays null unless a different grid is needed.
 
    Rules the schema cannot show, which decode enforces: scenario triples are
    ordered `bear <= base <= bull`; no scenario multiple exceeds
-   `multipleCeiling` when it is set; overrides and sensitivity are allowed for
-   `dcf` only, and sensitivity steps each include 0.
+   `multipleCeiling` when it is set; overrides (beta, WACC and tax rate) and
+   sensitivity are allowed for `dcf` only, any override needs a rationale,
+   and sensitivity steps each include 0.
 5. **Run `kosing value <ID>` once.** On exit 1, fix `case.json` at each `path`
    (or hand back for a `facts` error) and run again. On exit 3,
    `results.json` could not be written: report the message and stop. Then read

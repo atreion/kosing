@@ -36,7 +36,11 @@ Read:
    `casePredatesFacts` warning is stated first: the case may not reflect the
    current facts.
 2. **Checklist.** Answer every applicable question in the checklist from the
-   documents and results. List each failed or unanswerable question by id. An
+   documents and results. V1 ("does the bear case survive at the current
+   price?") is answered from `valuation.scenarios.bear.valuePerShare`, which
+   both `dcf` and `normalisedEarnings` results carry: the bear case survives
+   when its value is at or above the price. A `dcf` case with no scenarios
+   leaves V1 unanswerable. List each failed or unanswerable question by id. An
    unanswerable applicable question is a data gap, and it weighs toward pass or
    too hard.
 3. **Required discount, with the working shown.**
@@ -48,6 +52,10 @@ Read:
    - Add the add-on for the `Level:` line under `## AI-cycle exposure` in
      `research.md`. If that line is missing, say so: the hurdle cannot be
      stated, and the name goes back to `researching-company`.
+   - When `valuation.alternativeBeta` is present, also compute the entry
+     price on its value per share and say whether the price clears on both
+     betas. A clearance that holds on one beta and not the other is stated
+     as such, not averaged.
    - The base value is `valuation.valuePerShare` for `dcf` and `nav`, and
      `valuation.scenarios.base.valuePerShare` for `normalisedEarnings`. It is
      in the reporting currency.
@@ -71,8 +79,10 @@ Read:
      still govern.
    - A failed applicable question bars `accumulate`. For a name the user does
      not hold, it means `pass`. For a name the user holds, it means `watching`
-     at most, and `advice.md` says what would clear the question. Ask the user
-     whether they hold the name when they have not said.
+     at most, and `advice.md` says what would clear the question. To know
+     whether the user holds the name, use what the user said, then what the
+     standing documents say; ask only when neither says. Name the source in
+     `advice.md`.
    - A partial fail, where the question fails for part of the business, is a
      fail. Report it with the share of revenue it covers.
    - No `case.json` (the analyst found no method) means `tooHard`. A
@@ -86,6 +96,7 @@ Read:
    # <Company name> (<ID>), <YYYY-MM-DD>
 
    ## Classification
+   <classification>. Two-by-four or marginal, with a one-line justification.
    ## The idea in four sentences
    ## Verdict
    <verdict>, <conviction> conviction. <one paragraph why>
@@ -94,7 +105,10 @@ Read:
    ## Checklist
    <failed and unanswerable questions by id, each with one line>
    ## What the numbers say
-   <reverse DCF implied growth, multiples against bands and peers, sensitivity spread, resolutions and warnings that matter>
+   <bear and bull values against the price, reverse DCF implied growth, multiples against bands and peers, sensitivity spread, resolutions and warnings that matter>
+   The reverse DCF and current multiples use reported figures, one-offs
+   included; say so when the research names a large one-off. FX rows cover
+   only exposures with both shares known; name any `fxExposureIncomplete`.
    ## What would change the verdict
    ```
 
