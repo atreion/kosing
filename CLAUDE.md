@@ -23,6 +23,18 @@ feedback; the goal is a working, reliable core as soon as possible.
   the reviewer.
 - "Kosing" is capitalized in prose; `kosing` only in code identifiers and paths.
 
+## Skills and data
+
+The researcher, analyst and advisor are skills in `.claude/skills/`:
+`researching-company`, `building-case`, `advising-on-company`, and
+`profiling-company` to chain them. They work over a private data repo that
+`kosing where` locates through `DATA_PATH` (environment first, then a
+git-ignored `.env` at the repo root; see `.env.example`). Run them from this
+repo's root. Design: `docs/superpowers/specs/2026-10-10-skills-design.md`.
+
+The `../invest` repo is kept unchanged for comparison runs. Nothing in Kosing
+writes to it.
+
 ## Toolchain
 
 - Source runs via tsx (`node --import tsx`), no build step. `tsc --noEmit`
