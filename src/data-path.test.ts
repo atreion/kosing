@@ -84,3 +84,14 @@ test("a company directory is companies/<id> under the data path", () => {
   assert.ok(id);
   assert.equal(companyDir("/data", id), join("/data", "companies", "BRK.B.NYSE"));
 });
+
+test("every DATA_PATH error points at .env.example", () => {
+  for (const r of [
+    resolveDataPath({}, null, existing([])),
+    resolveDataPath({ DATA_PATH: "data" }, null, existing(["data"])),
+    resolveDataPath({ DATA_PATH: "/nowhere" }, null, existing([])),
+  ]) {
+    assert.equal(r.ok, false);
+    if (!r.ok) assert.match(r.message, /\.env\.example/, r.reason);
+  }
+});

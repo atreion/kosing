@@ -19,8 +19,12 @@ export type CliIo = {
   /** Throws when the file cannot be read. */
   readonly readFile: (path: string) => string;
   readonly env: Readonly<Record<string, string | undefined>>;
-  /** The text of .env at the repo root, or null when there is none. */
-  readonly envFile: string | null;
+  /**
+   * Reads .env at the repo root, or null when there is none. A function, so
+   * only commands that resolve DATA_PATH read it and a broken file cannot
+   * stop `schema` or `value --facts`.
+   */
+  readonly envFile: () => string | null;
   readonly isDirectory: (path: string) => boolean;
   readonly fileExists: (path: string) => boolean;
   readonly writeFile: (path: string, text: string) => void;
@@ -110,7 +114,7 @@ function runValueFiles(args: ValueArgs, io: CliIo): number {
 
 /** Resolves DATA_PATH, or reports why not. Exit 2 is the caller's. */
 function dataPath(io: CliIo, echo: boolean): string | null {
-  const resolved = resolveDataPath(io.env, io.envFile, io.isDirectory);
+  const resolved = resolveDataPath(io.env, io.envFile(), io.isDirectory);
   if (!resolved.ok) {
     io.stderr(`${resolved.message}\n`);
     return null;
@@ -234,7 +238,7 @@ if (isMain(import.meta.url, process.argv[1])) {
     stderr: (text) => process.stderr.write(text),
     readFile: (path) => readFileSync(path, "utf8"),
     env: process.env,
-    envFile: readEnvFile(),
+    envFile: readEnvFile,
     isDirectory: (path) => existsSync(path) && statSync(path).isDirectory(),
     fileExists: (path) => existsSync(path),
     writeFile: writeFileAtomic,

@@ -26,7 +26,7 @@ function capture(files: Record<string, string> = {}, options: CaptureOptions = {
         return text;
       },
       env: options.env ?? {},
-      envFile: options.envFile ?? null,
+      envFile: () => options.envFile ?? null,
       isDirectory: (path: string) => (options.dirs ?? []).includes(path),
       fileExists: (path: string) => path in fs,
       writeFile: (path: string, text: string) => {
@@ -154,7 +154,7 @@ test("where prints the data path, from the environment or from .env, environment
     {},
     { env: { DATA_PATH: DATA }, envFile: "DATA_PATH=/file\n", dirs: [DATA, "/file"] },
   );
-  runCli(["where"], both.io);
+  assert.equal(runCli(["where"], both.io), 0);
   assert.equal(both.out.join(""), "/data\n");
 });
 
@@ -265,4 +265,16 @@ test("writeFileAtomic replaces the file whole and leaves no temporary behind", (
   assert.equal(readFileSync(target, "utf8"), "later");
   assert.deepEqual(readdirSync(dir), ["results.json"]);
   rmSync(dir, { recursive: true, force: true });
+});
+
+test("a broken .env only fails the commands that need DATA_PATH", () => {
+  const broken = () => {
+    throw new Error("EISDIR: illegal operation on a directory");
+  };
+  const schema = capture();
+  assert.equal(runCli(["schema", "facts"], { ...schema.io, envFile: broken }), 0);
+  const files = capture({ "f.json": fixture("acme.facts") });
+  assert.equal(runCli(["value", "--facts", "f.json"], { ...files.io, envFile: broken }), 0);
+  const where = capture({}, withData);
+  assert.throws(() => runCli(["where"], { ...where.io, env: {}, envFile: broken }), /EISDIR/);
 });

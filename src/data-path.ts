@@ -69,14 +69,14 @@ export function resolveDataPath(
     return {
       ok: false,
       reason: "notAbsolute",
-      message: `${DATA_PATH_KEY} must be an absolute path, got ${value}`,
+      message: `${DATA_PATH_KEY} must be an absolute path, got ${value}; see .env.example.`,
     };
   }
   if (!isDirectory(value)) {
     return {
       ok: false,
       reason: "notADirectory",
-      message: `${DATA_PATH_KEY} is ${value}, which is not a directory`,
+      message: `${DATA_PATH_KEY} is ${value}, which is not a directory; see .env.example.`,
     };
   }
   return { ok: true, path: value };
