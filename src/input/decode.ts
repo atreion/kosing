@@ -31,8 +31,6 @@ export type Decoded = {
   readonly aiExposure: AiExposure | null;
   /** The facts snapshot the case was written against; echoed in results. */
   readonly caseFactsAsOf: IsoDate | null;
-  /** Passed through for the advisor; empty without a case. */
-  readonly theses: readonly string[];
   readonly resolutions: readonly Resolution[];
   readonly warnings: readonly Warning[];
 };
@@ -77,7 +75,6 @@ export function decode(factsJson: unknown, caseJson?: unknown): DecodeResult<Dec
     classification: investmentCase?.classification ?? null,
     aiExposure: investmentCase?.aiExposure ?? null,
     caseFactsAsOf: investmentCase?.factsAsOf ?? null,
-    theses: investmentCase?.theses ?? [],
     resolutions,
     warnings: collectWarnings(facts, investmentCase, company.data.company),
   });

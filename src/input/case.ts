@@ -1,7 +1,7 @@
 /**
  * case.json: the analyst's case for investing in one company. Which valuation
- * applies, on what assumptions, and which world-view theses it rests on. The
- * valuator takes the method as given and decides nothing.
+ * applies and on what assumptions. The valuator takes the method as given and
+ * decides nothing.
  *
  * `case` is a reserved word, so the schema is CaseSchema, the type Case, and a
  * variable holding one is investmentCase.
@@ -114,9 +114,6 @@ const CaseShape = z.strictObject({
     .describe(
       "The company's strongest channel of exposure to the AI cycle: direct (revenue depends on AI compute or model economics), picksAndShovels (a material share from datacentre capex), wealthEffect (demand from customers' financial gains), disruption (AI substitutes for the product or compresses its pricing), secondOrderOnly (the general recession channel only). Sets the add-on to the required discount; the bear case should carry it.",
     ),
-  theses: z
-    .array(z.string().min(1))
-    .describe("Slugs of theses in the data repo the case rests on. May be empty."),
   method: Method.describe(
     "The base case is the most likely outcome, not a hoped-for one. Every assumption is argued in rationale and cites sources from the facts.",
   ),

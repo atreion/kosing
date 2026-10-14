@@ -21,20 +21,14 @@ for (const [f, c] of pairs) {
 }
 
 for (const f of VALID_FIXTURES.facts) {
-  test(`${f} decodes alone, with no valuation and empty theses`, () => {
+  test(`${f} decodes alone, with no valuation`, () => {
     const result = decode(loadFixture(f));
     assert.ok(result.success, JSON.stringify(result.error));
     assert.equal(result.data.valuation, null);
     assert.equal(result.data.classification, null);
     assert.equal(result.data.aiExposure, null);
-    assert.deepEqual(result.data.theses, []);
   });
 }
-
-test("theses pass through untouched", () => {
-  const result = decode(loadFixture("acme.facts"), loadFixture("acme-dcf.case"));
-  assert.deepEqual(result.data?.theses, ["ai-disruption-overreaction", "eu-digital-sovereignty"]);
-});
 
 test("schema errors from both files are reported together, with file and dotted path", () => {
   const badFacts = mutate(loadFixture("acme.facts"), "market.price", -1);

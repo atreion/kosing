@@ -4,7 +4,6 @@
   "factsAsOf": "2026-10-01",
   "classification": "valueCyclical",
   "aiExposure": "picksAndShovels",
-  "theses": [],
   "method": {
     "kind": "normalisedEarnings",
     "revenueBase": {

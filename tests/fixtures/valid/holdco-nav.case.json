@@ -4,7 +4,6 @@
   "factsAsOf": null,
   "classification": "holdingCompany",
   "aiExposure": "secondOrderOnly",
-  "theses": ["nordic-holdco-discount-compression"],
   "method": {
     "kind": "nav",
     "warrantedDiscount": 0.2,

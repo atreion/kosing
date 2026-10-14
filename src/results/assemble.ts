@@ -200,7 +200,6 @@ export function assemble(
       caseFactsAsOf: decoded.caseFactsAsOf,
       classification: decoded.classification,
       aiExposure: decoded.aiExposure,
-      theses: decoded.theses,
       company,
     },
     derived: { ...derived, multiples, wacc },

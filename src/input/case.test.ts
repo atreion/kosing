@@ -11,7 +11,6 @@ export function dcfCase(over: Record<string, unknown> = {}) {
     factsAsOf: "2026-10-01",
     classification: "garp",
     aiExposure: "secondOrderOnly",
-    theses: ["ai-disruption-overreaction"],
     method: {
       kind: "dcf",
       revenueGrowthPath: ten,
@@ -135,8 +134,8 @@ test("sensitivity steps must include zero", () => {
   assert.ok(r.error?.issues.some((i) => i.path.join(".") === "sensitivity.waccSteps"));
 });
 
-test("theses may be empty and classification is closed", () => {
-  assert.equal(CaseSchema.safeParse(dcfCase({ theses: [] })).success, true);
+test("a case cites no theses and its classification is closed", () => {
+  assert.equal(CaseSchema.safeParse(dcfCase({ theses: [] })).success, false);
   assert.equal(CaseSchema.safeParse(dcfCase({ classification: "unicorn" })).success, false);
 });
 

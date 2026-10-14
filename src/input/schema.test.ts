@@ -163,7 +163,6 @@ const DESCRIBED_FIELDS: Record<"facts" | "case", readonly string[]> = {
     "factsAsOf",
     "classification",
     "aiExposure",
-    "theses",
     "method",
     "method.revenueGrowthPath",
     "method.capexPctRevenuePath",

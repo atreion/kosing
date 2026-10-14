@@ -11,7 +11,8 @@ Run commands from the Kosing repo root.
 1. **Facts.** Read `$D/facts.json` and `$D/research.md`. If they are missing,
    or the user wants them fresh, use `researching-company` first. Read the
    previous `$D/advice.md` if there is one: it holds the position the user
-   last stated and any tests written before a report.
+   last stated and any tests written before a report. When that report has
+   landed, check those tests first and say which passed and which failed.
 2. **Case.** Write `$D/case.json` against `npm run --silent kosing -- schema case`,
    with bear and bull scenarios and the company's AI-cycle exposure. The base
    case is what you believe, not a number discounted for safety: the margin
@@ -23,16 +24,21 @@ Run commands from the Kosing repo root.
    warning means refresh the price with `researching-company` first.
 4. **Analyse.** Your own judgement on the business, what the price implies,
    and what it is worth, using the results' numbers rather than your own
-   arithmetic.
-5. **Lenses.** Read `$DATA/standing/*.md` and the theses in `$DATA/theses/`.
-   Say where each bears on this company, and where you depart from it and why.
+   arithmetic. If the case rests on the market being wrong, say what the
+   market believes instead, why you think it is wrong, and what would show
+   that you are the one who is wrong.
+5. **Lenses.** Read `$DATA/standing/*.md`. Say where each bears on this
+   company, and where you depart from it and why.
    One rule is hard: the required discount. `results.json`'s `hurdle` gives
    the entry price and whether the price clears it. No `accumulate` unless it
    clears, or `advice.md` gives a written reason to override it.
 6. **Write `$D/advice.md`.** Lead with the verdict (`watching`, `accumulate`,
    `pass` or `tooHard`) and a conviction, the entry price and the price. Then
-   whatever the analysis needs, the lenses, the user's position if known, and
-   what would change the verdict.
+   whatever the analysis needs, the lenses, the user's position if known (and
+   whether other names they hold are the same bet), and what would change the
+   verdict. When the next report can confirm or break the case, end with tests
+   written before it: the figure, the threshold, its last value, and the
+   report date. Only figures the company actually discloses.
 7. `git -C "$D" add case.json results.json advice.md && git -C "$D" commit -m "advice(<ID>): <verdict>"`
 
 Nothing is pushed.

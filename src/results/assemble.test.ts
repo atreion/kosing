@@ -38,7 +38,6 @@ for (const f of VALID_FIXTURES.facts) {
     assert.equal(r.inputs.classification, null);
     assert.equal(r.inputs.aiExposure, null);
     assert.equal(r.inputs.valuedOn, null);
-    assert.deepEqual(r.inputs.theses, []);
     assert.equal(r.inputs.caseFactsAsOf, null);
     assert.equal(r.pricedIn.multiples.length, 5);
     assertAllFinite(r);
@@ -53,7 +52,6 @@ test("inputs echo the case and the decoded company", () => {
   assert.equal(r.inputs.caseFactsAsOf, "2026-10-01");
   assert.equal(r.inputs.classification, "garp");
   assert.equal(r.inputs.aiExposure, "disruption");
-  assert.deepEqual(r.inputs.theses, ["ai-disruption-overreaction", "eu-digital-sovereignty"]);
   assert.equal(r.inputs.company, d.company);
   assert.deepEqual(
     r.warnings,
@@ -293,7 +291,7 @@ test("the hurdle is also stated on the alternative beta", () => {
 });
 
 test("a price quoted outside the reporting currency gets the entry price in that currency too", () => {
-  const c = mutate(mutate(dcfCase(), "ticker", "DUAL"), "theses", []);
+  const c = mutate(dcfCase(), "ticker", "DUAL");
   const r = assemble(decoded(loadFixture("dual.facts"), c));
   const t = r.hurdle?.trading;
   assert.ok(r.hurdle && t);

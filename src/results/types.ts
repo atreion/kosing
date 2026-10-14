@@ -145,7 +145,6 @@ export type Results = {
     readonly caseFactsAsOf: IsoDate | null;
     readonly classification: Classification | null;
     readonly aiExposure: AiExposure | null;
-    readonly theses: readonly string[];
     readonly company: Company;
   };
   /** From facts alone; the wacc here is never overridden. */
