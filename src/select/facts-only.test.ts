@@ -40,11 +40,11 @@ test("wacc inputs take the discounting tax rate", () => {
   assert.equal(w.countryPremium, 0);
 });
 
-test("derived figures: market cap is price x shares in millions, EV adds net debt", () => {
+test("derived figures: market cap is price x shares in millions, EV adds net debt and leases", () => {
   const d = selectDerived(company("acme.facts"));
   assert.equal(d.marketCap, 212 * 115);
   assert.equal(d.netDebt, 2000);
-  assert.equal(d.enterpriseValue, 212 * 115 + 2000);
+  assert.equal(d.enterpriseValue, 212 * 115 + 2000 + 700);
   assert.deepEqual(d.otherClaims, { operatingLeaseLiabilities: 700, pensionObligations: 450 });
 });
 
@@ -57,7 +57,7 @@ test("multiple inputs come from the base period and book value", () => {
   );
   assert.deepEqual(inputs, {
     marketCap: 212 * 115,
-    enterpriseValue: 212 * 115 + 2000,
+    enterpriseValue: 212 * 115 + 2000 + 700,
     netIncome: 1020,
     ebit: 1380,
     ebitda: 1750,
@@ -101,6 +101,17 @@ test("reverse dcf inputs hold the base period's ratios with capex and D&A as pos
   assert.equal(s.inputs.shares, 115);
   assert.equal(s.inputs.horizonYears, 10);
   assert.equal(s.inputs.terminalGrowth, 0.02);
+});
+
+test("reverse dcf caps D&A at capex, so amortisation that is never reinvested is not cash forever", () => {
+  const plain = selectReverseDcf(company("acme.facts"), 0.085, DEFAULT_REVERSE_DCF_OPTIONS);
+  assert.ok(plain.kind === "ready" && !plain.depreciationCappedAtCapex);
+  const c = company("acme.facts", (d) => mutate(d, "financials.ltm.depreciationAmortization", 820));
+  const s = selectReverseDcf(c, 0.085, DEFAULT_REVERSE_DCF_OPTIONS);
+  assert.ok(s.kind === "ready");
+  assert.equal(s.inputs.daPctRevenue, 450 / 11400);
+  assert.equal(s.inputs.capexPctRevenue, 450 / 11400);
+  assert.equal(s.depreciationCappedAtCapex, true);
 });
 
 test("a company with no row carrying revenue, ebit, capex and D&A has no reverse dcf", () => {

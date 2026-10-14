@@ -1,6 +1,9 @@
 /**
  * The reverse DCF prices the company from facts alone: the newest period
- * with revenue, EBIT, capex and D&A supplies the ratios. Facts report capex
+ * with revenue, EBIT, capex and D&A supplies the ratios. D&A above capex is
+ * capped at capex: the excess is amortisation of acquired rights or leased
+ * assets whose cash cost never shows in capex, and holding it for ten years
+ * and a terminal would count it as cash forever. Facts report capex
  * and D&A as the cash-flow statement does, so the absolute value turns an
  * outflow into a share of revenue whichever sign the researcher used.
  */
@@ -25,6 +28,7 @@ export type ReverseDcfSelection =
       readonly kind: "ready";
       readonly inputs: ReverseDcfInputs;
       readonly basePeriod: BasePeriodRef;
+      readonly depreciationCappedAtCapex: boolean;
     }
   | { readonly kind: "unavailable"; readonly reason: "noUsableBasePeriod" };
 
@@ -55,15 +59,18 @@ export function selectReverseDcf(
     return { kind: "unavailable", reason: "noUsableBasePeriod" };
   }
   const p = base.period;
+  const capex = Math.abs(p.capex);
+  const da = Math.abs(p.depreciationAmortization);
   return {
     kind: "ready",
     basePeriod: base.ref,
+    depreciationCappedAtCapex: da > capex,
     inputs: {
       targetValuePerShare: company.market.price,
       revenueBase: p.revenue,
       ebitMargin: p.ebit / p.revenue,
-      capexPctRevenue: Math.abs(p.capex) / p.revenue,
-      daPctRevenue: Math.abs(p.depreciationAmortization) / p.revenue,
+      capexPctRevenue: capex / p.revenue,
+      daPctRevenue: Math.min(da, capex) / p.revenue,
       taxRate: company.costOfCapital.taxRateForCashFlows,
       wacc,
       netDebt: company.netDebt,

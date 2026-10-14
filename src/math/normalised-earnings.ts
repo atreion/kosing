@@ -14,6 +14,8 @@ export type Triple = {
 export type NormalisedEarningsInputs = {
   readonly revenueBase: number;
   readonly netDebt: number;
+  /** Deducted beside net debt: the multiple prices EBIT after IFRS 16, which carries no lease cost. */
+  readonly leaseLiabilities: number;
   readonly shares: number;
   readonly ebitMargin: Triple;
   readonly evEbitMultiple: Triple;
@@ -39,7 +41,7 @@ function scenario(
 ): ScenarioValue {
   const ebit = inputs.revenueBase * margin;
   const ev = ebit * multiple;
-  const equity = ev - inputs.netDebt;
+  const equity = ev - inputs.netDebt - inputs.leaseLiabilities;
   return { ebit, ev, equity, valuePerShare: equity / inputs.shares };
 }
 

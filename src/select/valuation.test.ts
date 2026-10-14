@@ -93,8 +93,18 @@ test("normalised earnings average the window's revenue and report the ltm margin
   });
   assertClose(s.ltmEbitMargin ?? 0, 1380 / 11400, 1e-12);
   assert.equal(s.inputs.netDebt, 2000);
+  assert.equal(s.inputs.leaseLiabilities, 700, "EBIT is after IFRS 16, so leases bridge too");
   assert.equal(s.inputs.shares, 115);
   assert.deepEqual(s.inputs.ebitMargin, { bear: 0.09, base: 0.12, bull: 0.14 });
+  const noLeases = pair(
+    mutate(acme(), "balanceSheet.operatingLeaseLiabilities", null),
+    loadFixture("acme-normalised.case"),
+  );
+  if (noLeases.valuation.method !== "normalisedEarnings") throw new Error("unreachable");
+  assert.equal(
+    selectNormalisedEarnings(noLeases.valuation, noLeases.company).inputs.leaseLiabilities,
+    0,
+  );
 });
 
 test("an ltm revenue base has no window and a company without ltm has no ltm margin", () => {

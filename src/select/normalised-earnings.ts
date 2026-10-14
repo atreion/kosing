@@ -44,6 +44,7 @@ export function selectNormalisedEarnings(
     inputs: {
       revenueBase: revenueBase.value,
       netDebt: company.netDebt,
+      leaseLiabilities: company.otherClaims.operatingLeaseLiabilities ?? 0,
       shares: company.market.shares,
       ebitMargin: valuation.assumptions.ebitMargin,
       evEbitMultiple: valuation.assumptions.evEbitMultiple,

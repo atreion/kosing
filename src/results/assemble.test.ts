@@ -63,7 +63,7 @@ test("inputs echo the case and the decoded company", () => {
 test("derived carries market cap, EV, net debt, other claims, multiples and the facts' wacc", () => {
   const r = assemble(decoded(acme()));
   assert.equal(r.derived.marketCap, 24380);
-  assert.equal(r.derived.enterpriseValue, 26380);
+  assert.equal(r.derived.enterpriseValue, 24380 + 2000 + 700, "EV includes lease liabilities");
   assert.equal(r.derived.netDebt, 2000);
   assertClose(r.derived.multiples.peTrailing ?? 0, 24380 / 1020, 1e-9);
   assertClose(r.derived.multiples.priceBook ?? 0, 24380 / 6200, 1e-9);
@@ -94,6 +94,7 @@ test("the reverse dcf prices the current share price and names its base period",
   });
   assert.equal(r.pricedIn.reverseDcf?.horizonYears, 10);
   assert.equal(r.pricedIn.reverseDcf?.terminalGrowth, 0.02);
+  assert.equal(r.pricedIn.reverseDcf?.depreciationCappedAtCapex, false);
   assert.ok(Number.isFinite(r.pricedIn.reverseDcf?.impliedGrowth));
 });
 

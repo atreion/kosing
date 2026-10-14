@@ -130,7 +130,7 @@ export const BalanceSheet = z.strictObject({
   shortTermDebt: nullableNonNegative,
   longTermDebt: nullableNonNegative,
   operatingLeaseLiabilities: nullableNonNegative.describe(
-    "Lease liabilities. Not deducted as debt, so a dcf case carries lease payments in its capex path.",
+    "Lease liabilities. Included in enterprise value for the current multiples and deducted in the normalised-earnings bridge. Not deducted in a dcf, so a dcf case carries lease payments in its capex path.",
   ),
   pensionObligations: nullableNumber.describe(
     "Net pension deficit. Not deducted as debt; a case says in its rationale when it is material.",

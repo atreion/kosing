@@ -47,6 +47,8 @@ export type ReverseDcfSection = {
   readonly basePeriod: BasePeriodRef;
   readonly horizonYears: number;
   readonly terminalGrowth: number;
+  /** True when the base period's D&A exceeded capex and was held at capex instead. */
+  readonly depreciationCappedAtCapex: boolean;
 };
 
 export type ScenarioValue = {

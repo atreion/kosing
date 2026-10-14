@@ -6,6 +6,7 @@ import { computeNormalisedEarnings, type NormalisedEarningsInputs } from "./norm
 const inputs: NormalisedEarningsInputs = {
   revenueBase: 10000,
   netDebt: 2000,
+  leaseLiabilities: 0,
   shares: 100,
   ebitMargin: { bear: 0.09, base: 0.12, bull: 0.14 },
   evEbitMultiple: { bear: 10, base: 13, bull: 16 },
@@ -51,4 +52,9 @@ test("a negative-margin bear case is a negative EV, reported, not clamped", () =
   });
   assert.ok(r.bear.ev < 0);
   assert.ok(Number.isFinite(r.bear.valuePerShare));
+});
+
+test("lease liabilities are deducted with net debt", () => {
+  const r = computeNormalisedEarnings({ ...inputs, leaseLiabilities: 500 });
+  assert.deepEqual(r.base, { ebit: 1200, ev: 15600, equity: 13100, valuePerShare: 131 });
 });

@@ -47,6 +47,7 @@ export function reverseDcfSection(
       basePeriod: selection.basePeriod,
       horizonYears: options.horizonYears,
       terminalGrowth: options.terminalGrowth,
+      depreciationCappedAtCapex: selection.depreciationCappedAtCapex,
     },
     resolutions: [],
   };
