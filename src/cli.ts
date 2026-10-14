@@ -9,8 +9,9 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type CompanyId, companyDir, parseCompanyId, resolveDataPath } from "./data-path.ts";
 import type { DecodeError } from "./input/errors.ts";
+import { IsoDateString } from "./input/primitives.ts";
 import { emitJsonSchema } from "./input/schema.ts";
-import type { Results } from "./results/types.ts";
+import { DEFAULT_VALUATOR_OPTIONS, type Results } from "./results/types.ts";
 import { valuate } from "./valuate.ts";
 
 export type CliIo = {
@@ -28,6 +29,8 @@ export type CliIo = {
   readonly isDirectory: (path: string) => boolean;
   readonly fileExists: (path: string) => boolean;
   readonly writeFile: (path: string, text: string) => void;
+  /** Today's local date as YYYY-MM-DD, the valuation date in results.json. */
+  readonly today: () => string;
 };
 
 const USAGE = `usage:
@@ -96,7 +99,10 @@ function evaluate(args: ValueArgs, io: CliIo): Evaluated {
   if (!facts.ok || (investmentCase !== null && !investmentCase.ok)) {
     return { ok: false, errors: loadErrors };
   }
-  const result = valuate(facts.json, investmentCase === null ? undefined : investmentCase.json);
+  const result = valuate(facts.json, investmentCase === null ? undefined : investmentCase.json, {
+    ...DEFAULT_VALUATOR_OPTIONS,
+    valuedOn: IsoDateString.parse(io.today()),
+  });
   return result.success ? { ok: true, results: result.data } : { ok: false, errors: result.error };
 }
 
@@ -222,6 +228,13 @@ export function writeFileAtomic(path: string, text: string): void {
   renameSync(temporary, path);
 }
 
+function localIsoDate(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
 /** .env at the repo root, found from this file rather than the working directory. */
 function readEnvFile(): string | null {
   try {
@@ -242,5 +255,6 @@ if (isMain(import.meta.url, process.argv[1])) {
     isDirectory: (path) => existsSync(path) && statSync(path).isDirectory(),
     fileExists: (path) => existsSync(path),
     writeFile: writeFileAtomic,
+    today: localIsoDate,
   });
 }

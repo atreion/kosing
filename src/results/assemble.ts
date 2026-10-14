@@ -8,6 +8,7 @@ import type { Valuation } from "../domain/valuation.ts";
 import { assertNever } from "../exhaustive.ts";
 import type { Decoded } from "../input/decode.ts";
 import type { Resolution, Warning } from "../input/errors.ts";
+import { priceStale } from "../input/warnings.ts";
 import { computeDcf, type DcfInputs } from "../math/dcf.ts";
 import { computeFxSensitivity, type FxPairResult } from "../math/fx.ts";
 import { computeMultiples } from "../math/multiples.ts";
@@ -194,6 +195,7 @@ export function assemble(
     schemaVersion: "1.0",
     inputs: {
       ticker: company.identity.ticker,
+      valuedOn: options.valuedOn,
       factsAsOf: company.asOf,
       caseFactsAsOf: decoded.caseFactsAsOf,
       classification: decoded.classification,
@@ -220,6 +222,10 @@ export function assemble(
       ...valued.resolutions,
       ...fx.resolutions,
     ],
-    warnings: [...decoded.warnings, ...scenarioWarnings(valued.valuation)],
+    warnings: [
+      ...decoded.warnings,
+      ...priceStale(company.market.asOf, options.valuedOn),
+      ...scenarioWarnings(valued.valuation),
+    ],
   };
 }

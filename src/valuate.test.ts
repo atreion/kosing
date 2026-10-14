@@ -19,6 +19,7 @@ test("options reach the reverse dcf", () => {
   const r = valuate(loadFixture("acme.facts"), undefined, {
     reverseDcf: { horizonYears: 5, terminalGrowth: 0.01 },
     fxMoves: [0.1],
+    valuedOn: null,
   });
   assert.equal(r.data?.pricedIn.reverseDcf?.horizonYears, 5);
   assert.equal(r.data?.pricedIn.reverseDcf?.terminalGrowth, 0.01);

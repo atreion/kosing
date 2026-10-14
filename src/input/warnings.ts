@@ -4,6 +4,7 @@
  */
 
 import type { Company } from "../domain/company.ts";
+import type { IsoDate } from "../domain/types.ts";
 import type { Case } from "./case.ts";
 import type { Warning } from "./errors.ts";
 import type { Facts } from "./facts.ts";
@@ -30,6 +31,28 @@ function ltmOlderThanFiscalYear(company: Company): Warning[] {
       rule: "ltmOlderThanFiscalYear",
       path: "financials.ltm.endDate",
       message: `ltm ends ${ltm.endDate}, before fiscal year ${latest.fy} ends ${latest.endDate}`,
+    },
+  ];
+}
+
+/** A price older than this on the valuation date should be refreshed before deciding on it. */
+export const PRICE_STALE_DAYS = 30;
+
+const MS_PER_DAY = 86_400_000;
+
+function daysBetween(from: IsoDate, to: IsoDate): number {
+  return Math.round((Date.parse(to) - Date.parse(from)) / MS_PER_DAY);
+}
+
+export function priceStale(priceAsOf: IsoDate, valuedOn: IsoDate | null): Warning[] {
+  if (valuedOn === null) return [];
+  const days = daysBetween(priceAsOf, valuedOn);
+  if (days <= PRICE_STALE_DAYS) return [];
+  return [
+    {
+      rule: "priceStale",
+      path: "market.asOf",
+      message: `price is from ${priceAsOf}, ${days} days before ${valuedOn}`,
     },
   ];
 }

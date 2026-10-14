@@ -94,7 +94,11 @@ export type Resolution =
 
 /** Advisory, never fatal. */
 export type Warning = {
-  readonly rule: "casePredatesFacts" | "ltmOlderThanFiscalYear" | "scenarioOrderInverted";
+  readonly rule:
+    | "casePredatesFacts"
+    | "ltmOlderThanFiscalYear"
+    | "scenarioOrderInverted"
+    | "priceStale";
   readonly path: string;
   readonly message: string;
 };

@@ -27,6 +27,7 @@ function capture(files: Record<string, string> = {}, options: CaptureOptions = {
       },
       env: options.env ?? {},
       envFile: () => options.envFile ?? null,
+      today: () => "2026-10-14",
       isDirectory: (path: string) => (options.dirs ?? []).includes(path),
       fileExists: (path: string) => path in fs,
       writeFile: (path: string, text: string) => {
@@ -277,4 +278,10 @@ test("a broken .env only fails the commands that need DATA_PATH", () => {
   assert.equal(runCli(["value", "--facts", "f.json"], { ...files.io, envFile: broken }), 0);
   const where = capture({}, withData);
   assert.throws(() => runCli(["where"], { ...where.io, env: {}, envFile: broken }), /EISDIR/);
+});
+
+test("value records today's date as the valuation date", () => {
+  const c = capture({ "/f.json": JSON.stringify(loadFixture("acme.facts")) });
+  assert.equal(runCli(["value", "--facts", "/f.json"], c.io), 0);
+  assert.equal(JSON.parse(c.out.join("")).inputs.valuedOn, "2026-10-14");
 });

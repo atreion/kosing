@@ -4,6 +4,7 @@ import { type Decoded, decode } from "../input/decode.ts";
 import { loadFixture, mutate, VALID_FIXTURES } from "../test-fixtures.ts";
 import { assertAllFinite, assertClose } from "../test-utils.ts";
 import { assemble } from "./assemble.ts";
+import { DEFAULT_VALUATOR_OPTIONS } from "./types.ts";
 
 function decoded(facts: unknown, c?: unknown): Decoded {
   const r = decode(facts, c);
@@ -36,6 +37,7 @@ for (const f of VALID_FIXTURES.facts) {
     assert.equal(r.sensitivity, null);
     assert.equal(r.inputs.classification, null);
     assert.equal(r.inputs.aiExposure, null);
+    assert.equal(r.inputs.valuedOn, null);
     assert.deepEqual(r.inputs.theses, []);
     assert.equal(r.inputs.caseFactsAsOf, null);
     assert.equal(r.pricedIn.multiples.length, 5);
@@ -298,4 +300,23 @@ test("a price quoted outside the reporting currency gets the entry price in that
   assert.equal(t.currency, "SEK");
   assertClose(t.price, 150, 1e-9, "the quoted price comes back unchanged");
   assertClose(t.entryPrice, r.hurdle.entryPrice / 0.088, 1e-9);
+});
+
+test("a price more than 30 days old on the valuation date is a warning", () => {
+  const on = (valuedOn: string) =>
+    assemble(decoded(acme()), {
+      ...DEFAULT_VALUATOR_OPTIONS,
+      valuedOn: valuedOn as typeof DEFAULT_VALUATOR_OPTIONS.valuedOn,
+    });
+  const stale = on("2026-11-01");
+  assert.equal(stale.inputs.valuedOn, "2026-11-01");
+  assert.deepEqual(
+    stale.warnings.filter((w) => w.rule === "priceStale").map((w) => [w.path, w.message]),
+    [["market.asOf", "price is from 2026-10-01, 31 days before 2026-11-01"]],
+  );
+  assert.ok(!on("2026-10-31").warnings.some((w) => w.rule === "priceStale"), "30 days is fresh");
+  assert.ok(
+    !assemble(decoded(acme())).warnings.some((w) => w.rule === "priceStale"),
+    "no valuation date, no check",
+  );
 });

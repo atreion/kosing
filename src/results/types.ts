@@ -23,11 +23,14 @@ import { DEFAULT_REVERSE_DCF_OPTIONS, type ReverseDcfOptions } from "../select/r
 export type ValuatorOptions = {
   readonly reverseDcf: ReverseDcfOptions;
   readonly fxMoves: readonly number[];
+  /** The date of the run, passed in so the valuator stays pure; null skips the price-age check. */
+  readonly valuedOn: IsoDate | null;
 };
 
 export const DEFAULT_VALUATOR_OPTIONS: ValuatorOptions = {
   reverseDcf: DEFAULT_REVERSE_DCF_OPTIONS,
   fxMoves: [-0.1, -0.05, 0.05, 0.1],
+  valuedOn: null,
 };
 
 export type MultipleRow = {
@@ -137,6 +140,7 @@ export type Results = {
   readonly schemaVersion: "1.0";
   readonly inputs: {
     readonly ticker: string;
+    readonly valuedOn: IsoDate | null;
     readonly factsAsOf: IsoDate;
     readonly caseFactsAsOf: IsoDate | null;
     readonly classification: Classification | null;
