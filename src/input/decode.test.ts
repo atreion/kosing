@@ -14,8 +14,9 @@ for (const [f, c] of pairs) {
     const result = decode(loadFixture(f), loadFixture(c));
     assert.ok(result.success, JSON.stringify(result.error));
     assert.notEqual(result.data.valuation, null);
-    const expected = (loadFixture(c) as { classification: string }).classification;
-    assert.equal(result.data.classification, expected);
+    const expected = loadFixture(c) as { classification: string; aiExposure: string };
+    assert.equal(result.data.classification, expected.classification);
+    assert.equal(result.data.aiExposure, expected.aiExposure);
   });
 }
 
@@ -25,6 +26,7 @@ for (const f of VALID_FIXTURES.facts) {
     assert.ok(result.success, JSON.stringify(result.error));
     assert.equal(result.data.valuation, null);
     assert.equal(result.data.classification, null);
+    assert.equal(result.data.aiExposure, null);
     assert.deepEqual(result.data.theses, []);
   });
 }

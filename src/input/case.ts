@@ -8,7 +8,7 @@
  */
 
 import { z } from "zod";
-import { CLASSIFICATIONS } from "../domain/types.ts";
+import { AI_EXPOSURES, CLASSIFICATIONS } from "../domain/types.ts";
 import { IsoDateString, ScenarioTriple, SourceRefs, TenNumberPath } from "./primitives.ts";
 
 export const Terminal = z.discriminatedUnion("kind", [
@@ -108,6 +108,11 @@ const CaseShape = z.strictObject({
     .enum(CLASSIFICATIONS)
     .describe(
       "Decides the method: qualityCompounder and garp take dcf, valueCyclical takes normalisedEarnings, holdingCompany takes nav, specialSituation any of the three. The other classifications have no method and get no case.",
+    ),
+  aiExposure: z
+    .enum(AI_EXPOSURES)
+    .describe(
+      "The company's strongest channel of exposure to the AI cycle: direct (revenue depends on AI compute or model economics), picksAndShovels (a material share from datacentre capex), wealthEffect (demand from customers' financial gains), disruption (AI substitutes for the product or compresses its pricing), secondOrderOnly (the general recession channel only). Sets the add-on to the required discount; the bear case should carry it.",
     ),
   theses: z
     .array(z.string().min(1))

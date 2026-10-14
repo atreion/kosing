@@ -3,6 +3,7 @@
   "ticker": "ACME",
   "factsAsOf": "2026-10-01",
   "classification": "garp",
+  "aiExposure": "disruption",
   "theses": ["ai-disruption-overreaction", "eu-digital-sovereignty"],
   "method": {
     "kind": "dcf",

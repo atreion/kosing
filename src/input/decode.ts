@@ -5,7 +5,7 @@
  */
 
 import type { Company } from "../domain/company.ts";
-import type { Classification, IsoDate } from "../domain/types.ts";
+import type { AiExposure, Classification, IsoDate } from "../domain/types.ts";
 import type { Valuation } from "../domain/valuation.ts";
 import { type Case, CaseSchema } from "./case.ts";
 import { decodeCompany } from "./decode-company.ts";
@@ -27,6 +27,8 @@ export type Decoded = {
   readonly valuation: Valuation | null;
   /** Passed through for the advisor; the valuator never reads it. */
   readonly classification: Classification | null;
+  /** With classification, sets the required discount. */
+  readonly aiExposure: AiExposure | null;
   /** The facts snapshot the case was written against; echoed in results. */
   readonly caseFactsAsOf: IsoDate | null;
   /** Passed through for the advisor; empty without a case. */
@@ -73,6 +75,7 @@ export function decode(factsJson: unknown, caseJson?: unknown): DecodeResult<Dec
     company: company.data.company,
     valuation,
     classification: investmentCase?.classification ?? null,
+    aiExposure: investmentCase?.aiExposure ?? null,
     caseFactsAsOf: investmentCase?.factsAsOf ?? null,
     theses: investmentCase?.theses ?? [],
     resolutions,

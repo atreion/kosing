@@ -3,6 +3,7 @@
   "ticker": "HOLD",
   "factsAsOf": null,
   "classification": "holdingCompany",
+  "aiExposure": "secondOrderOnly",
   "theses": ["nordic-holdco-discount-compression"],
   "method": {
     "kind": "nav",

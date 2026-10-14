@@ -10,6 +10,7 @@ export function dcfCase(over: Record<string, unknown> = {}) {
     ticker: "ACME",
     factsAsOf: "2026-10-01",
     classification: "garp",
+    aiExposure: "secondOrderOnly",
     theses: ["ai-disruption-overreaction"],
     method: {
       kind: "dcf",
@@ -212,4 +213,11 @@ test("a cash-flow tax override is a rate below 1, needs a rationale, and is dcf 
   });
   const n = CaseSchema.safeParse(nav);
   assert.ok(n.error?.issues.some((i) => i.path.join(".") === "overrides"));
+});
+
+test("a case states its AI-cycle exposure, from the closed set", () => {
+  const { aiExposure: _a, ...without } = dcfCase();
+  assert.equal(CaseSchema.safeParse(without).success, false);
+  assert.equal(CaseSchema.safeParse(dcfCase({ aiExposure: "picksAndShovels" })).success, true);
+  assert.equal(CaseSchema.safeParse(dcfCase({ aiExposure: "picks_and_shovels" })).success, false);
 });
