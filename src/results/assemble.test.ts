@@ -20,6 +20,7 @@ const SECTIONS = [
   "derived",
   "pricedIn",
   "valuation",
+  "hurdle",
   "sensitivity",
   "fx",
   "resolutions",
@@ -31,8 +32,10 @@ for (const f of VALID_FIXTURES.facts) {
     const r = assemble(decoded(loadFixture(f)));
     assert.deepEqual(Object.keys(r), SECTIONS);
     assert.equal(r.valuation, null);
+    assert.equal(r.hurdle, null);
     assert.equal(r.sensitivity, null);
     assert.equal(r.inputs.classification, null);
+    assert.equal(r.inputs.aiExposure, null);
     assert.deepEqual(r.inputs.theses, []);
     assert.equal(r.inputs.caseFactsAsOf, null);
     assert.equal(r.pricedIn.multiples.length, 5);
@@ -47,6 +50,7 @@ test("inputs echo the case and the decoded company", () => {
   assert.equal(r.inputs.factsAsOf, "2026-10-01");
   assert.equal(r.inputs.caseFactsAsOf, "2026-10-01");
   assert.equal(r.inputs.classification, "garp");
+  assert.equal(r.inputs.aiExposure, "disruption");
   assert.deepEqual(r.inputs.theses, ["ai-disruption-overreaction", "eu-digital-sovereignty"]);
   assert.equal(r.inputs.company, d.company);
   assert.deepEqual(
@@ -240,4 +244,58 @@ test("scenarios that value in the wrong order raise a warning, not a silent swap
   assert.ok(
     !assemble(decoded(acme(), ordered)).warnings.some((w) => w.rule === "scenarioOrderInverted"),
   );
+});
+
+test("the hurdle applies the required discount to the dcf base value and compares the price", () => {
+  const r = assemble(decoded(acme(), dcfCase()));
+  if (r.valuation?.method !== "dcf" || r.hurdle === null) throw new Error("unreachable");
+  const h = r.hurdle;
+  assertClose(h.classificationDiscount, 0.3, 1e-12, "garp");
+  assertClose(h.aiExposureAddOn, 0.05, 1e-12, "disruption");
+  assertClose(h.requiredDiscount, 0.35, 1e-12);
+  assert.equal(h.baseValue, r.valuation.valuePerShare);
+  assertClose(h.entryPrice, r.valuation.valuePerShare * 0.65, 1e-9);
+  assert.equal(h.price, r.inputs.company.market.price);
+  assert.equal(h.clears, h.price <= h.entryPrice);
+  assert.equal(h.trading, null, "price and reporting currency are the same");
+  assert.equal(h.alternativeBeta, null);
+});
+
+test("normalised earnings and nav take their own base value", () => {
+  const ne = assemble(decoded(acme(), loadFixture("acme-normalised.case")));
+  if (ne.valuation?.method !== "normalisedEarnings") throw new Error("unreachable");
+  assert.equal(ne.hurdle?.baseValue, ne.valuation.scenarios.base.valuePerShare);
+  assertClose(ne.hurdle?.requiredDiscount ?? -1, 0.5, 1e-12, "valueCyclical + picksAndShovels");
+  const nav = assemble(decoded(loadFixture("holdco.facts"), loadFixture("holdco-nav.case")));
+  if (nav.valuation?.method !== "nav") throw new Error("unreachable");
+  assert.equal(nav.hurdle?.baseValue, nav.valuation.valuePerShare);
+  assertClose(nav.hurdle?.requiredDiscount ?? -1, 0.3, 1e-12, "holdingCompany + secondOrderOnly");
+});
+
+test("a classification with no required discount has no hurdle", () => {
+  const r = assemble(decoded(acme(), mutate(dcfCase(), "classification", "bankInsurer")));
+  assert.notEqual(r.valuation, null);
+  assert.equal(r.hurdle, null);
+});
+
+test("the hurdle is also stated on the alternative beta", () => {
+  const measured = mutate(acme(), "costOfCapital.betaCompany", 0.76);
+  const r = assemble(decoded(measured, dcfCase()));
+  if (r.valuation?.method !== "dcf") throw new Error("unreachable");
+  const altValue = r.valuation.alternativeBeta?.valuePerShare;
+  const alt = r.hurdle?.alternativeBeta;
+  assert.ok(alt && typeof altValue === "number");
+  assert.equal(alt.baseValue, altValue);
+  assertClose(alt.entryPrice, altValue * 0.65, 1e-9);
+  assert.equal(alt.clears, r.inputs.company.market.price <= alt.entryPrice);
+});
+
+test("a price quoted outside the reporting currency gets the entry price in that currency too", () => {
+  const c = mutate(mutate(dcfCase(), "ticker", "DUAL"), "theses", []);
+  const r = assemble(decoded(loadFixture("dual.facts"), c));
+  const t = r.hurdle?.trading;
+  assert.ok(r.hurdle && t);
+  assert.equal(t.currency, "SEK");
+  assertClose(t.price, 150, 1e-9, "the quoted price comes back unchanged");
+  assertClose(t.entryPrice, r.hurdle.entryPrice / 0.088, 1e-9);
 });

@@ -5,7 +5,7 @@
  */
 
 import type { Company } from "../domain/company.ts";
-import type { Classification, IsoDate } from "../domain/types.ts";
+import type { AiExposure, Classification, Currency, IsoDate } from "../domain/types.ts";
 import type { Holding, Terminal } from "../domain/valuation.ts";
 import type { Resolution, Warning } from "../input/errors.ts";
 import type { DcfNote, YearRow } from "../math/dcf.ts";
@@ -106,6 +106,33 @@ export type NavSection = {
 
 export type ValuationSection = DcfSection | NormalisedEarningsSection | NavSection;
 
+/** The price the investor sees, when the exchange quotes outside the reporting currency. */
+export type TradingCurrencyHurdle = {
+  readonly currency: Currency;
+  readonly entryPrice: number;
+  readonly price: number;
+};
+
+/** The same test on the dcf's alternative beta. */
+export type AlternativeBetaHurdle = {
+  readonly baseValue: number;
+  readonly entryPrice: number;
+  readonly clears: boolean;
+};
+
+/** Values per share in the reporting currency unless `trading` says otherwise. */
+export type HurdleSection = {
+  readonly classificationDiscount: number;
+  readonly aiExposureAddOn: number;
+  readonly requiredDiscount: number;
+  readonly baseValue: number;
+  readonly entryPrice: number;
+  readonly price: number;
+  readonly clears: boolean;
+  readonly trading: TradingCurrencyHurdle | null;
+  readonly alternativeBeta: AlternativeBetaHurdle | null;
+};
+
 export type Results = {
   readonly schemaVersion: "1.0";
   readonly inputs: {
@@ -113,6 +140,7 @@ export type Results = {
     readonly factsAsOf: IsoDate;
     readonly caseFactsAsOf: IsoDate | null;
     readonly classification: Classification | null;
+    readonly aiExposure: AiExposure | null;
     readonly theses: readonly string[];
     readonly company: Company;
   };
@@ -123,6 +151,8 @@ export type Results = {
     readonly multiples: readonly MultipleRow[];
   };
   readonly valuation: ValuationSection | null;
+  /** null without a valuation, or for a classification with no required discount. */
+  readonly hurdle: HurdleSection | null;
   readonly sensitivity: SensitivityResult | null;
   readonly fx: readonly FxPairResult[] | null;
   readonly resolutions: readonly Resolution[];

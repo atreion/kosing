@@ -28,6 +28,7 @@ import { selectMultipleInputs } from "../select/multiples.ts";
 import { selectNav } from "../select/nav.ts";
 import { selectNormalisedEarnings } from "../select/normalised-earnings.ts";
 import { selectWacc } from "../select/wacc.ts";
+import { hurdleSection } from "./hurdle.ts";
 import { multipleRows, reverseDcfSection } from "./priced-in.ts";
 import {
   type AlternativeBetaValue,
@@ -196,12 +197,21 @@ export function assemble(
       factsAsOf: company.asOf,
       caseFactsAsOf: decoded.caseFactsAsOf,
       classification: decoded.classification,
+      aiExposure: decoded.aiExposure,
       theses: decoded.theses,
       company,
     },
     derived: { ...derived, multiples, wacc },
     pricedIn: { reverseDcf: reverse.section, multiples: multipleRows(company, multiples) },
     valuation: valued.valuation,
+    hurdle: hurdleSection({
+      classification: decoded.classification,
+      aiExposure: decoded.aiExposure,
+      valuation: valued.valuation,
+      price: company.market.price,
+      reportingCurrency: company.currency,
+      resolutions: decoded.resolutions,
+    }),
     sensitivity: valued.sensitivity,
     fx: fx.fx,
     resolutions: [
