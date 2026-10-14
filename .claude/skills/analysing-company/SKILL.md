@@ -13,20 +13,22 @@ Run commands from the Kosing repo root.
    previous `$D/advice.md` if there is one: it holds the position the user
    last stated and any tests written before a report.
 2. **Case.** Write `$D/case.json` against `npm run --silent kosing -- schema case`,
-   with bear and bull scenarios. The base case is what you believe, not a
-   number discounted for safety: the margin of safety is applied separately.
+   with bear and bull scenarios and the company's AI-cycle exposure. The base
+   case is what you believe, not a number discounted for safety: the margin
+   of safety is applied separately.
 3. **Value.** `npm run --silent kosing -- value <ID>` writes `$D/results.json`.
    Fix the case at each reported path until it exits 0. After you have seen
    the value, an assumption changes only for a reason written into
-   `rationale`, never to move the value toward the price.
+   `rationale`, never to move the value toward the price. A `priceStale`
+   warning means refresh the price with `researching-company` first.
 4. **Analyse.** Your own judgement on the business, what the price implies,
    and what it is worth, using the results' numbers rather than your own
    arithmetic.
 5. **Lenses.** Read `$DATA/standing/*.md` and the theses in `$DATA/theses/`.
    Say where each bears on this company, and where you depart from it and why.
-   One rule is hard: the required discount in `INVESTOR.md`. No `accumulate`
-   unless the price is at or below the entry price, or `advice.md` gives a
-   written reason to override it.
+   One rule is hard: the required discount. `results.json`'s `hurdle` gives
+   the entry price and whether the price clears it. No `accumulate` unless it
+   clears, or `advice.md` gives a written reason to override it.
 6. **Write `$D/advice.md`.** Lead with the verdict (`watching`, `accumulate`,
    `pass` or `tooHard`) and a conviction, the entry price and the price. Then
    whatever the analysis needs, the lenses, the user's position if known, and
