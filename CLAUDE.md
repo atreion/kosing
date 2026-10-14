@@ -1,39 +1,26 @@
 # Kosing
 
-The investment workbench, replacing the Python `../invest` repository piece by
-piece until nothing is left there. A funnel of four roles: a researcher (AI)
-writes `facts.json`, an analyst (AI) writes `case.json`, the valuator (this
-code, deterministic) computes `results.json`, an advisor (AI) reads it. The
-valuator is built (plans 1 and 2); the researcher, analyst and advisor skills are next. Design: `docs/superpowers/specs/2026-10-07-valuator-design.md`.
+The investor's tool for researching, pricing and advising on listed equities.
+The math is deterministic code; the judgement is Claude's. No ledger,
+holdings or broker data.
+
+- `researching-company` writes `facts.json` and `research.md`.
+- `analysing-company` writes `case.json`, runs `kosing value` for
+  `results.json`, and writes `advice.md` with the investor's lenses applied.
+
+The documents live in a private data repo located by `DATA_PATH` (environment
+first, then a git-ignored `.env` at the repo root; see `.env.example`).
+`kosing schema facts|case` is the contract for the two documents the skills
+write. Designs: `docs/superpowers/specs/`.
+
+The Python `../invest` repo is a read-only archive. Nothing in Kosing writes to it.
 
 ## Working agreement
 
-Claude writes the code. The user reviews at checkpoints, approves, and gives
-feedback; the goal is a working, reliable core as soon as possible.
-
-- Work from the approved spec and plan. Where either is silent or wrong, make
-  the smallest ruling that satisfies the spec, record it in the ledger, keep
-  going, and surface it at the next checkpoint. Do not stop to ask unless the
-  action is irreversible or every path forward is a guess.
-- Checkpoints are where something coherent exists to review, not after every
-  task. Each one explains what was built and why, lists every ruling, and
-  waits for a go-ahead.
-- Explanations stay. A construct that is not obvious gets a sentence on why,
-  in the code where it helps a reader and in the checkpoint where it helps
-  the reviewer.
-- "Kosing" is capitalized in prose; `kosing` only in code identifiers and paths.
-
-## Skills and data
-
-The researcher, analyst and advisor are skills in `.claude/skills/`:
-`researching-company`, `building-case`, `advising-on-company`, and
-`profiling-company` to chain them. They work over a private data repo that
-`kosing where` locates through `DATA_PATH` (environment first, then a
-git-ignored `.env` at the repo root; see `.env.example`). Run them from this
-repo's root. Design: `docs/superpowers/specs/2026-10-10-skills-design.md`.
-
-The `../invest` repo is kept unchanged for comparison runs. Nothing in Kosing
-writes to it.
+Claude writes the code. The user reviews at checkpoints. Where a spec or plan
+is silent or wrong, make the smallest ruling that fits, note it, and surface it
+at the next checkpoint. "Kosing" is capitalized in prose; `kosing` only in
+code identifiers and paths.
 
 ## Toolchain
 
@@ -47,5 +34,4 @@ writes to it.
 
 Solo project: commit directly on `main` (this overrides the global
 branch-and-PR rule). Local branches only for experiments, merged back with
-`--ff-only` or `--squash` and then deleted. No PRs required. Commits inside an
-approved plan need no per-commit approval; the checkpoint is the review.
+`--ff-only` or `--squash` and then deleted. No PRs.

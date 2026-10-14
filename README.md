@@ -1,19 +1,40 @@
 # Kosing
 
-Deterministic financial math in TypeScript: DCF, reverse DCF, WACC and related
-valuation calculations. A hand-port of the Python `invest` workbench, done as a
-TypeScript learning exercise. Input dossiers are assumed to already be in
-memory; this project only does the math.
+A workbench for researching, pricing and advising on listed equities. Claude
+researches a company into `facts.json`, writes the valuation assumptions into
+`case.json`, and analyses the result. The valuator in this repo does the math
+deterministically: WACC, DCF with bear and bull scenarios, reverse DCF,
+sensitivity, multiples against history and peers, normalised earnings, NAV
+and FX translation, written to `results.json`.
+
+## Use
+
+The company documents live in a separate private data repo. Point `DATA_PATH`
+at it, in the environment or in a `.env` file (see `.env.example`).
+
+```
+npm run kosing -- where [TICKER.EXCHANGE]      the data repo, or one company's directory
+npm run kosing -- value <TICKER.EXCHANGE>      value one company; writes its results.json
+npm run kosing -- value --facts F [--case C]   value given files; results.json on stdout
+npm run kosing -- schema facts | case          the JSON Schema for a document
+```
+
+Exit codes: 0 success, 1 the documents do not decode (errors as JSON on
+stderr), 2 usage or `DATA_PATH` error, 3 `results.json` could not be written.
+
+In Claude Code, the skills `researching-company` and `analysing-company` run
+the workflow.
 
 ## Requirements
 
-- Node 22 or newer
-- npm (ships with Node)
+- Node 22.18 or newer
+- npm
 
 ## Commands
 
 | Command              | What it does                                |
 |----------------------|---------------------------------------------|
+| `npm run kosing`     | The CLI above                               |
 | `npm test`           | Run tests with Node's built-in runner       |
 | `npm run test:watch` | Same, re-running on file changes            |
 | `npm run typecheck`  | `tsc --noEmit`                              |
@@ -24,7 +45,8 @@ memory; this project only does the math.
 
 ## Layout
 
-Tests live next to the code they test as `*.test.ts`. Source runs directly
-through [tsx](https://tsx.is) (esbuild under the hood), so there is no build
-step during development; `tsc` only type-checks. Relative imports use the `.ts`
-extension, rewritten to `.js` on build.
+`src/input` decodes the documents, `src/domain` holds the types, `src/select`
+picks the inputs for each calculation, `src/math` computes, `src/results`
+assembles `results.json`. Tests live next to the code as `*.test.ts`. Source
+runs through [tsx](https://tsx.is), so there is no build step during
+development; `tsc` only type-checks.
