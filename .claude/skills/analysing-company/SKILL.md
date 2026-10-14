@@ -9,9 +9,10 @@ Run commands from the Kosing repo root.
 `DATA="$(npm run --silent kosing -- where)"`, `D="$(npm run --silent kosing -- where <ID>)"`.
 
 1. **Facts.** Read `$D/facts.json` and `$D/research.md`. If they are missing,
-   or the user wants them fresh, use `researching-company` first. Read the
-   previous `$D/advice.md` if there is one: it holds the position the user
-   last stated and any tests written before a report. When that report has
+   or the user wants them fresh, use `researching-company` first. Read
+   `$DATA/positions.md` for what the user holds, and the previous
+   `$D/advice.md` if there is one for the tests written before a report. When
+   the user states a new position, update `positions.md` with the date. When that report has
    landed, check those tests first and say which passed and which failed.
 2. **Case.** Write `$D/case.json` against `npm run --silent kosing -- schema case`,
    with bear and bull scenarios and the company's AI-cycle exposure. The base
