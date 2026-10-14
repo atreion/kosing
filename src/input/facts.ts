@@ -47,11 +47,15 @@ const periodFigures = {
   revenue: nullableNumber,
   ebit: nullableNumber,
   netIncome: nullableNumber,
-  ebitda: nullableNumber,
+  ebitda: nullableNumber.describe(
+    "Reported EBITDA, or EBIT plus depreciation and amortisation when the company reports none. Not the company's adjusted EBITDA.",
+  ),
   depreciationAmortization: nullableNumber,
-  cogs: nullableNumber,
+  cogs: nullableNumber.describe("Cost of revenue, negative as an expense."),
   grossProfit: nullableNumber,
-  opex: nullableNumber,
+  opex: nullableNumber.describe(
+    "Operating expenses other than cost of revenue, negative as an expense.",
+  ),
   netFinancialResult: nullableNumber.describe(
     "Net financial result as reported: negative when a net cost, positive when net income.",
   ),
@@ -60,7 +64,9 @@ const periodFigures = {
   ),
   ocf: nullableNumber,
   capex: nullableNumber.describe("Signed as the statements give it: negative when an outflow."),
-  fcf: nullableNumber,
+  fcf: nullableNumber.describe(
+    "Free cash flow as the company defines and reports it; when it reports none, ocf plus capex.",
+  ),
   dividendsPaid: nullableNumber.describe("Negative when an outflow."),
   sharesBasicM: nullableNonNegative,
   sharesDilutedM: nullableNonNegative,
@@ -103,7 +109,12 @@ export const Financials = z.strictObject({
   ltm: LtmRow.nullable().describe(
     "Trailing twelve months to the latest reported quarter or half, citing every document it is built from. Null when the company reports neither.",
   ),
-  quarters: z.array(QuarterRow).nullable(),
+  quarters: z
+    .array(QuarterRow)
+    .nullable()
+    .describe(
+      "Reported quarters only. Null for a company that reports halves; ltm carries the latest half.",
+    ),
 });
 
 export const BalanceSheet = z.strictObject({
@@ -118,8 +129,12 @@ export const BalanceSheet = z.strictObject({
     ),
   shortTermDebt: nullableNonNegative,
   longTermDebt: nullableNonNegative,
-  operatingLeaseLiabilities: nullableNonNegative,
-  pensionObligations: nullableNumber,
+  operatingLeaseLiabilities: nullableNonNegative.describe(
+    "Lease liabilities. Not deducted as debt, so a dcf case carries lease payments in its capex path.",
+  ),
+  pensionObligations: nullableNumber.describe(
+    "Net pension deficit. Not deducted as debt; a case says in its rationale when it is material.",
+  ),
   goodwill: nullableNumber,
   intangiblesExGoodwill: nullableNumber,
   totalEquity: nullableNumber.describe("Book equity attributable to shareholders."),
@@ -140,19 +155,26 @@ export const CostOfCapital = z.strictObject({
     .min(0)
     .describe("Equity risk premium from Damodaran's current country table, as a fraction."),
   countryPremium: nullableNumber.describe(
-    "Damodaran's country risk premium; null when the table shows none.",
+    "Damodaran's country risk premium; 0 when the table shows 0.",
   ),
   betaCompany: nullableNumber.describe(
-    "Measured beta. Null when it is implausible (for example, it prices the cost of equity below the company's own bond coupon); betaSector is then used.",
+    "Five-year beta as published by a named data provider; never computed by the researcher. Null when none is published or it is implausible (for example, it prices the cost of equity below the company's own bond coupon); betaSector is then used.",
   ),
-  betaSector: nullableNumber.describe("Damodaran's sector beta."),
+  betaSector: nullableNumber.describe(
+    "Damodaran's levered sector beta from the table for the company's region (Europe for a European company).",
+  ),
   taxRateEffective: unitInterval,
   taxRateStatutory: unitInterval
     .nullable()
     .describe(
       "The rate the company's own tax reconciliation uses when published, otherwise the headline corporate rate.",
     ),
-  pretaxCostOfDebt: z.number().min(0),
+  pretaxCostOfDebt: z
+    .number()
+    .min(0)
+    .describe(
+      "Yield on the company's traded bonds, or its reported average borrowing rate, as a fraction.",
+    ),
   equityWeight: unitInterval.describe(
     "Market capitalisation over market capitalisation plus total debt, on weightsAsOf.",
   ),
@@ -250,7 +272,7 @@ export const FactsShape = z.strictObject({
   schemaVersion: z.literal("1.0"),
   company: CompanyBlock,
   asOf: IsoDateString.describe(
-    "Date of the latest financial report the facts reflect. Moves on a quarterly or annual refresh, not on a price refresh.",
+    "Period end of the latest financial report the facts reflect, not its publication date. Moves on a quarterly or annual refresh, not on a price refresh.",
   ),
   currency: Iso4217.describe("The reporting currency."),
   unit: UNIT.describe(
@@ -268,7 +290,9 @@ export const FactsShape = z.strictObject({
   sources: z.array(SourceEntry).min(1),
   gaps: z
     .array(Gap)
-    .describe("Every field left null for want of a source, with its path and the reason."),
+    .describe(
+      "Every field left null, with its path and the reason: no source found, or a sourced value rejected.",
+    ),
 });
 
 export type FactsShape = z.infer<typeof FactsShape>;

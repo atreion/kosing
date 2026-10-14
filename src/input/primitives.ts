@@ -37,7 +37,10 @@ export const RangeBand = z.strictObject({
   y10High: z.number().nullable(),
 });
 
-export const SourceId = z.string().regex(/^S[0-9]+$/, "must be S followed by digits");
+export const SourceId = z
+  .string()
+  .regex(/^S[0-9]+$/, "must be S followed by digits")
+  .describe("S1, S2, … in order of first use. One id is one document retrieved once.");
 export const SourceRefs = z.array(SourceId).min(1);
 
 /** Wire-only vocabularies: the domain never sees a source. */

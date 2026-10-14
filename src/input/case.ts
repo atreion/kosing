@@ -34,11 +34,21 @@ export const DcfScenario = z.strictObject({
 
 export const DcfMethod = z.strictObject({
   kind: z.literal("dcf"),
-  revenueGrowthPath: TenNumberPath,
-  ebitMarginPath: TenNumberPath,
-  capexPctRevenuePath: TenNumberPath,
+  revenueGrowthPath: TenNumberPath.describe(
+    "Ten yearly growth rates as fractions. Year 1 starts from the base period (ltm, else the latest fiscal year).",
+  ),
+  ebitMarginPath: TenNumberPath.describe(
+    "EBIT margins as fractions. An adjusted margin is allowed when daPctRevenuePath is on the same basis; say so in rationale.",
+  ),
+  capexPctRevenuePath: TenNumberPath.describe(
+    "Capex as a positive fraction of revenue, including lease payments, since leases are not deducted as debt.",
+  ),
   daPctRevenuePath: TenNumberPath,
-  workingCapitalPctRevenue: z.number(),
+  workingCapitalPctRevenue: z
+    .number()
+    .describe(
+      "Working capital tied up per unit of revenue growth. Negative when growth releases cash, as with subscriptions billed in advance.",
+    ),
   terminal: Terminal,
   /** Bear and bull share every other assumption with the base case. */
   scenarios: z.strictObject({ bear: DcfScenario, bull: DcfScenario }).nullable(),
@@ -108,7 +118,9 @@ const CaseShape = z.strictObject({
   overrides: Overrides.describe(
     "Null fields unless there is a reason, given in rationale. dcf only.",
   ),
-  sensitivity: Sensitivity.nullable(),
+  sensitivity: Sensitivity.nullable().describe(
+    "Null for the default grid. Steps are deltas added to the WACC and terminal growth, as fractions.",
+  ),
 });
 
 function requireOrdered(
