@@ -93,11 +93,21 @@ export const Sensitivity = z.strictObject({
 const CaseShape = z.strictObject({
   schemaVersion: z.literal("1.0"),
   ticker: z.string().min(1),
-  factsAsOf: IsoDateString.nullable(),
-  classification: z.enum(CLASSIFICATIONS),
-  theses: z.array(z.string().min(1)),
-  method: Method,
-  overrides: Overrides,
+  factsAsOf: IsoDateString.nullable().describe("The facts' asOf the case was written against."),
+  classification: z
+    .enum(CLASSIFICATIONS)
+    .describe(
+      "Decides the method: qualityCompounder and garp take dcf, valueCyclical takes normalisedEarnings, holdingCompany takes nav, specialSituation any of the three. The other classifications have no method and get no case.",
+    ),
+  theses: z
+    .array(z.string().min(1))
+    .describe("Slugs of theses in the data repo the case rests on. May be empty."),
+  method: Method.describe(
+    "The base case is the most likely outcome, not a hoped-for one. Every assumption is argued in rationale and cites sources from the facts.",
+  ),
+  overrides: Overrides.describe(
+    "Null fields unless there is a reason, given in rationale. dcf only.",
+  ),
   sensitivity: Sensitivity.nullable(),
 });
 
@@ -120,7 +130,9 @@ function requireOrdered(
  * unrepresentable in the emitted JSON Schema, and the skills spec restates it
  * in English for the analyst.
  */
-export const CaseSchema = CaseShape.superRefine((c, ctx) => {
+export const CaseSchema = CaseShape.describe(
+  "The assumptions a company is valued on. Rules decode enforces beyond this schema: scenario triples are ordered bear <= base <= bull; no scenario multiple exceeds multipleCeiling; overrides and sensitivity apply to dcf only, and sensitivity steps each include 0.",
+).superRefine((c, ctx) => {
   if (c.method.kind === "normalisedEarnings") {
     requireOrdered("ebitMargin", c.method.ebitMargin, ctx);
     requireOrdered("evEbitMultiple", c.method.evEbitMultiple, ctx);

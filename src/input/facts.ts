@@ -21,10 +21,22 @@ const nullableNumber = z.number().nullable();
 const nullableNonNegative = z.number().min(0).nullable();
 
 export const Market = z.strictObject({
-  price: z.number().positive(),
+  price: z
+    .number()
+    .positive()
+    .describe(
+      "Last price per share in priceCurrency, the currency the exchange quotes. Never scaled by unit.",
+    ),
   priceCurrency: Iso4217,
-  asOf: IsoDateString,
-  sharesOutstandingM: z.number().min(0),
+  asOf: IsoDateString.describe(
+    "Date of the price. A price-only refresh moves this date and leaves the document's asOf alone.",
+  ),
+  sharesOutstandingM: z
+    .number()
+    .min(0)
+    .describe(
+      "Millions of shares, whatever unit says: the latest reported count less any repurchases disclosed since (cite the notice).",
+    ),
   sharesDilutedM: nullableNonNegative,
   week52High: nullableNonNegative,
   week52Low: nullableNonNegative,
@@ -40,13 +52,16 @@ const periodFigures = {
   cogs: nullableNumber,
   grossProfit: nullableNumber,
   opex: nullableNumber,
-  /** Net financial result: negative when a net cost, positive when net income. */
-  netFinancialResult: nullableNumber,
-  taxExpense: nullableNumber,
+  netFinancialResult: nullableNumber.describe(
+    "Net financial result as reported: negative when a net cost, positive when net income.",
+  ),
+  taxExpense: nullableNumber.describe(
+    "Signed as the statements give it: negative when an outflow.",
+  ),
   ocf: nullableNumber,
-  capex: nullableNumber,
+  capex: nullableNumber.describe("Signed as the statements give it: negative when an outflow."),
   fcf: nullableNumber,
-  dividendsPaid: nullableNumber,
+  dividendsPaid: nullableNumber.describe("Negative when an outflow."),
   sharesBasicM: nullableNonNegative,
   sharesDilutedM: nullableNonNegative,
   sourceRef: SourceId,
@@ -85,7 +100,9 @@ export const QuarterRow = z.strictObject({
 
 export const Financials = z.strictObject({
   fiscalYears: z.array(FiscalYearRow).min(1),
-  ltm: LtmRow.nullable(),
+  ltm: LtmRow.nullable().describe(
+    "Trailing twelve months to the latest reported quarter or half, citing every document it is built from. Null when the company reports neither.",
+  ),
   quarters: z.array(QuarterRow).nullable(),
 });
 
@@ -93,30 +110,52 @@ export const BalanceSheet = z.strictObject({
   asOf: IsoDateString,
   cashAndEquivalents: z.number(),
   shortTermInvestments: nullableNumber,
-  totalDebt: z.number().min(0),
+  totalDebt: z
+    .number()
+    .min(0)
+    .describe(
+      "Interest-bearing debt at its balance-sheet carrying amount. Leases and pensions have their own fields and stay out.",
+    ),
   shortTermDebt: nullableNonNegative,
   longTermDebt: nullableNonNegative,
   operatingLeaseLiabilities: nullableNonNegative,
   pensionObligations: nullableNumber,
   goodwill: nullableNumber,
   intangiblesExGoodwill: nullableNumber,
-  totalEquity: nullableNumber,
+  totalEquity: nullableNumber.describe("Book equity attributable to shareholders."),
   sourceRef: SourceId,
 });
 
 const unitInterval = z.number().min(0).max(1);
 
 export const CostOfCapital = z.strictObject({
-  riskFreeRate: z.number(),
+  riskFreeRate: z
+    .number()
+    .describe(
+      "10-year government bond yield in the reporting currency, as a fraction; riskFreeBasis names the bond and date.",
+    ),
   riskFreeBasis: z.string().min(1),
-  erp: z.number().min(0),
-  countryPremium: nullableNumber,
-  betaCompany: nullableNumber,
-  betaSector: nullableNumber,
+  erp: z
+    .number()
+    .min(0)
+    .describe("Equity risk premium from Damodaran's current country table, as a fraction."),
+  countryPremium: nullableNumber.describe(
+    "Damodaran's country risk premium; null when the table shows none.",
+  ),
+  betaCompany: nullableNumber.describe(
+    "Measured beta. Null when it is implausible (for example, it prices the cost of equity below the company's own bond coupon); betaSector is then used.",
+  ),
+  betaSector: nullableNumber.describe("Damodaran's sector beta."),
   taxRateEffective: unitInterval,
-  taxRateStatutory: unitInterval.nullable(),
+  taxRateStatutory: unitInterval
+    .nullable()
+    .describe(
+      "The rate the company's own tax reconciliation uses when published, otherwise the headline corporate rate.",
+    ),
   pretaxCostOfDebt: z.number().min(0),
-  equityWeight: unitInterval,
+  equityWeight: unitInterval.describe(
+    "Market capitalisation over market capitalisation plus total debt, on weightsAsOf.",
+  ),
   debtWeight: unitInterval,
   weightsAsOf: IsoDateString,
   sourceRefs: SourceRefs,
@@ -151,7 +190,12 @@ export const Estimate = z.strictObject({
   revenue: nullableNumber,
   ebit: nullableNumber,
   eps: nullableNumber,
-  basis: z.enum(ESTIMATE_BASES).nullable(),
+  basis: z
+    .enum(ESTIMATE_BASES)
+    .nullable()
+    .describe(
+      "reported when consensus is on the IFRS or GAAP basis, adjusted when on the company's non-GAAP basis.",
+    ),
   sourceRefs: SourceRefs,
 });
 
@@ -186,7 +230,11 @@ export const Exposure = z.strictObject({
 
 export const Fx = z.strictObject({
   spotRates: z.array(SpotRate),
-  exposures: z.array(Exposure),
+  exposures: z
+    .array(Exposure)
+    .describe(
+      "Each currency with a material share of revenue or costs, as reported. Unknown shares are null, and such an exposure is not revalued.",
+    ),
 });
 
 /** Named CompanyBlock so the domain's Company is the only Company. */
@@ -201,9 +249,13 @@ export const CompanyBlock = z.strictObject({
 export const FactsShape = z.strictObject({
   schemaVersion: z.literal("1.0"),
   company: CompanyBlock,
-  asOf: IsoDateString,
-  currency: Iso4217,
-  unit: UNIT,
+  asOf: IsoDateString.describe(
+    "Date of the latest financial report the facts reflect. Moves on a quarterly or annual refresh, not on a price refresh.",
+  ),
+  currency: Iso4217.describe("The reporting currency."),
+  unit: UNIT.describe(
+    "Applies to every aggregate figure. Per-share figures and share counts are never scaled. Percentages are fractions.",
+  ),
   market: Market,
   financials: Financials,
   balanceSheet: BalanceSheet,
@@ -214,7 +266,9 @@ export const FactsShape = z.strictObject({
   holdings: Holdings.nullable(),
   fx: Fx.nullable(),
   sources: z.array(SourceEntry).min(1),
-  gaps: z.array(Gap),
+  gaps: z
+    .array(Gap)
+    .describe("Every field left null for want of a source, with its path and the reason."),
 });
 
 export type FactsShape = z.infer<typeof FactsShape>;
@@ -265,7 +319,9 @@ function toPath(dotted: string): (string | number)[] {
  * the file the researcher edits; schema.test.ts lists them as unrepresentable
  * in the emitted JSON Schema.
  */
-export const FactsSchema = FactsShape.superRefine((facts, ctx) => {
+export const FactsSchema = FactsShape.describe(
+  "What is observable about one listed company. Every key is present; unknown is null with a gaps entry. Every figure cites a source id. No computed metrics, valuations or opinions. Rules decode enforces beyond this schema: source ids are unique and every reference resolves; fiscal years are distinct; equityWeight + debtWeight is 1; a priceCurrency different from currency needs that spot rate in fx.",
+).superRefine((facts, ctx) => {
   const ids = new Set<string>();
   for (const [i, source] of facts.sources.entries()) {
     if (ids.has(source.id)) {

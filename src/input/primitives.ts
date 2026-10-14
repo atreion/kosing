@@ -65,7 +65,11 @@ export const SourceEntry = z.strictObject({
   published: z.union([IsoDateString, YearMonth]).nullable(),
   retrieved: IsoDateString,
   pages: z.string().nullable(),
-  tier: z.enum(TRUST_TIERS),
+  tier: z
+    .enum(TRUST_TIERS)
+    .describe(
+      "primary: the company's own filings or the regulator. secondary: brokers and consensus. tertiary: aggregators. On a conflict, use the highest tier and say so in research.md.",
+    ),
 });
 
 export const Gap = z.strictObject({

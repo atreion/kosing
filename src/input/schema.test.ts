@@ -117,3 +117,69 @@ test("duplicate source ids are a rule the schema cannot carry", () => {
   assert.equal(FactsSchema.safeParse(bad).success, false);
   assert.equal(validator("facts")(bad), true);
 });
+
+/**
+ * The conventions a researcher or analyst cannot infer from a field's name
+ * travel in the emitted schema as descriptions, so `kosing schema` is the whole
+ * brief. A path walks `properties`, array `items` and nullable `anyOf`.
+ */
+const DESCRIBED_FIELDS: Record<"facts" | "case", readonly string[]> = {
+  facts: [
+    "",
+    "asOf",
+    "currency",
+    "unit",
+    "market.price",
+    "market.asOf",
+    "market.sharesOutstandingM",
+    "financials.ltm",
+    "financials.fiscalYears.capex",
+    "financials.fiscalYears.taxExpense",
+    "financials.fiscalYears.netFinancialResult",
+    "balanceSheet.totalDebt",
+    "balanceSheet.totalEquity",
+    "costOfCapital.riskFreeRate",
+    "costOfCapital.erp",
+    "costOfCapital.betaCompany",
+    "costOfCapital.taxRateStatutory",
+    "costOfCapital.equityWeight",
+    "estimates.basis",
+    "fx.exposures",
+    "sources.tier",
+    "gaps",
+  ],
+  case: ["", "factsAsOf", "classification", "theses", "method", "overrides"],
+};
+
+function descriptionAt(schema: Record<string, unknown>, path: string): unknown {
+  let node: Record<string, unknown> | undefined = schema;
+  for (const key of path === "" ? [] : path.split(".")) {
+    node = childOf(node, key);
+  }
+  return node?.description;
+}
+
+function childOf(
+  node: Record<string, unknown> | undefined,
+  key: string,
+): Record<string, unknown> | undefined {
+  if (node === undefined) return undefined;
+  const props = node.properties as Record<string, Record<string, unknown>> | undefined;
+  if (props?.[key]) return props[key];
+  const items = node.items as Record<string, unknown> | undefined;
+  if (items) return childOf(items, key);
+  for (const option of (node.anyOf ?? node.oneOf ?? []) as Record<string, unknown>[]) {
+    const found = childOf(option, key);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+for (const doc of ["facts", "case"] as const) {
+  for (const path of DESCRIBED_FIELDS[doc]) {
+    test(`${doc}: ${path || "the document"} carries a description`, () => {
+      const description = descriptionAt(emitJsonSchema(doc), path);
+      assert.equal(typeof description, "string", `${path || "root"} has no description`);
+    });
+  }
+}
