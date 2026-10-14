@@ -29,3 +29,13 @@ export const CLASSIFICATIONS = [
   "specialSituation",
 ] as const;
 export type Classification = (typeof CLASSIFICATIONS)[number];
+
+/** The channel through which a company is most exposed to the AI cycle. */
+export const AI_EXPOSURES = [
+  "direct",
+  "picksAndShovels",
+  "wealthEffect",
+  "disruption",
+  "secondOrderOnly",
+] as const;
+export type AiExposure = (typeof AI_EXPOSURES)[number];
