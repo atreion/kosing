@@ -184,6 +184,10 @@ test("cost of capital bounds its rates and weights", () => {
   assert.equal(CostOfCapital.safeParse({ ...costOfCapital, sourceRefs: [] }).success, false);
 });
 
+test("the country premium is weighted by where the company earns, not its domicile", () => {
+  assert.match(CostOfCapital.shape.countryPremium.description ?? "", /weighted by revenue/);
+});
+
 const band = { y5Low: 120, y5High: 260, y10Low: 80, y10High: 260 };
 const nullBand = { y5Low: null, y5High: null, y10Low: null, y10High: null };
 
