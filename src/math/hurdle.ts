@@ -13,7 +13,7 @@ const CLASSIFICATION_DISCOUNT: Readonly<Record<Classification, number | null>> =
   holdingCompany: 0.3,
   specialSituation: 0.35,
   valueCyclical: 0.4,
-  bankInsurer: null,
+  bankInsurer: 0.3,
   reitUtility: null,
   saasPreProfit: null,
   commodityProducer: null,

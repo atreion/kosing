@@ -8,6 +8,7 @@ const period = {
   netIncome: 90,
   ebitda: 150,
   depreciationAmortization: 30,
+  dividendsPaid: null,
   ocf: 140,
   capex: -40,
   fcf: 100,

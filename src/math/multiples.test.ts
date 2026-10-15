@@ -10,6 +10,8 @@ const inputs = {
   ebitda: 1750,
   revenue: 11400,
   bookValue: 6200,
+  tangibleBook: null,
+  dividends: null,
 };
 
 test("each multiple is its numerator over its denominator", () => {
@@ -19,6 +21,8 @@ test("each multiple is its numerator over its denominator", () => {
     evEbitda: 26380 / 1750,
     evRevenue: 26380 / 11400,
     priceBook: 24380 / 6200,
+    priceTangibleBook: null,
+    dividendYield: null,
   });
 });
 

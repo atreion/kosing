@@ -10,7 +10,7 @@ const NO_BAND: RangeBand = { y5Low: null, y5High: null, y10Low: null, y10High: n
 export function selectMultipleInputs(
   derived: Derived,
   period: ReportedPeriod,
-  bookValue: number | null,
+  company: Company,
 ): MultipleInputs {
   return {
     marketCap: derived.marketCap,
@@ -19,14 +19,23 @@ export function selectMultipleInputs(
     ebit: period.ebit,
     ebitda: period.ebitda,
     revenue: period.revenue,
-    bookValue,
+    bookValue: company.balanceSheet.totalEquity,
+    tangibleBook: company.financialInstitution?.tangibleBookEquity ?? null,
+    dividends: period.dividendsPaid === null ? null : Math.abs(period.dividendsPaid),
   };
 }
 
-/** Facts carry no EV/revenue band, so that metric has none. */
+/** Facts carry bands for P/E, EV/EBIT, EV/EBITDA and P/B only. */
 function bandFor(company: Company, metric: Metric): RangeBand {
   const ranges = company.historicalRanges;
-  if (ranges === null || metric === "evRevenue") return NO_BAND;
+  if (
+    ranges === null ||
+    metric === "evRevenue" ||
+    metric === "priceTangibleBook" ||
+    metric === "dividendYield"
+  ) {
+    return NO_BAND;
+  }
   return ranges[metric];
 }
 
@@ -41,9 +50,11 @@ export function selectBands(
   };
 }
 
-/** Peers carry no price-to-book, so that metric has no peer set. */
+/** Peers carry P/E and the EV multiples only. */
 export function selectPeerValues(company: Company, metric: Metric): readonly number[] {
-  if (metric === "priceBook") return [];
+  if (metric === "priceBook" || metric === "priceTangibleBook" || metric === "dividendYield") {
+    return [];
+  }
   const key: keyof Peer = metric;
   return company.peers.flatMap((p) => {
     const v = p[key];

@@ -53,7 +53,7 @@ test("multiple inputs come from the base period and book value", () => {
   const inputs = selectMultipleInputs(
     selectDerived(c),
     selectLatestReportedPeriod(c.financials).period,
-    c.balanceSheet.totalEquity,
+    c,
   );
   assert.deepEqual(inputs, {
     marketCap: 212 * 115,
@@ -63,6 +63,8 @@ test("multiple inputs come from the base period and book value", () => {
     ebitda: 1750,
     revenue: 11400,
     bookValue: 6200,
+    tangibleBook: null,
+    dividends: null,
   });
 });
 

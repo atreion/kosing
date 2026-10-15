@@ -10,6 +10,8 @@ export type ReportedPeriod = {
   readonly ocf: number | null;
   readonly capex: number | null;
   readonly fcf: number | null;
+  /** Signed as reported: negative when an outflow. */
+  readonly dividendsPaid: number | null;
 };
 
 export type ReportedFiscalYear = ReportedPeriod & {

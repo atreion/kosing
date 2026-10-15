@@ -3,7 +3,7 @@ import type { Company, OtherClaims } from "../domain/company.ts";
 /** Price is reporting currency per share and shares are millions, so the product is millions. */
 export type Derived = {
   readonly marketCap: number;
-  readonly enterpriseValue: number;
+  readonly enterpriseValue: number | null;
   readonly netDebt: number;
   readonly otherClaims: OtherClaims;
 };
@@ -11,14 +11,16 @@ export type Derived = {
 /**
  * Enterprise value includes lease liabilities: EBIT and EBITDA are reported
  * after IFRS 16, so the current multiples compare like with like, as peer
- * figures usually do.
+ * figures usually do. A bank or insurer has no enterprise value: its
+ * debt is its raw material.
  */
 export function selectDerived(company: Company): Derived {
   const marketCap = company.market.price * company.market.shares;
   const leases = company.otherClaims.operatingLeaseLiabilities ?? 0;
   return {
     marketCap,
-    enterpriseValue: marketCap + company.netDebt + leases,
+    enterpriseValue:
+      company.financialInstitution === null ? marketCap + company.netDebt + leases : null,
     netDebt: company.netDebt,
     otherClaims: company.otherClaims,
   };

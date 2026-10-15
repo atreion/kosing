@@ -39,7 +39,7 @@ for (const f of VALID_FIXTURES.facts) {
     assert.equal(r.inputs.aiExposure, null);
     assert.equal(r.inputs.valuedOn, null);
     assert.equal(r.inputs.caseFactsAsOf, null);
-    assert.equal(r.pricedIn.multiples.length, 5);
+    assert.equal(r.pricedIn.multiples.length, 7);
     assertAllFinite(r);
   });
 }
@@ -274,7 +274,7 @@ test("normalised earnings and nav take their own base value", () => {
 });
 
 test("a classification with no required discount has no hurdle", () => {
-  const r = assemble(decoded(acme(), mutate(dcfCase(), "classification", "bankInsurer")));
+  const r = assemble(decoded(acme(), mutate(dcfCase(), "classification", "reitUtility")));
   assert.notEqual(r.valuation, null);
   assert.equal(r.hurdle, null);
 });
@@ -317,5 +317,99 @@ test("a price more than 30 days old on the valuation date is a warning", () => {
   assert.ok(
     !assemble(decoded(acme())).warnings.some((w) => w.rule === "priceStale"),
     "no valuation date, no check",
+  );
+});
+
+const bank = () => loadFixture("nordbank.facts");
+const bankCase = () => loadFixture("nordbank-excess.case");
+
+test("an excess-return case values the bank and fills its section", () => {
+  const r = assemble(decoded(bank(), bankCase()));
+  assert.equal(r.valuation?.method, "excessReturn");
+  if (r.valuation?.method !== "excessReturn") return;
+  assert.equal(r.valuation.tangibleBook, 9000);
+  assertClose(r.valuation.costOfEquity, r.derived.wacc.costOfEquity, 1e-12);
+  assert.equal(r.valuation.projection.length, 10);
+  assert.ok(r.valuation.scenarios?.bear && r.valuation.scenarios.bull);
+  assert.ok(r.valuation.scenarios.bear.valuePerShare < r.valuation.valuePerShare);
+  assert.equal(r.valuation.sensitivity.grid.length, 5);
+  assert.equal(r.sensitivity, null, "the dcf grid stays null");
+  assert.equal(r.fx, null);
+  assertAllFinite(r);
+});
+
+test("a bank's hurdle takes the 30% bankInsurer discount on the excess-return value", () => {
+  const r = assemble(decoded(bank(), bankCase()));
+  if (r.valuation?.method !== "excessReturn" || r.hurdle === null) throw new Error("unreachable");
+  assertClose(r.hurdle.requiredDiscount, 0.3, 1e-12);
+  assert.equal(r.hurdle.baseValue, r.valuation.valuePerShare);
+});
+
+test("a bank's priced-in section is the implied ROTE, not the reverse dcf", () => {
+  const r = assemble(decoded(bank()));
+  assert.equal(r.pricedIn.reverseDcf, null);
+  assert.ok(
+    r.resolutions.some(
+      (x) => x.kind === "reverseDcfUnavailable" && x.reason === "financialInstitution",
+    ),
+  );
+  const ir = r.pricedIn.impliedRote;
+  assert.ok(ir);
+  assertClose(ir.priceToTangibleBook, r.derived.marketCap / 9000, 1e-9);
+  assertClose(ir.impliedRote, 0.02 + ir.priceToTangibleBook * (ir.costOfEquity - 0.02), 1e-12);
+  assert.equal(assemble(decoded(acme())).pricedIn.impliedRote, null);
+  const noBook = mutate(bank(), "financialInstitution.tangibleBookEquity", 0);
+  assert.equal(assemble(decoded(noBook)).pricedIn.impliedRote, null, "no ratio on zero book");
+});
+
+test("a bank has no enterprise value; its multiples are P/E, P/TBV and dividend yield", () => {
+  const r = assemble(decoded(bank()));
+  assert.equal(r.derived.enterpriseValue, null);
+  const m = new Map(r.pricedIn.multiples.map((x) => [x.metric, x.current]));
+  assert.equal(m.get("evEbit"), null);
+  assert.equal(m.get("evRevenue"), null);
+  assertClose(m.get("priceTangibleBook") ?? 0, r.derived.marketCap / 9000, 1e-9);
+  assert.notEqual(m.get("peTrailing"), null);
+  assert.equal(assemble(decoded(acme())).pricedIn.multiples.length, 7);
+});
+
+test("a capital ratio inside the company's buffer is a warning", () => {
+  const thin = mutate(bank(), "financialInstitution.capitalRatio", 0.145);
+  const w = assemble(decoded(thin)).warnings.filter((x) => x.rule === "capitalNearRequirement");
+  assert.deepEqual(
+    w.map((x) => x.path),
+    ["financialInstitution.capitalRatio"],
+  );
+  assert.ok(!assemble(decoded(bank())).warnings.some((x) => x.rule === "capitalNearRequirement"));
+  const noTarget = mutate(
+    mutate(bank(), "financialInstitution.capitalTarget", null),
+    "financialInstitution.capitalRatio",
+    0.14,
+  );
+  assert.ok(
+    assemble(decoded(noTarget)).warnings.some((x) => x.rule === "capitalNearRequirement"),
+    "without a stated buffer, 1pp applies",
+  );
+});
+
+test("an undefined excess-return value is a resolution, with no valuation and no hurdle", () => {
+  const c = mutate(bankCase(), "method.terminal.growth", 0.5);
+  const r = assemble(decoded(bank(), c));
+  assert.equal(r.valuation, null);
+  assert.equal(r.hurdle, null);
+  assert.ok(
+    r.resolutions.some(
+      (x) => x.kind === "excessReturnUnavailable" && x.reason === "costOfEquityNotAboveGrowth",
+    ),
+  );
+});
+
+test("excess-return scenarios that value in the wrong order raise the warning", () => {
+  const inverted = mutate(bankCase(), "method.scenarios", {
+    bear: { rotePath: Array(10).fill(0.2), rationale: "labelled bear" },
+    bull: { rotePath: Array(10).fill(0.05), rationale: "labelled bull" },
+  });
+  assert.ok(
+    assemble(decoded(bank(), inverted)).warnings.some((w) => w.rule === "scenarioOrderInverted"),
   );
 });

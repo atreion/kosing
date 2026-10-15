@@ -76,7 +76,12 @@ export type Resolution =
         | "noUsableBasePeriod"
         | "discountRateNotPositive"
         | "terminalGrowthNotBelowWacc"
-        | "noGrowthInBracketMatchesPrice";
+        | "noGrowthInBracketMatchesPrice"
+        | "financialInstitution";
+    }
+  | {
+      readonly kind: "excessReturnUnavailable";
+      readonly reason: "costOfEquityNotPositive" | "costOfEquityNotAboveGrowth";
     }
   | {
       readonly kind: "dcfUnavailable";
@@ -98,7 +103,8 @@ export type Warning = {
     | "casePredatesFacts"
     | "ltmOlderThanFiscalYear"
     | "scenarioOrderInverted"
-    | "priceStale";
+    | "priceStale"
+    | "capitalNearRequirement";
   readonly path: string;
   readonly message: string;
 };

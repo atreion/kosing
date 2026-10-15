@@ -1,10 +1,11 @@
 import type { Company } from "../domain/company.ts";
 import type { Resolution } from "../input/errors.ts";
+import { impliedSteadyStateRote } from "../math/excess-return.ts";
 import { METRICS, type Multiples, median, positionInBand } from "../math/multiples.ts";
 import { solveImpliedGrowth } from "../math/reverse-dcf.ts";
 import { selectBands, selectPeerValues } from "../select/multiples.ts";
 import { type ReverseDcfOptions, selectReverseDcf } from "../select/reverse-dcf.ts";
-import type { MultipleRow, ReverseDcfSection } from "./types.ts";
+import type { ImpliedRoteSection, MultipleRow, ReverseDcfSection } from "./types.ts";
 
 /** Position is judged against the five-year band; the ten-year one is reported beside it. */
 export function multipleRows(company: Company, multiples: Multiples): readonly MultipleRow[] {
@@ -27,6 +28,12 @@ export function reverseDcfSection(
   wacc: number,
   options: ReverseDcfOptions,
 ): { readonly section: ReverseDcfSection | null; readonly resolutions: readonly Resolution[] } {
+  if (company.financialInstitution !== null) {
+    return {
+      section: null,
+      resolutions: [{ kind: "reverseDcfUnavailable", reason: "financialInstitution" }],
+    };
+  }
   const selection = selectReverseDcf(company, wacc, options);
   if (selection.kind === "unavailable") {
     return {
@@ -50,5 +57,23 @@ export function reverseDcfSection(
       depreciationCappedAtCapex: selection.depreciationCappedAtCapex,
     },
     resolutions: [],
+  };
+}
+
+/** For a bank or insurer, the steady ROTE today's price-to-tangible-book justifies. */
+export function impliedRoteSection(
+  company: Company,
+  marketCap: number,
+  costOfEquity: number,
+  terminalGrowth: number,
+): ImpliedRoteSection | null {
+  const tbv = company.financialInstitution?.tangibleBookEquity ?? null;
+  if (tbv === null || tbv <= 0) return null;
+  const priceToTangibleBook = marketCap / tbv;
+  return {
+    impliedRote: impliedSteadyStateRote(priceToTangibleBook, costOfEquity, terminalGrowth),
+    priceToTangibleBook,
+    costOfEquity,
+    terminalGrowth,
   };
 }

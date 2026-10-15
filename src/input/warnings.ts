@@ -57,10 +57,31 @@ export function priceStale(priceAsOf: IsoDate, valuedOn: IsoDate | null): Warnin
   ];
 }
 
+/** Without a stated management buffer, one percentage point stands in for it. */
+const DEFAULT_CAPITAL_BUFFER = 0.01;
+
+function capitalNearRequirement(facts: Facts): Warning[] {
+  const fi = facts.financialInstitution;
+  if (fi === null) return [];
+  const floor = fi.capitalRequirement + (fi.capitalTarget ?? DEFAULT_CAPITAL_BUFFER);
+  if (fi.capitalRatio >= floor) return [];
+  return [
+    {
+      rule: "capitalNearRequirement",
+      path: "financialInstitution.capitalRatio",
+      message: `capital ratio ${fi.capitalRatio} is below requirement ${fi.capitalRequirement} plus buffer`,
+    },
+  ];
+}
+
 export function collectWarnings(
   facts: Facts,
   investmentCase: Case | null,
   company: Company,
 ): Warning[] {
-  return [...casePredatesFacts(facts, investmentCase), ...ltmOlderThanFiscalYear(company)];
+  return [
+    ...casePredatesFacts(facts, investmentCase),
+    ...ltmOlderThanFiscalYear(company),
+    ...capitalNearRequirement(facts),
+  ];
 }

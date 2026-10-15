@@ -23,6 +23,8 @@ function baseValue(valuation: ValuationSection): number {
       return valuation.scenarios.base.valuePerShare;
     case "nav":
       return valuation.valuePerShare;
+    case "excessReturn":
+      return valuation.valuePerShare;
     default:
       return assertNever(valuation);
   }

@@ -10,6 +10,11 @@ import type { Decoded } from "../input/decode.ts";
 import type { Resolution, Warning } from "../input/errors.ts";
 import { priceStale } from "../input/warnings.ts";
 import { computeDcf, type DcfInputs } from "../math/dcf.ts";
+import {
+  computeExcessReturn,
+  computeExcessReturnSensitivity,
+  type ExcessReturnInputs,
+} from "../math/excess-return.ts";
 import { computeFxSensitivity, type FxPairResult } from "../math/fx.ts";
 import { computeMultiples } from "../math/multiples.ts";
 import { computeNav } from "../math/nav.ts";
@@ -24,16 +29,18 @@ import {
   selectSensitivity,
 } from "../select/dcf.ts";
 import { selectDerived } from "../select/derived.ts";
+import { selectExcessReturn } from "../select/excess-return.ts";
 import { type FxBase, selectFx } from "../select/fx.ts";
 import { selectMultipleInputs } from "../select/multiples.ts";
 import { selectNav } from "../select/nav.ts";
 import { selectNormalisedEarnings } from "../select/normalised-earnings.ts";
 import { selectWacc } from "../select/wacc.ts";
 import { hurdleSection } from "./hurdle.ts";
-import { multipleRows, reverseDcfSection } from "./priced-in.ts";
+import { impliedRoteSection, multipleRows, reverseDcfSection } from "./priced-in.ts";
 import {
   type AlternativeBetaValue,
   DEFAULT_VALUATOR_OPTIONS,
+  type ExcessReturnScenarioValue,
   type Results,
   type ScenarioValue,
   type ValuationSection,
@@ -111,6 +118,51 @@ function valueDcf(valuation: Extract<Valuation, { method: "dcf" }>, company: Com
   };
 }
 
+function excessReturnScenario(inputs: ExcessReturnInputs): ExcessReturnScenarioValue | null {
+  const r = computeExcessReturn(inputs);
+  if (r.kind !== "value") return null;
+  return {
+    valuePerShare: r.valuePerShare,
+    equityValue: r.equityValue,
+    priceToTangibleBook: r.priceToTangibleBook,
+  };
+}
+
+function valueExcessReturn(
+  valuation: Extract<Valuation, { method: "excessReturn" }>,
+  company: Company,
+): Valued {
+  const inputs = selectExcessReturn(valuation, company);
+  const outcome = computeExcessReturn(inputs);
+  if (outcome.kind === "undefined") {
+    return {
+      ...NOTHING,
+      resolutions: [{ kind: "excessReturnUnavailable", reason: outcome.reason }],
+    };
+  }
+  const { kind: _k, ...value } = outcome;
+  const s = valuation.assumptions.scenarios;
+  return {
+    ...NOTHING,
+    valuation: {
+      method: "excessReturn",
+      costOfEquity: inputs.costOfEquity,
+      tangibleBook: inputs.tangibleBook,
+      payoutRatio: inputs.payoutRatio,
+      terminalGrowth: inputs.terminalGrowth,
+      ...value,
+      scenarios:
+        s === null
+          ? null
+          : {
+              bear: excessReturnScenario(selectExcessReturn(valuation, company, s.bear.rotePath)),
+              bull: excessReturnScenario(selectExcessReturn(valuation, company, s.bull.rotePath)),
+            },
+      sensitivity: computeExcessReturnSensitivity(inputs),
+    },
+  };
+}
+
 function value(valuation: Valuation, company: Company): Valued {
   switch (valuation.method) {
     case "dcf":
@@ -140,7 +192,7 @@ function value(valuation: Valuation, company: Company): Valued {
       };
     }
     case "excessReturn":
-      throw new Error("excessReturn is valued in Task 5");
+      return valueExcessReturn(valuation, company);
     default:
       return assertNever(valuation);
   }
@@ -151,17 +203,23 @@ function value(valuation: Valuation, company: Company): Valued {
  * ordered, so an analyst's sign slip is caught here rather than letting V1 be
  * answered from the wrong side.
  */
+function scenarioValues(
+  valuation: ValuationSection | null,
+): { bear: number; base: number; bull: number } | null {
+  if (valuation?.method !== "dcf" && valuation?.method !== "excessReturn") return null;
+  const s = valuation.scenarios;
+  if (s === null || s.bear === null || s.bull === null) return null;
+  return { bear: s.bear.valuePerShare, base: valuation.valuePerShare, bull: s.bull.valuePerShare };
+}
+
 function scenarioWarnings(valuation: ValuationSection | null): Warning[] {
-  if (valuation?.method !== "dcf" || valuation.scenarios === null) return [];
-  const { bear, bull } = valuation.scenarios;
-  if (bear === null || bull === null) return [];
-  const base = valuation.valuePerShare;
-  if (bear.valuePerShare <= base && base <= bull.valuePerShare) return [];
+  const v = scenarioValues(valuation);
+  if (v === null || (v.bear <= v.base && v.base <= v.bull)) return [];
   return [
     {
       rule: "scenarioOrderInverted",
       path: "method.scenarios",
-      message: `bear ${bear.valuePerShare.toFixed(2)}, base ${base.toFixed(2)}, bull ${bull.valuePerShare.toFixed(2)} per share are not in order`,
+      message: `bear ${v.bear.toFixed(2)}, base ${v.base.toFixed(2)}, bull ${v.bull.toFixed(2)} per share are not in order`,
     },
   ];
 }
@@ -187,9 +245,7 @@ export function assemble(
   const derived = selectDerived(company);
   const wacc = computeWacc(selectWacc(company.costOfCapital));
   const base = selectLatestReportedPeriod(company.financials);
-  const multiples = computeMultiples(
-    selectMultipleInputs(derived, base.period, company.balanceSheet.totalEquity),
-  );
+  const multiples = computeMultiples(selectMultipleInputs(derived, base.period, company));
   const reverse = reverseDcfSection(company, wacc.wacc, options.reverseDcf);
   const valued = decoded.valuation === null ? NOTHING : value(decoded.valuation, company);
   const fx = fxSection(company, valued.fxBase, options.fxMoves);
@@ -205,7 +261,16 @@ export function assemble(
       company,
     },
     derived: { ...derived, multiples, wacc },
-    pricedIn: { reverseDcf: reverse.section, multiples: multipleRows(company, multiples) },
+    pricedIn: {
+      reverseDcf: reverse.section,
+      impliedRote: impliedRoteSection(
+        company,
+        derived.marketCap,
+        wacc.costOfEquity,
+        options.reverseDcf.terminalGrowth,
+      ),
+      multiples: multipleRows(company, multiples),
+    },
     valuation: valued.valuation,
     hurdle: hurdleSection({
       classification: decoded.classification,

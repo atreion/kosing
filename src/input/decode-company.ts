@@ -86,6 +86,7 @@ function toReportedPeriod(
     ocf: scale.nullable(row.ocf),
     capex: scale.nullable(row.capex),
     fcf: scale.nullable(row.fcf),
+    dividendsPaid: scale.nullable(row.dividendsPaid),
   };
 }
 

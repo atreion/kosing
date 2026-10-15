@@ -6,23 +6,37 @@
 
 export type MultipleInputs = {
   readonly marketCap: number;
-  readonly enterpriseValue: number;
+  /** null for a financial institution, whose debt is its raw material. */
+  readonly enterpriseValue: number | null;
   readonly netIncome: number | null;
   readonly ebit: number | null;
   readonly ebitda: number | null;
   readonly revenue: number | null;
   readonly bookValue: number | null;
+  readonly tangibleBook: number | null;
+  /** Dividends paid in the base period, as a positive amount. */
+  readonly dividends: number | null;
 };
 
-export const METRICS = ["peTrailing", "evEbit", "evEbitda", "evRevenue", "priceBook"] as const;
+export const METRICS = [
+  "peTrailing",
+  "evEbit",
+  "evEbitda",
+  "evRevenue",
+  "priceBook",
+  "priceTangibleBook",
+  "dividendYield",
+] as const;
 export type Metric = (typeof METRICS)[number];
 
 export type Multiples = { readonly [M in Metric]: number | null };
 
 export type Position = "below" | "within" | "above";
 
-function ratio(numerator: number, denominator: number | null): number | null {
-  return denominator === null || denominator <= 0 ? null : numerator / denominator;
+function ratio(numerator: number | null, denominator: number | null): number | null {
+  return numerator === null || denominator === null || denominator <= 0
+    ? null
+    : numerator / denominator;
 }
 
 export function computeMultiples(inputs: MultipleInputs): Multiples {
@@ -32,6 +46,8 @@ export function computeMultiples(inputs: MultipleInputs): Multiples {
     evEbitda: ratio(inputs.enterpriseValue, inputs.ebitda),
     evRevenue: ratio(inputs.enterpriseValue, inputs.revenue),
     priceBook: ratio(inputs.marketCap, inputs.bookValue),
+    priceTangibleBook: ratio(inputs.marketCap, inputs.tangibleBook),
+    dividendYield: ratio(inputs.dividends, inputs.marketCap),
   };
 }
 

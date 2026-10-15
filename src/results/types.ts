@@ -9,6 +9,7 @@ import type { AiExposure, Classification, Currency, IsoDate } from "../domain/ty
 import type { Holding, Terminal } from "../domain/valuation.ts";
 import type { Resolution, Warning } from "../input/errors.ts";
 import type { DcfNote, YearRow } from "../math/dcf.ts";
+import type { ExcessReturnSensitivity, ExcessReturnYear } from "../math/excess-return.ts";
 import type { FxPairResult } from "../math/fx.ts";
 import type { Metric, Multiples, Position } from "../math/multiples.ts";
 import type { NormalisedEarningsResult } from "../math/normalised-earnings.ts";
@@ -109,7 +110,45 @@ export type NavSection = {
   readonly holdings: readonly Holding[];
 };
 
-export type ValuationSection = DcfSection | NormalisedEarningsSection | NavSection;
+export type ExcessReturnScenarioValue = {
+  readonly valuePerShare: number;
+  readonly equityValue: number;
+  readonly priceToTangibleBook: number | null;
+};
+
+export type ExcessReturnSection = {
+  readonly method: "excessReturn";
+  readonly costOfEquity: number;
+  readonly tangibleBook: number;
+  readonly payoutRatio: number;
+  readonly terminalGrowth: number;
+  readonly valuePerShare: number;
+  readonly equityValue: number;
+  readonly priceToTangibleBook: number | null;
+  readonly terminalValue: number;
+  readonly pvTerminalValue: number;
+  readonly terminalPctOfValue: number | null;
+  readonly projection: readonly ExcessReturnYear[];
+  /** null when the case has no scenarios; a side is null when its value is undefined. */
+  readonly scenarios: {
+    readonly bear: ExcessReturnScenarioValue | null;
+    readonly bull: ExcessReturnScenarioValue | null;
+  } | null;
+  readonly sensitivity: ExcessReturnSensitivity;
+};
+
+export type ValuationSection =
+  | DcfSection
+  | NormalisedEarningsSection
+  | NavSection
+  | ExcessReturnSection;
+
+export type ImpliedRoteSection = {
+  readonly impliedRote: number;
+  readonly priceToTangibleBook: number;
+  readonly costOfEquity: number;
+  readonly terminalGrowth: number;
+};
 
 /** The price the investor sees, when the exchange quotes outside the reporting currency. */
 export type TradingCurrencyHurdle = {
@@ -153,6 +192,7 @@ export type Results = {
   readonly derived: Derived & { readonly multiples: Multiples; readonly wacc: WaccResult };
   readonly pricedIn: {
     readonly reverseDcf: ReverseDcfSection | null;
+    readonly impliedRote: ImpliedRoteSection | null;
     readonly multiples: readonly MultipleRow[];
   };
   readonly valuation: ValuationSection | null;
