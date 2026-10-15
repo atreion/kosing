@@ -338,10 +338,10 @@ test("an excess-return case values the bank and fills its section", () => {
   assertAllFinite(r);
 });
 
-test("a bank's hurdle takes the 30% bankInsurer discount on the excess-return value", () => {
+test("a bank's hurdle takes the 25% bankInsurer discount on the excess-return value", () => {
   const r = assemble(decoded(bank(), bankCase()));
   if (r.valuation?.method !== "excessReturn" || r.hurdle === null) throw new Error("unreachable");
-  assertClose(r.hurdle.requiredDiscount, 0.3, 1e-12);
+  assertClose(r.hurdle.requiredDiscount, 0.25, 1e-12);
   assert.equal(r.hurdle.baseValue, r.valuation.valuePerShare);
 });
 

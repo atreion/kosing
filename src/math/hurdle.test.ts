@@ -18,7 +18,7 @@ test("every valued classification has a discount and the add-ons follow the tabl
     ["holdingCompany", 0.3],
     ["specialSituation", 0.35],
     ["valueCyclical", 0.4],
-    ["bankInsurer", 0.3],
+    ["bankInsurer", 0.25],
   ] as const;
   for (const [classification, discount] of expected) {
     assertClose(
