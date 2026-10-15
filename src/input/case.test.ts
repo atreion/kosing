@@ -261,3 +261,7 @@ test("a rote path in percent rather than fractions is rejected", () => {
 test("the rote path says the rote is charged on opening tangible book", () => {
   assert.match(ExcessReturnMethod.shape.rotePath.description ?? "", /opening tangible book/);
 });
+
+test("an excess-return bear case is told to carry a credit-loss cycle", () => {
+  assert.match(ExcessReturnMethod.shape.scenarios.description ?? "", /credit-loss cycle/);
+});

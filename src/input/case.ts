@@ -101,7 +101,12 @@ export const ExcessReturnMethod = z.strictObject({
     basis: z.string().min(1),
   }),
   /** Bear and bull replace the ROTE path; everything else is shared. */
-  scenarios: z.strictObject({ bear: ExcessReturnScenario, bull: ExcessReturnScenario }).nullable(),
+  scenarios: z
+    .strictObject({ bear: ExcessReturnScenario, bull: ExcessReturnScenario })
+    .nullable()
+    .describe(
+      "Bear and bull replace the ROTE path; everything else is shared. A bank's or insurer's bear carries a credit-loss cycle: one or two years of losses taking ROTE toward zero, taken from the company's own worst years (for a Nordic bank, 2008-2009), then recovery to a lower normalised level. Lower rates alone are not a bear case for a levered business.",
+    ),
   rationale: z.string().min(1),
   sourceRefs: SourceRefs,
 });
