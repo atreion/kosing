@@ -177,6 +177,8 @@ const DESCRIBED_FIELDS: Record<"facts" | "case", readonly string[]> = {
     "method.revenueGrowthPath",
     "method.capexPctRevenuePath",
     "method.workingCapitalPctRevenue",
+    "method.rotePath",
+    "method.payoutRatio",
     "overrides",
     "sensitivity",
   ],
@@ -214,3 +216,9 @@ for (const doc of ["facts", "case"] as const) {
     });
   }
 }
+
+test("excessReturn for bankInsurer only is a rule the schema cannot carry", () => {
+  const bad = mutate(loadFixture("nordbank-excess.case"), "classification", "garp");
+  assert.equal(CaseSchema.safeParse(bad).success, false);
+  assert.equal(validator("case")(bad), true);
+});

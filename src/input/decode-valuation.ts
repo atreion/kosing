@@ -312,6 +312,39 @@ export function decodeValuation(
         resolutions,
       });
     }
+    case "excessReturn": {
+      const fi = company.financialInstitution;
+      if (fi === null) {
+        return failed([
+          decodeError(
+            "facts",
+            "semantic.excessReturnNeedsFinancialInstitution",
+            "financialInstitution",
+            "an excessReturn case needs the financialInstitution block in the facts",
+          ),
+        ]);
+      }
+      return decoded({
+        valuation: {
+          method: "excessReturn",
+          tangibleBook: fi.tangibleBookEquity,
+          costOfCapital: company.costOfCapital,
+          assumptions: {
+            rotePath: method.rotePath,
+            payoutRatio: method.payoutRatio,
+            terminalGrowth: method.terminal.growth,
+            scenarios:
+              method.scenarios === null
+                ? null
+                : {
+                    bear: { rotePath: method.scenarios.bear.rotePath },
+                    bull: { rotePath: method.scenarios.bull.rotePath },
+                  },
+          },
+        },
+        resolutions,
+      });
+    }
     default:
       return assertNever(method);
   }

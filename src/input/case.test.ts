@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { loadFixture, mutate } from "../test-fixtures.ts";
 import { CaseSchema } from "./case.ts";
 
 const ten = Array.from({ length: 10 }, () => 0.05);
@@ -219,4 +220,14 @@ test("a case states its AI-cycle exposure, from the closed set", () => {
   assert.equal(CaseSchema.safeParse(without).success, false);
   assert.equal(CaseSchema.safeParse(dcfCase({ aiExposure: "picksAndShovels" })).success, true);
   assert.equal(CaseSchema.safeParse(dcfCase({ aiExposure: "picks_and_shovels" })).success, false);
+});
+
+test("an excess-return case parses and is for bankInsurer only", () => {
+  const c = loadFixture("nordbank-excess.case");
+  assert.equal(CaseSchema.safeParse(c).success, true);
+  const wrong = CaseSchema.safeParse(mutate(c, "classification", "garp"));
+  assert.equal(wrong.success, false);
+  assert.deepEqual(wrong.error?.issues[0]?.path, ["method", "kind"]);
+  assert.equal(CaseSchema.safeParse(mutate(c, "method.payoutRatio", 1.2)).success, false);
+  assert.equal(CaseSchema.safeParse(mutate(c, "method.rotePath", [0.1])).success, false);
 });

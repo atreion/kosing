@@ -39,6 +39,16 @@ export type CyclicalAssumptions = {
 
 export type NavAssumptions = { readonly warrantedDiscount: number };
 
+export type ExcessReturnAssumptions = {
+  readonly rotePath: readonly number[];
+  readonly payoutRatio: number;
+  readonly terminalGrowth: number;
+  readonly scenarios: {
+    readonly bear: { readonly rotePath: readonly number[] };
+    readonly bull: { readonly rotePath: readonly number[] };
+  } | null;
+};
+
 export type SensitivityAxes = {
   readonly waccSteps: NonEmpty<number>;
   readonly terminalGrowthSteps: NonEmpty<number>;
@@ -84,4 +94,12 @@ export type Valuation =
       readonly parentNetDebt: number;
       readonly lookThroughNav: number | null;
       readonly assumptions: NavAssumptions;
+    }
+  | {
+      readonly method: "excessReturn";
+      /** Tangible book to ordinary shareholders, millions of the reporting currency. */
+      readonly tangibleBook: number;
+      /** The facts' cost of capital; only the cost of equity is used. */
+      readonly costOfCapital: CostOfCapital;
+      readonly assumptions: ExcessReturnAssumptions;
     };

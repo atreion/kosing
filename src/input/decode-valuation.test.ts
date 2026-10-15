@@ -237,3 +237,25 @@ test("under a beta override the alternative is the beta facts resolved, unless t
   if (same.data?.valuation.method !== "dcf") throw new Error("unreachable");
   assert.equal(same.data.valuation.costOfCapital.alternativeBeta, null);
 });
+
+test("an excess-return case decodes against a bank's facts", () => {
+  const r = run(loadFixture("nordbank.facts"), loadFixture("nordbank-excess.case"));
+  assert.ok(r.success, JSON.stringify(r.error));
+  const v = r.data.valuation;
+  assert.equal(v.method, "excessReturn");
+  if (v.method !== "excessReturn") return;
+  assert.equal(v.tangibleBook, 9000);
+  assert.equal(v.assumptions.payoutRatio, 0.6);
+  assert.equal(v.assumptions.terminalGrowth, 0.02);
+  assert.equal(v.assumptions.scenarios?.bear.rotePath[0], 0.12);
+});
+
+test("an excess-return case on facts without the block names the block", () => {
+  const c = mutate(loadFixture("nordbank-excess.case"), "ticker", "ACME");
+  const r = run(loadFixture("acme.facts"), c);
+  assert.equal(r.success, false);
+  assert.deepEqual(
+    r.error?.map((e) => [e.file, e.rule, e.path]),
+    [["facts", "semantic.excessReturnNeedsFinancialInstitution", "financialInstitution"]],
+  );
+});

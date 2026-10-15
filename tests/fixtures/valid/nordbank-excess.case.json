@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "ticker": "NORD",
+  "factsAsOf": "2026-10-01",
+  "classification": "bankInsurer",
+  "aiExposure": "secondOrderOnly",
+  "method": {
+    "kind": "excessReturn",
+    "rotePath": [0.14, 0.135, 0.13, 0.13, 0.125, 0.125, 0.12, 0.12, 0.12, 0.12],
+    "payoutRatio": 0.6,
+    "terminal": { "growth": 0.02, "basis": "nominal growth of the home economy" },
+    "scenarios": {
+      "bear": {
+        "rotePath": [0.12, 0.11, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+        "rationale": "rates back near zero"
+      },
+      "bull": {
+        "rotePath": [0.16, 0.155, 0.15, 0.15, 0.145, 0.145, 0.14, 0.14, 0.14, 0.14],
+        "rationale": "deposit margins hold"
+      }
+    },
+    "rationale": "normalised over the rate regimes since 2015",
+    "sourceRefs": ["S4"]
+  },
+  "overrides": { "beta": null, "wacc": null, "taxRate": null, "rationale": null },
+  "sensitivity": null
+}

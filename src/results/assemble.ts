@@ -139,6 +139,8 @@ function value(valuation: Valuation, company: Company): Valued {
         },
       };
     }
+    case "excessReturn":
+      throw new Error("excessReturn is valued in Task 5");
     default:
       return assertNever(valuation);
   }

@@ -78,10 +78,36 @@ export const NavMethod = z.strictObject({
   sourceRefs: SourceRefs,
 });
 
+export const ExcessReturnScenario = z.strictObject({
+  rotePath: TenNumberPath,
+  rationale: z.string().min(1),
+});
+
+export const ExcessReturnMethod = z.strictObject({
+  kind: z.literal("excessReturn"),
+  rotePath: TenNumberPath.describe(
+    "Return on tangible equity for each of ten years, as fractions, normalised across the rate regimes the company has lived through rather than extrapolated from the latest year.",
+  ),
+  payoutRatio: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe("Share of earnings paid out as dividends or buybacks; book grows by the rest."),
+  terminal: z.strictObject({
+    growth: z.number(),
+    basis: z.string().min(1),
+  }),
+  /** Bear and bull replace the ROTE path; everything else is shared. */
+  scenarios: z.strictObject({ bear: ExcessReturnScenario, bull: ExcessReturnScenario }).nullable(),
+  rationale: z.string().min(1),
+  sourceRefs: SourceRefs,
+});
+
 export const Method = z.discriminatedUnion("kind", [
   DcfMethod,
   NormalisedEarningsMethod,
   NavMethod,
+  ExcessReturnMethod,
 ]);
 
 export const Overrides = z.strictObject({
@@ -107,7 +133,7 @@ const CaseShape = z.strictObject({
   classification: z
     .enum(CLASSIFICATIONS)
     .describe(
-      "Decides the method: qualityCompounder and garp take dcf, valueCyclical takes normalisedEarnings, holdingCompany takes nav, specialSituation any of the three. The other classifications have no method and get no case.",
+      "Decides the method: qualityCompounder and garp take dcf, valueCyclical takes normalisedEarnings, holdingCompany takes nav, bankInsurer takes excessReturn, specialSituation any of dcf, normalisedEarnings or nav. reitUtility, saasPreProfit and commodityProducer have no method and get no case.",
     ),
   aiExposure: z
     .enum(AI_EXPOSURES)
@@ -145,8 +171,16 @@ function requireOrdered(
  * in English for the analyst.
  */
 export const CaseSchema = CaseShape.describe(
-  "The assumptions a company is valued on. Rules decode enforces beyond this schema: scenario triples are ordered bear <= base <= bull; no scenario multiple exceeds multipleCeiling; overrides and sensitivity apply to dcf only, and sensitivity steps each include 0.",
+  "The assumptions a company is valued on. Rules decode enforces beyond this schema: scenario triples are ordered bear <= base <= bull; no scenario multiple exceeds multipleCeiling; overrides and sensitivity apply to dcf only, and sensitivity steps each include 0. excessReturn is for bankInsurer only.",
 ).superRefine((c, ctx) => {
+  if (c.method.kind === "excessReturn" && c.classification !== "bankInsurer") {
+    ctx.addIssue({
+      code: "custom",
+      path: ["method", "kind"],
+      message: "excessReturn is for bankInsurer only",
+    });
+  }
+
   if (c.method.kind === "normalisedEarnings") {
     requireOrdered("ebitMargin", c.method.ebitMargin, ctx);
     requireOrdered("evEbitMultiple", c.method.evEbitMultiple, ctx);
