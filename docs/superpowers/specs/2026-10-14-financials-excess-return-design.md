@@ -1,6 +1,6 @@
 # Valuing banks and insurers: the excess-return method
 
-Status: draft, 2026-10-14.
+Status: implemented, 2026-10-14.
 
 Kosing has no method for `bankInsurer`, so every bank and insurer is too hard
 by construction. This spec adds one valuation method for both, an

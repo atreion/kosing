@@ -17,7 +17,7 @@ Run commands from the Kosing repo root.
 2. **Case.** Write `$D/case.json` against `npm run --silent kosing -- schema case`,
    with bear and bull scenarios and the company's AI-cycle exposure. The base
    case is what you believe, not a number discounted for safety: the margin
-   of safety is applied separately.
+   of safety is applied separately. For a bank or insurer (classification bankInsurer, method excessReturn) the base ROTE path spans the rate regimes the company has lived through, using the net interest income history and sensitivity in the facts.
 3. **Value.** `npm run --silent kosing -- value <ID>` writes `$D/results.json`.
    Fix the case at each reported path until it exits 0. After you have seen
    the value, an assumption changes only for a reason written into
