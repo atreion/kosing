@@ -120,6 +120,24 @@ export type Fx = {
   readonly exposures: readonly Exposure[];
 };
 
+/** Banks and insurers only. Aggregates in millions of the reporting currency; ratios as fractions. */
+export type FinancialInstitution = {
+  readonly kind: "bank" | "insurer";
+  readonly tangibleBookEquity: number;
+  readonly at1Capital: number | null;
+  readonly at1Coupons: number | null;
+  readonly capitalRatio: number;
+  readonly capitalRequirement: number;
+  readonly capitalTarget: number | null;
+  readonly riskWeightedAssets: number | null;
+  readonly netInterestIncome: number | null;
+  readonly niiSensitivity: number | null;
+  readonly loanLossRatio: number | null;
+  readonly costIncomeRatio: number | null;
+  readonly combinedRatio: number | null;
+  readonly contractualServiceMargin: number | null;
+};
+
 /** Everything inside is reporting currency, millions, by construction. */
 export type Company = {
   readonly identity: Identity;
@@ -137,4 +155,5 @@ export type Company = {
   readonly estimates: readonly Estimate[];
   readonly holdings: Holdings | null;
   readonly fx: Fx | null;
+  readonly financialInstitution: FinancialInstitution | null;
 };

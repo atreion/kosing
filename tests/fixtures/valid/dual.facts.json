@@ -88,7 +88,7 @@
     "erp": 0.05,
     "countryPremium": 0.005,
     "betaCompany": 1.2,
-    "betaSector": 1.0,
+    "betaSector": 1,
     "taxRateEffective": 0.2,
     "taxRateStatutory": 0.2,
     "pretaxCostOfDebt": 0.045,
@@ -199,5 +199,6 @@
       "tier": "primary"
     }
   ],
-  "gaps": []
+  "gaps": [],
+  "financialInstitution": null
 }

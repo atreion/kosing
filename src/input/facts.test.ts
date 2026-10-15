@@ -280,6 +280,7 @@ export function facts(over: Record<string, unknown> = {}) {
     estimates: null,
     holdings: null,
     fx: null,
+    financialInstitution: null,
     sources,
     gaps: [],
     ...over,
@@ -355,4 +356,36 @@ test("an unresolved reference inside the ltm row's sourceRefs is reported at its
   const r = FactsSchema.safeParse(doc);
   assert.equal(r.success, false);
   assert.ok(r.error?.issues.some((i) => i.path.join(".") === "financials.ltm.sourceRefs.1"));
+});
+
+test("a financial institution carries no debt and an all-equity cost of capital", () => {
+  assert.equal(FactsSchema.safeParse(loadFixture("nordbank.facts")).success, true);
+  for (const [path, value] of [
+    ["balanceSheet.totalDebt", 100],
+    ["costOfCapital.pretaxCostOfDebt", 0.03],
+  ] as const) {
+    const r = FactsSchema.safeParse(mutate(loadFixture("nordbank.facts"), path, value));
+    assert.equal(r.success, false, path);
+    assert.deepEqual(r.error?.issues[0]?.path, path.split("."));
+  }
+  const weights = mutate(
+    mutate(loadFixture("nordbank.facts"), "costOfCapital.equityWeight", 0.8),
+    "costOfCapital.debtWeight",
+    0.2,
+  );
+  assert.equal(FactsSchema.safeParse(weights).success, false);
+});
+
+test("bank-only and insurer-only fields are null for the other kind", () => {
+  const bank = mutate(loadFixture("nordbank.facts"), "financialInstitution.combinedRatio", 0.9);
+  const r = FactsSchema.safeParse(bank);
+  assert.equal(r.success, false);
+  assert.deepEqual(r.error?.issues[0]?.path, ["financialInstitution", "combinedRatio"]);
+  const insurer = mutate(loadFixture("safeins.facts"), "financialInstitution.netInterestIncome", 1);
+  assert.equal(FactsSchema.safeParse(insurer).success, false);
+});
+
+test("the block's source refs must resolve", () => {
+  const bad = mutate(loadFixture("nordbank.facts"), "financialInstitution.sourceRefs", ["S99"]);
+  assert.equal(FactsSchema.safeParse(bad).success, false);
 });

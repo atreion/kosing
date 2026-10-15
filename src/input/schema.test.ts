@@ -118,6 +118,12 @@ test("duplicate source ids are a rule the schema cannot carry", () => {
   assert.equal(validator("facts")(bad), true);
 });
 
+test("a financial institution's fixed debt values are a rule the schema cannot carry", () => {
+  const bad = mutate(loadFixture("nordbank.facts"), "balanceSheet.totalDebt", 100);
+  assert.equal(FactsSchema.safeParse(bad).success, false);
+  assert.equal(validator("facts")(bad), true);
+});
+
 /**
  * The conventions a researcher or analyst cannot infer from a field's name
  * travel in the emitted schema as descriptions, so `kosing schema` is the whole
@@ -126,6 +132,10 @@ test("duplicate source ids are a rule the schema cannot carry", () => {
 const DESCRIBED_FIELDS: Record<"facts" | "case", readonly string[]> = {
   facts: [
     "",
+    "financialInstitution",
+    "financialInstitution.tangibleBookEquity",
+    "financialInstitution.capitalTarget",
+    "financialInstitution.niiSensitivity",
     "asOf",
     "currency",
     "unit",

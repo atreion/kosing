@@ -4,7 +4,13 @@
  * recorded as a Resolution.
  */
 
-import type { Company, CostOfCapital, Market, RangeBand } from "../domain/company.ts";
+import type {
+  Company,
+  CostOfCapital,
+  FinancialInstitution,
+  Market,
+  RangeBand,
+} from "../domain/company.ts";
 import type { Financials, ReportedFiscalYear, ReportedPeriod } from "../domain/financials.ts";
 import { isNonEmpty, type Unit } from "../domain/types.ts";
 import { type DecodeResult, decoded, decodeError, failed, type Resolution } from "./errors.ts";
@@ -168,6 +174,23 @@ function decodeCostOfCapital(
   });
 }
 
+function decodeFinancialInstitution(
+  fi: NonNullable<Facts["financialInstitution"]>,
+  scale: Scale,
+): FinancialInstitution {
+  const { sourceRefs: _s, ...rest } = fi;
+  return {
+    ...rest,
+    tangibleBookEquity: scale.required(fi.tangibleBookEquity),
+    at1Capital: scale.nullable(fi.at1Capital),
+    at1Coupons: scale.nullable(fi.at1Coupons),
+    riskWeightedAssets: scale.nullable(fi.riskWeightedAssets),
+    netInterestIncome: scale.nullable(fi.netInterestIncome),
+    niiSensitivity: scale.nullable(fi.niiSensitivity),
+    contractualServiceMargin: scale.nullable(fi.contractualServiceMargin),
+  };
+}
+
 export function decodeCompany(
   facts: Facts,
 ): DecodeResult<{ company: Company; resolutions: Resolution[] }> {
@@ -252,6 +275,9 @@ export function decodeCompany(
           spotRates: facts.fx.spotRates.map(({ sourceRef: _s, ...spot }) => spot),
           exposures: facts.fx.exposures,
         }
+      : null,
+    financialInstitution: facts.financialInstitution
+      ? decodeFinancialInstitution(facts.financialInstitution, scale)
       : null,
   };
   return decoded({ company, resolutions });

@@ -89,7 +89,7 @@
     "countryPremium": null,
     "betaCompany": 0.9,
     "betaSector": null,
-    "taxRateEffective": 0.0,
+    "taxRateEffective": 0,
     "taxRateStatutory": null,
     "pretaxCostOfDebt": 0.035,
     "equityWeight": 0.95,
@@ -170,5 +170,6 @@
       "field": "financials.ltm",
       "reason": "no trailing-twelve-month figures published"
     }
-  ]
+  ],
+  "financialInstitution": null
 }

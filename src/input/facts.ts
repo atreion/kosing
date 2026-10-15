@@ -268,6 +268,61 @@ export const CompanyBlock = z.strictObject({
   country: z.string().regex(/^[A-Z]{2}$/, "must be a two-letter country code"),
 });
 
+export const FINANCIAL_KINDS = ["bank", "insurer"] as const;
+
+const BANK_ONLY = [
+  "riskWeightedAssets",
+  "netInterestIncome",
+  "niiSensitivity",
+  "loanLossRatio",
+  "costIncomeRatio",
+] as const;
+const INSURER_ONLY = ["combinedRatio", "contractualServiceMargin"] as const;
+
+export const FinancialInstitution = z.strictObject({
+  kind: z.enum(FINANCIAL_KINDS),
+  tangibleBookEquity: z
+    .number()
+    .describe(
+      "Equity attributable to ordinary shareholders less goodwill and other intangibles, excluding AT1 and other hybrid capital.",
+    ),
+  at1Capital: nullableNonNegative.describe(
+    "AT1 and other hybrid capital carried in equity; null when none.",
+  ),
+  at1Coupons: nullableNumber.describe("AT1 coupons for the base period, as a positive amount."),
+  capitalRatio: z
+    .number()
+    .min(0)
+    .describe(
+      "CET1 ratio for a bank, Solvency II ratio for an insurer, as a fraction (1.9 for 190%).",
+    ),
+  capitalRequirement: z
+    .number()
+    .min(0)
+    .describe(
+      "The regulatory requirement including buffers, as a fraction; 1.0 for an insurer's 100% SCR.",
+    ),
+  capitalTarget: nullableNonNegative.describe(
+    "The company's own management buffer above the requirement, in fraction points (0.015 for 150bp); null when not stated.",
+  ),
+  riskWeightedAssets: nullableNonNegative.describe("Bank only."),
+  netInterestIncome: nullableNumber.describe("Bank only, the base period."),
+  niiSensitivity: nullableNumber.describe(
+    "Bank only: the disclosed change in annual net interest income for a one percentage point parallel rise in rates; null when not disclosed.",
+  ),
+  loanLossRatio: nullableNumber.describe(
+    "Bank only: credit losses over loans, as reported, as a fraction.",
+  ),
+  costIncomeRatio: nullableNumber.describe("Bank only, as reported, as a fraction."),
+  combinedRatio: nullableNumber.describe(
+    "Insurer only, non-life, as reported; null for a pure life insurer.",
+  ),
+  contractualServiceMargin: nullableNonNegative.describe(
+    "Insurer only: the IFRS 17 CSM. Recorded for the analyst; not added to book.",
+  ),
+  sourceRefs: SourceRefs,
+});
+
 export const FactsShape = z.strictObject({
   schemaVersion: z.literal("1.0"),
   company: CompanyBlock,
@@ -287,6 +342,9 @@ export const FactsShape = z.strictObject({
   estimates: z.array(Estimate).nullable(),
   holdings: Holdings.nullable(),
   fx: Fx.nullable(),
+  financialInstitution: FinancialInstitution.nullable().describe(
+    "Banks and insurers only; null for every other company. When present, balanceSheet.totalDebt is 0, costOfCapital.debtWeight is 0, equityWeight is 1 and pretaxCostOfDebt is 0. research.md records net interest income through the zero-rate years (2015-2021) and since.",
+  ),
   sources: z.array(SourceEntry).min(1),
   gaps: z
     .array(Gap)
@@ -331,6 +389,9 @@ export function collectSourceRefs(facts: FactsShape): readonly { path: string; i
     many("holdings.sourceRefs", facts.holdings.sourceRefs);
   }
   each("fx.spotRates", facts.fx?.spotRates ?? []);
+  if (facts.financialInstitution) {
+    many("financialInstitution.sourceRefs", facts.financialInstitution.sourceRefs);
+  }
   return refs;
 }
 
@@ -344,7 +405,7 @@ function toPath(dotted: string): (string | number)[] {
  * in the emitted JSON Schema.
  */
 export const FactsSchema = FactsShape.describe(
-  "What is observable about one listed company. Every key is present; unknown is null with a gaps entry. Every figure cites a source id. No computed metrics, valuations or opinions. Rules decode enforces beyond this schema: source ids are unique and every reference resolves; fiscal years are distinct; equityWeight + debtWeight is 1; a priceCurrency different from currency needs that spot rate in fx.",
+  "What is observable about one listed company. Every key is present; unknown is null with a gaps entry. Every figure cites a source id. No computed metrics, valuations or opinions. Rules decode enforces beyond this schema: source ids are unique and every reference resolves; fiscal years are distinct; equityWeight + debtWeight is 1; a priceCurrency different from currency needs that spot rate in fx. A financialInstitution block fixes debt at zero and the cost of capital at all equity, and its kind-specific fields are null for the other kind.",
 ).superRefine((facts, ctx) => {
   const ids = new Set<string>();
   for (const [i, source] of facts.sources.entries()) {
@@ -399,6 +460,34 @@ export const FactsSchema = FactsShape.describe(
         path: ["fx"],
         message: `price is in ${priceCurrency} but no spot rate for ${direct} or ${inverse} is given`,
       });
+    }
+  }
+  const fi = facts.financialInstitution;
+  if (fi !== null) {
+    const fixed: readonly [readonly (string | number)[], number, number][] = [
+      [["balanceSheet", "totalDebt"], facts.balanceSheet.totalDebt, 0],
+      [["costOfCapital", "debtWeight"], facts.costOfCapital.debtWeight, 0],
+      [["costOfCapital", "equityWeight"], facts.costOfCapital.equityWeight, 1],
+      [["costOfCapital", "pretaxCostOfDebt"], facts.costOfCapital.pretaxCostOfDebt, 0],
+    ];
+    for (const [path, actual, expected] of fixed) {
+      if (actual !== expected) {
+        ctx.addIssue({
+          code: "custom",
+          path: [...path],
+          message: `${path.join(".")} is ${expected} for a financial institution`,
+        });
+      }
+    }
+    const otherKindOnly = fi.kind === "bank" ? INSURER_ONLY : BANK_ONLY;
+    for (const key of otherKindOnly) {
+      if (fi[key] !== null) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["financialInstitution", key],
+          message: `${key} is null for a ${fi.kind}`,
+        });
+      }
     }
   }
 });

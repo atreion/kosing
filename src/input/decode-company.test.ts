@@ -187,3 +187,18 @@ test("the beta not used is kept only when the measured beta won and a sector bet
   );
   assert.equal(noSector.data?.company.costOfCapital.alternativeBeta, null);
 });
+
+test("a bank's block is decoded with aggregates scaled to millions", () => {
+  const thousands = mutate(
+    mutate(loadFixture("nordbank.facts"), "unit", "thousands"),
+    "financialInstitution.tangibleBookEquity",
+    9_000_000,
+  );
+  const r = decodeCompany(parse(thousands));
+  assert.ok(r.success, JSON.stringify(r.error));
+  assert.equal(r.data.company.financialInstitution?.tangibleBookEquity, 9000);
+  assert.equal(r.data.company.financialInstitution?.capitalRatio, 0.175, "ratios are not scaled");
+  const acmeResult = decodeCompany(parse(acme()));
+  assert.ok(acmeResult.success);
+  assert.equal(acmeResult.data.company.financialInstitution, null);
+});

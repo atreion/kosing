@@ -1,0 +1,311 @@
+{
+  "schemaVersion": "1.0",
+  "company": {
+    "ticker": "NORD",
+    "exchange": "STO",
+    "name": "Nordbank",
+    "isin": "SE0000000001",
+    "country": "SE"
+  },
+  "asOf": "2026-10-01",
+  "currency": "SEK",
+  "unit": "millions",
+  "market": {
+    "price": 212,
+    "priceCurrency": "SEK",
+    "asOf": "2026-10-01",
+    "sharesOutstandingM": 113.2,
+    "sharesDilutedM": 115,
+    "week52High": 260,
+    "week52Low": 150,
+    "sourceRefs": ["S2"]
+  },
+  "financials": {
+    "fiscalYears": [
+      {
+        "fy": 2021,
+        "endDate": "2021-12-31",
+        "revenue": 8200,
+        "ebit": 820,
+        "netIncome": 600,
+        "ebitda": 1100,
+        "depreciationAmortization": 280,
+        "cogs": null,
+        "grossProfit": null,
+        "opex": null,
+        "netFinancialResult": -60,
+        "taxExpense": -160,
+        "ocf": 950,
+        "capex": -330,
+        "fcf": 620,
+        "dividendsPaid": -300,
+        "sharesBasicM": 113,
+        "sharesDilutedM": 115,
+        "sourceRef": "S1"
+      },
+      {
+        "fy": 2022,
+        "endDate": "2022-12-31",
+        "revenue": 9100,
+        "ebit": 950,
+        "netIncome": 700,
+        "ebitda": 1250,
+        "depreciationAmortization": 300,
+        "cogs": null,
+        "grossProfit": null,
+        "opex": null,
+        "netFinancialResult": -65,
+        "taxExpense": -185,
+        "ocf": 1050,
+        "capex": -360,
+        "fcf": 690,
+        "dividendsPaid": -330,
+        "sharesBasicM": 113,
+        "sharesDilutedM": 115,
+        "sourceRef": "S1"
+      },
+      {
+        "fy": 2023,
+        "endDate": "2023-12-31",
+        "revenue": 9800,
+        "ebit": 1080,
+        "netIncome": 800,
+        "ebitda": 1400,
+        "depreciationAmortization": 320,
+        "cogs": null,
+        "grossProfit": null,
+        "opex": null,
+        "netFinancialResult": -70,
+        "taxExpense": -210,
+        "ocf": 1180,
+        "capex": -390,
+        "fcf": 790,
+        "dividendsPaid": -360,
+        "sharesBasicM": 113,
+        "sharesDilutedM": 115,
+        "sourceRef": "S1"
+      },
+      {
+        "fy": 2024,
+        "endDate": "2024-12-31",
+        "revenue": 10400,
+        "ebit": 1200,
+        "netIncome": 890,
+        "ebitda": 1540,
+        "depreciationAmortization": 340,
+        "cogs": null,
+        "grossProfit": null,
+        "opex": null,
+        "netFinancialResult": -72,
+        "taxExpense": -238,
+        "ocf": 1290,
+        "capex": -420,
+        "fcf": 870,
+        "dividendsPaid": -400,
+        "sharesBasicM": 113,
+        "sharesDilutedM": 115,
+        "sourceRef": "S1"
+      },
+      {
+        "fy": 2025,
+        "endDate": "2025-12-31",
+        "revenue": 11000,
+        "ebit": 1320,
+        "netIncome": 980,
+        "ebitda": 1680,
+        "depreciationAmortization": 360,
+        "cogs": null,
+        "grossProfit": null,
+        "opex": null,
+        "netFinancialResult": -75,
+        "taxExpense": -265,
+        "ocf": 1400,
+        "capex": -440,
+        "fcf": 960,
+        "dividendsPaid": -430,
+        "sharesBasicM": 113,
+        "sharesDilutedM": 115,
+        "sourceRef": "S1"
+      }
+    ],
+    "ltm": {
+      "endDate": "2026-06-30",
+      "revenue": 11400,
+      "ebit": 1380,
+      "netIncome": 1020,
+      "ebitda": 1750,
+      "depreciationAmortization": 370,
+      "cogs": null,
+      "grossProfit": null,
+      "opex": null,
+      "netFinancialResult": -76,
+      "taxExpense": -280,
+      "ocf": 1450,
+      "capex": -450,
+      "fcf": 1000,
+      "dividendsPaid": null,
+      "sharesBasicM": 113.2,
+      "sharesDilutedM": 115,
+      "sourceRefs": ["S4"]
+    },
+    "quarters": null
+  },
+  "balanceSheet": {
+    "asOf": "2026-06-30",
+    "cashAndEquivalents": 1900,
+    "shortTermInvestments": 200,
+    "totalDebt": 0,
+    "shortTermDebt": null,
+    "longTermDebt": null,
+    "operatingLeaseLiabilities": 700,
+    "pensionObligations": 450,
+    "goodwill": 3200,
+    "intangiblesExGoodwill": 800,
+    "totalEquity": 6200,
+    "sourceRef": "S4"
+  },
+  "costOfCapital": {
+    "riskFreeRate": 0.025,
+    "riskFreeBasis": "Swedish 10-year government bond",
+    "erp": 0.055,
+    "countryPremium": null,
+    "betaCompany": null,
+    "betaSector": 1.1,
+    "taxRateEffective": 0.21,
+    "taxRateStatutory": 0.206,
+    "pretaxCostOfDebt": 0,
+    "equityWeight": 1,
+    "debtWeight": 0,
+    "weightsAsOf": "2026-10-01",
+    "sourceRefs": ["S3", "S2"]
+  },
+  "historicalRanges": {
+    "sharePrice": {
+      "y5Low": 120,
+      "y5High": 260,
+      "y10Low": 80,
+      "y10High": 260
+    },
+    "peTrailing": {
+      "y5Low": 14,
+      "y5High": 28,
+      "y10Low": 11,
+      "y10High": 28
+    },
+    "evEbit": {
+      "y5Low": 11,
+      "y5High": 22,
+      "y10Low": null,
+      "y10High": null
+    },
+    "evEbitda": {
+      "y5Low": null,
+      "y5High": null,
+      "y10Low": null,
+      "y10High": null
+    },
+    "priceBook": {
+      "y5Low": null,
+      "y5High": null,
+      "y10Low": null,
+      "y10High": null
+    },
+    "sourceRefs": ["S2"]
+  },
+  "peers": [
+    {
+      "name": "Beta Engineering",
+      "ticker": "BETA",
+      "peTrailing": 19,
+      "evEbit": 15,
+      "evEbitda": 11,
+      "evRevenue": 1.8,
+      "sourceRef": "S2"
+    },
+    {
+      "name": "Gamma Tools",
+      "ticker": null,
+      "peTrailing": 22,
+      "evEbit": 17,
+      "evEbitda": null,
+      "evRevenue": 2.1,
+      "sourceRef": "S2"
+    }
+  ],
+  "estimates": [
+    {
+      "fy": 2026,
+      "revenue": 11900,
+      "ebit": 1450,
+      "eps": 9.4,
+      "basis": "adjusted",
+      "sourceRefs": ["S2"]
+    }
+  ],
+  "holdings": null,
+  "fx": null,
+  "sources": [
+    {
+      "id": "S1",
+      "kind": "annualReport",
+      "issuer": "Acme Industrial AB",
+      "title": "Annual Report 2025",
+      "url": "https://acme.example/ar2025.pdf",
+      "published": "2026-02-12",
+      "retrieved": "2026-10-01",
+      "pages": "48-51",
+      "tier": "primary"
+    },
+    {
+      "id": "S2",
+      "kind": "marketDataFeed",
+      "issuer": "Nasdaq Stockholm",
+      "title": "ACME quote and consensus",
+      "url": "https://quotes.example/ACME",
+      "published": null,
+      "retrieved": "2026-10-01",
+      "pages": null,
+      "tier": "secondary"
+    },
+    {
+      "id": "S3",
+      "kind": "macroReference",
+      "issuer": "Riksbanken",
+      "title": "Government bond yields",
+      "url": "https://riksbank.example/yields",
+      "published": null,
+      "retrieved": "2026-10-01",
+      "pages": null,
+      "tier": "primary"
+    },
+    {
+      "id": "S4",
+      "kind": "interimReport",
+      "issuer": "Acme Industrial AB",
+      "title": "Interim Report January to June 2026",
+      "url": "https://acme.example/q2-2026.pdf",
+      "published": "2026-07-18",
+      "retrieved": "2026-10-01",
+      "pages": null,
+      "tier": "primary"
+    }
+  ],
+  "gaps": [],
+  "financialInstitution": {
+    "kind": "bank",
+    "tangibleBookEquity": 9000,
+    "at1Capital": 1200,
+    "at1Coupons": 80,
+    "capitalRatio": 0.175,
+    "capitalRequirement": 0.135,
+    "capitalTarget": 0.015,
+    "riskWeightedAssets": 60000,
+    "netInterestIncome": 4200,
+    "niiSensitivity": 350,
+    "loanLossRatio": 0.0005,
+    "costIncomeRatio": 0.42,
+    "combinedRatio": null,
+    "contractualServiceMargin": null,
+    "sourceRefs": ["S4"]
+  }
+}
