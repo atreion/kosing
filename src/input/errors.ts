@@ -104,7 +104,8 @@ export type Warning = {
     | "ltmOlderThanFiscalYear"
     | "scenarioOrderInverted"
     | "priceStale"
-    | "capitalNearRequirement";
+    | "capitalNearRequirement"
+    | "tangibleBookAboveEquity";
   readonly path: string;
   readonly message: string;
 };

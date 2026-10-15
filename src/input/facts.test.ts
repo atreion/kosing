@@ -389,3 +389,11 @@ test("the block's source refs must resolve", () => {
   const bad = mutate(loadFixture("nordbank.facts"), "financialInstitution.sourceRefs", ["S99"]);
   assert.equal(FactsSchema.safeParse(bad).success, false);
 });
+
+test("a financial institution reports no split of short- and long-term debt", () => {
+  for (const path of ["balanceSheet.shortTermDebt", "balanceSheet.longTermDebt"]) {
+    const r = FactsSchema.safeParse(mutate(loadFixture("nordbank.facts"), path, 100));
+    assert.equal(r.success, false, path);
+    assert.deepEqual(r.error?.issues[0]?.path, path.split("."));
+  }
+});

@@ -209,12 +209,14 @@ export function decodeCompany(
   const cash = scale.required(bs.cashAndEquivalents);
   const shortTermInvestments = scale.nullable(bs.shortTermInvestments);
   const netDebt = totalDebt - cash - (shortTermInvestments ?? 0);
-  resolutions.push({
-    kind: "netDebtDerived",
-    totalDebt,
-    cash,
-    shortTermInvestments: shortTermInvestments ?? 0,
-  });
+  if (facts.financialInstitution === null) {
+    resolutions.push({
+      kind: "netDebtDerived",
+      totalDebt,
+      cash,
+      shortTermInvestments: shortTermInvestments ?? 0,
+    });
+  }
 
   const convert = quoteConversion(facts, resolutions);
   const market = decodeMarket(facts, convert, resolutions);

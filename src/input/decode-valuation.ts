@@ -220,6 +220,17 @@ export function decodeValuation(
   ];
   if (preface.length > 0) return failed(preface);
 
+  if (company.financialInstitution !== null && investmentCase.method.kind !== "excessReturn") {
+    return failed([
+      decodeError(
+        "facts",
+        "semantic.financialInstitutionNeedsExcessReturn",
+        "financialInstitution",
+        "a bank or insurer is valued by excessReturn only",
+      ),
+    ]);
+  }
+
   const resolutions: Resolution[] = [];
   const { method, overrides, sensitivity } = investmentCase;
 

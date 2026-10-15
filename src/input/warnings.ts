@@ -63,13 +63,28 @@ const DEFAULT_CAPITAL_BUFFER = 0.01;
 function capitalNearRequirement(facts: Facts): Warning[] {
   const fi = facts.financialInstitution;
   if (fi === null) return [];
-  const floor = fi.capitalRequirement + (fi.capitalTarget ?? DEFAULT_CAPITAL_BUFFER);
+  const buffer = fi.capitalTarget ?? DEFAULT_CAPITAL_BUFFER;
+  const floor = fi.capitalRequirement + buffer;
   if (fi.capitalRatio >= floor) return [];
   return [
     {
       rule: "capitalNearRequirement",
       path: "financialInstitution.capitalRatio",
-      message: `capital ratio ${fi.capitalRatio} is below requirement ${fi.capitalRequirement} plus buffer`,
+      message: `capital ratio ${fi.capitalRatio} is below requirement ${fi.capitalRequirement} plus buffer ${buffer}`,
+    },
+  ];
+}
+
+/** Advisory: whether reported equity includes AT1 varies by bank, so this cannot be a decode error. */
+function tangibleBookAboveEquity(facts: Facts): Warning[] {
+  const fi = facts.financialInstitution;
+  const equity = facts.balanceSheet.totalEquity;
+  if (fi === null || equity === null || fi.tangibleBookEquity <= equity) return [];
+  return [
+    {
+      rule: "tangibleBookAboveEquity",
+      path: "financialInstitution.tangibleBookEquity",
+      message: `tangible book ${fi.tangibleBookEquity} exceeds total equity ${equity}; a unit slip or a stale figure`,
     },
   ];
 }
@@ -83,5 +98,6 @@ export function collectWarnings(
     ...casePredatesFacts(facts, investmentCase),
     ...ltmOlderThanFiscalYear(company),
     ...capitalNearRequirement(facts),
+    ...tangibleBookAboveEquity(facts),
   ];
 }

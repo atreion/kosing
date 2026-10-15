@@ -198,11 +198,6 @@ function value(valuation: Valuation, company: Company): Valued {
   }
 }
 
-/**
- * Decode cannot order whole paths, only the values they produce can be
- * ordered, so an analyst's sign slip is caught here rather than letting V1 be
- * answered from the wrong side.
- */
 function scenarioValues(
   valuation: ValuationSection | null,
 ): { bear: number; base: number; bull: number } | null {
@@ -212,6 +207,11 @@ function scenarioValues(
   return { bear: s.bear.valuePerShare, base: valuation.valuePerShare, bull: s.bull.valuePerShare };
 }
 
+/**
+ * Decode cannot order whole paths, only the values they produce can be
+ * ordered, so an analyst's sign slip is caught here rather than letting V1 be
+ * answered from the wrong side.
+ */
 function scenarioWarnings(valuation: ValuationSection | null): Warning[] {
   const v = scenarioValues(valuation);
   if (v === null || (v.bear <= v.base && v.base <= v.bull)) return [];

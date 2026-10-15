@@ -68,7 +68,7 @@ export function impliedRoteSection(
   terminalGrowth: number,
 ): ImpliedRoteSection | null {
   const tbv = company.financialInstitution?.tangibleBookEquity ?? null;
-  if (tbv === null || tbv <= 0) return null;
+  if (tbv === null || tbv <= 0 || costOfEquity <= terminalGrowth) return null;
   const priceToTangibleBook = marketCap / tbv;
   return {
     impliedRote: impliedSteadyStateRote(priceToTangibleBook, costOfEquity, terminalGrowth),

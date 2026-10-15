@@ -159,8 +159,8 @@
     "longTermDebt": null,
     "operatingLeaseLiabilities": 700,
     "pensionObligations": 450,
-    "goodwill": 3200,
-    "intangiblesExGoodwill": 800,
+    "goodwill": 600,
+    "intangiblesExGoodwill": 400,
     "totalEquity": 6200,
     "sourceRef": "S4"
   },

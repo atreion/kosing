@@ -4,7 +4,8 @@ import type { Company, OtherClaims } from "../domain/company.ts";
 export type Derived = {
   readonly marketCap: number;
   readonly enterpriseValue: number | null;
-  readonly netDebt: number;
+  /** Null for a bank or insurer: its cash is operating liquidity, not surplus, so net debt means nothing. */
+  readonly netDebt: number | null;
   readonly otherClaims: OtherClaims;
 };
 
@@ -21,7 +22,7 @@ export function selectDerived(company: Company): Derived {
     marketCap,
     enterpriseValue:
       company.financialInstitution === null ? marketCap + company.netDebt + leases : null,
-    netDebt: company.netDebt,
+    netDebt: company.financialInstitution === null ? company.netDebt : null,
     otherClaims: company.otherClaims,
   };
 }

@@ -413,3 +413,56 @@ test("excess-return scenarios that value in the wrong order raise the warning", 
     assemble(decoded(bank(), inverted)).warnings.some((w) => w.rule === "scenarioOrderInverted"),
   );
 });
+
+test("a bank has no net debt: derived.netDebt is null and no netDebtDerived resolution", () => {
+  const r = assemble(decoded(bank(), bankCase()));
+  assert.equal(r.derived.netDebt, null);
+  assert.ok(!r.resolutions.some((x) => x.kind === "netDebtDerived"));
+  assert.equal(assemble(decoded(acme())).derived.netDebt, 2000);
+});
+
+test("implied ROTE is withheld when the cost of equity is at or below growth", () => {
+  const high = {
+    ...DEFAULT_VALUATOR_OPTIONS,
+    reverseDcf: { ...DEFAULT_VALUATOR_OPTIONS.reverseDcf, terminalGrowth: 0.5 },
+  };
+  assert.equal(assemble(decoded(bank()), high).pricedIn.impliedRote, null);
+  assert.notEqual(assemble(decoded(bank())).pricedIn.impliedRote, null);
+});
+
+test("a bank's P/E uses earnings after AT1 coupons", () => {
+  const r = assemble(decoded(bank()));
+  const pe = r.pricedIn.multiples.find((x) => x.metric === "peTrailing")?.current;
+  const netIncome =
+    r.inputs.company.financials.ltm?.netIncome ??
+    r.inputs.company.financials.fiscalYears.at(-1)?.netIncome;
+  assert.ok(typeof netIncome === "number");
+  assertClose(pe ?? 0, r.derived.marketCap / (netIncome - 80), 1e-9);
+  const insurer = assemble(decoded(loadFixture("safeins.facts")));
+  const ipe = insurer.pricedIn.multiples.find((x) => x.metric === "peTrailing")?.current;
+  const inc =
+    insurer.inputs.company.financials.ltm?.netIncome ??
+    insurer.inputs.company.financials.fiscalYears.at(-1)?.netIncome;
+  assertClose(ipe ?? 0, insurer.derived.marketCap / (inc ?? 1), 1e-9);
+});
+
+test("the capital warning names the buffer used", () => {
+  const thin = mutate(bank(), "financialInstitution.capitalRatio", 0.145);
+  const w = assemble(decoded(thin)).warnings.find((x) => x.rule === "capitalNearRequirement");
+  assert.ok(w);
+  assert.match(w.message, /requirement [\d.]+ plus buffer [\d.]+/);
+});
+
+test("tangible book above reported equity is an advisory warning", () => {
+  const over = mutate(bank(), "balanceSheet.totalEquity", 8000);
+  const w = assemble(decoded(over)).warnings.filter((x) => x.rule === "tangibleBookAboveEquity");
+  assert.deepEqual(
+    w.map((x) => x.path),
+    ["financialInstitution.tangibleBookEquity"],
+  );
+  for (const facts of [bank(), loadFixture("safeins.facts")]) {
+    assert.ok(!assemble(decoded(facts)).warnings.some((x) => x.rule === "tangibleBookAboveEquity"));
+  }
+  const unknown = mutate(bank(), "balanceSheet.totalEquity", null);
+  assert.ok(!assemble(decoded(unknown)).warnings.some((x) => x.rule === "tangibleBookAboveEquity"));
+});

@@ -259,3 +259,13 @@ test("an excess-return case on facts without the block names the block", () => {
     [["facts", "semantic.excessReturnNeedsFinancialInstitution", "financialInstitution"]],
   );
 });
+
+test("a bank's facts are valued by excessReturn only", () => {
+  const c = mutate(loadFixture("acme-dcf.case"), "ticker", "NORD");
+  const r = run(loadFixture("nordbank.facts"), c);
+  assert.equal(r.success, false);
+  assert.deepEqual(
+    r.error?.map((e) => [e.file, e.rule, e.path]),
+    [["facts", "semantic.financialInstitutionNeedsExcessReturn", "financialInstitution"]],
+  );
+});

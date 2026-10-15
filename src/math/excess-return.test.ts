@@ -105,3 +105,18 @@ test("the sensitivity grid reads low to high and its centre is the base value", 
     for (let j = 1; j < row.length; j++) assert.ok((row[j] ?? 0) > (row[j - 1] ?? 0));
   }
 });
+
+test("a non-flat path ends on year ten's rote", () => {
+  const r = computeExcessReturn({
+    tangibleBook: 9000,
+    shares: 100,
+    costOfEquity: 0.0855,
+    rotePath: [0.14, 0.135, 0.13, 0.13, 0.125, 0.125, 0.12, 0.12, 0.12, 0.12],
+    payoutRatio: 0.6,
+    terminalGrowth: 0.02,
+  });
+  assert.ok(r.kind === "value");
+  const y10 = r.projection[9];
+  assert.ok(y10);
+  assertClose(r.terminalValue, ((0.12 - 0.0855) * y10.closingBook) / (0.0855 - 0.02), 1e-9);
+});

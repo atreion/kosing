@@ -479,6 +479,15 @@ export const FactsSchema = FactsShape.describe(
         });
       }
     }
+    for (const key of ["shortTermDebt", "longTermDebt"] as const) {
+      if (facts.balanceSheet[key] !== null) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["balanceSheet", key],
+          message: `${key} is null for a financial institution`,
+        });
+      }
+    }
     const otherKindOnly = fi.kind === "bank" ? INSURER_ONLY : BANK_ONLY;
     for (const key of otherKindOnly) {
       if (fi[key] !== null) {

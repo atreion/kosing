@@ -7,6 +7,13 @@ export type Band = { readonly low: number | null; readonly high: number | null }
 
 const NO_BAND: RangeBand = { y5Low: null, y5High: null, y10Low: null, y10High: null };
 
+/** A bank's P/E is on earnings to ordinary shareholders, so AT1 coupons come off. */
+function earningsForPe(period: ReportedPeriod, company: Company): number | null {
+  const coupons = company.financialInstitution?.at1Coupons ?? null;
+  if (period.netIncome === null || coupons === null) return period.netIncome;
+  return period.netIncome - coupons;
+}
+
 export function selectMultipleInputs(
   derived: Derived,
   period: ReportedPeriod,
@@ -15,7 +22,7 @@ export function selectMultipleInputs(
   return {
     marketCap: derived.marketCap,
     enterpriseValue: derived.enterpriseValue,
-    netIncome: period.netIncome,
+    netIncome: earningsForPe(period, company),
     ebit: period.ebit,
     ebitda: period.ebitda,
     revenue: period.revenue,

@@ -78,15 +78,18 @@ export const NavMethod = z.strictObject({
   sourceRefs: SourceRefs,
 });
 
+/** Fractions between -1 and 1, so a path typed in percent is rejected. */
+const RotePath = z.array(z.number().min(-1).max(1)).length(10);
+
 export const ExcessReturnScenario = z.strictObject({
-  rotePath: TenNumberPath,
+  rotePath: RotePath,
   rationale: z.string().min(1),
 });
 
 export const ExcessReturnMethod = z.strictObject({
   kind: z.literal("excessReturn"),
-  rotePath: TenNumberPath.describe(
-    "Return on tangible equity for each of ten years, as fractions, normalised across the rate regimes the company has lived through rather than extrapolated from the latest year.",
+  rotePath: RotePath.describe(
+    "Return on tangible equity for each of ten years, as fractions, normalised across the rate regimes the company has lived through rather than extrapolated from the latest year. The ROTE is charged on opening tangible book for the year; reported ROTE on average equity runs slightly higher.",
   ),
   payoutRatio: z
     .number()
@@ -171,13 +174,21 @@ function requireOrdered(
  * in English for the analyst.
  */
 export const CaseSchema = CaseShape.describe(
-  "The assumptions a company is valued on. Rules decode enforces beyond this schema: scenario triples are ordered bear <= base <= bull; no scenario multiple exceeds multipleCeiling; overrides and sensitivity apply to dcf only, and sensitivity steps each include 0. excessReturn is for bankInsurer only.",
+  "The assumptions a company is valued on. Rules decode enforces beyond this schema: scenario triples are ordered bear <= base <= bull; no scenario multiple exceeds multipleCeiling; overrides and sensitivity apply to dcf only, and sensitivity steps each include 0. excessReturn and bankInsurer go together: each requires the other.",
 ).superRefine((c, ctx) => {
   if (c.method.kind === "excessReturn" && c.classification !== "bankInsurer") {
     ctx.addIssue({
       code: "custom",
       path: ["method", "kind"],
       message: "excessReturn is for bankInsurer only",
+    });
+  }
+
+  if (c.classification === "bankInsurer" && c.method.kind !== "excessReturn") {
+    ctx.addIssue({
+      code: "custom",
+      path: ["method", "kind"],
+      message: "bankInsurer takes excessReturn",
     });
   }
 
