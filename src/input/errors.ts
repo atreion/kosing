@@ -67,6 +67,14 @@ export type Resolution =
       readonly cash: number;
       readonly shortTermInvestments: number;
     }
+  | { readonly kind: "navHoldingExcluded"; readonly holding: string }
+  | {
+      readonly kind: "navPartConverted";
+      readonly part: string;
+      readonly pair: string;
+      readonly rate: number;
+      readonly inverted: boolean;
+    }
   | { readonly kind: "revenueBaseFromLtm" }
   | { readonly kind: "revenueBaseAveraged"; readonly fromFy: number; readonly toFy: number }
   | { readonly kind: "dcfBasePeriodFromFiscalYear"; readonly fy: number }

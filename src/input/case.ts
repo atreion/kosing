@@ -9,7 +9,8 @@
 
 import { z } from "zod";
 import { AI_EXPOSURES, CLASSIFICATIONS } from "../domain/types.ts";
-import { IsoDateString, ScenarioTriple, SourceRefs, TenNumberPath } from "./primitives.ts";
+import { assertNever } from "../exhaustive.ts";
+import { Iso4217, IsoDateString, ScenarioTriple, SourceRefs, TenNumberPath } from "./primitives.ts";
 
 export const Terminal = z.discriminatedUnion("kind", [
   z.strictObject({
@@ -71,9 +72,69 @@ export const NormalisedEarningsMethod = z.strictObject({
   sourceRefs: SourceRefs,
 });
 
+const HoldingName = z
+  .string()
+  .min(1)
+  .describe("The name of a holding in the facts' holdings.items, exactly as written there.");
+
+/** One piece of a sum of the parts, valued in the case rather than read from the facts. */
+export const NavPart = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("factsFairValue"),
+    holding: HoldingName,
+    rationale: z.string().min(1),
+  }),
+  z.strictObject({
+    kind: z.literal("lookThrough"),
+    holding: HoldingName,
+    sharesM: z.number().positive().describe("Millions of the holding's shares owned."),
+    valuePerShare: ScenarioTriple.describe(
+      "Per-share value in `currency`, for example the base, bear and bull values of the holding's own Kosing results.",
+    ),
+    currency: Iso4217.describe(
+      "The currency of valuePerShare; converted to the reporting currency through the facts' spot rate.",
+    ),
+    rationale: z.string().min(1),
+  }),
+  z.strictObject({
+    kind: z.literal("segment"),
+    name: z.string().min(1),
+    metric: z
+      .string()
+      .min(1)
+      .describe("What metricValue is and for which period, e.g. 'Germany EBITDA AL FY2025'."),
+    metricValue: z
+      .number()
+      .describe("In the reporting currency and the facts' unit, from a cited source."),
+    multiple: ScenarioTriple,
+    rationale: z.string().min(1),
+  }),
+  z.strictObject({
+    kind: z.literal("analystValue"),
+    name: z.string().min(1),
+    holding: HoldingName.nullable().describe(
+      "The facts holding this values, or null for an asset the facts do not list.",
+    ),
+    value: ScenarioTriple.describe("In the reporting currency and the facts' unit."),
+    rationale: z.string().min(1),
+  }),
+  z.strictObject({
+    kind: z.literal("excluded"),
+    holding: HoldingName,
+    rationale: z.string().min(1),
+  }),
+]);
+
 export const NavMethod = z.strictObject({
   kind: z.literal("nav"),
   warrantedDiscount: z.number().min(0).max(0.9),
+  parts: z
+    .array(NavPart)
+    .min(1)
+    .nullable()
+    .describe(
+      "Null to take every facts holding at its fair value. Otherwise the sum of the parts: every facts holding appears in exactly one part (factsFairValue, lookThrough, analystValue or excluded), and segment or analystValue parts add what the facts do not list, such as an operating business. Bear, base and bull NAV come from the parts' triples; parentNetDebt and the warranted discount are shared.",
+    ),
   rationale: z.string().min(1),
   sourceRefs: SourceRefs,
 });
@@ -160,16 +221,35 @@ const CaseShape = z.strictObject({
 });
 
 function requireOrdered(
-  path: string,
+  path: readonly (string | number)[],
   triple: z.infer<typeof ScenarioTriple>,
   ctx: z.RefinementCtx,
 ): void {
   if (!(triple.bear <= triple.base && triple.base <= triple.bull)) {
     ctx.addIssue({
       code: "custom",
-      path: ["method", path],
+      path: ["method", ...path],
       message: "bear <= base <= bull is required",
     });
+  }
+}
+
+/** The triple a part orders, under the key it is written at; null when the part has none. */
+function partTriple(
+  part: z.infer<typeof NavPart>,
+): { readonly key: string; readonly triple: z.infer<typeof ScenarioTriple> } | null {
+  switch (part.kind) {
+    case "lookThrough":
+      return { key: "valuePerShare", triple: part.valuePerShare };
+    case "segment":
+      return { key: "multiple", triple: part.multiple };
+    case "analystValue":
+      return { key: "value", triple: part.value };
+    case "factsFairValue":
+    case "excluded":
+      return null;
+    default:
+      return assertNever(part);
   }
 }
 
@@ -179,7 +259,7 @@ function requireOrdered(
  * in English for the analyst.
  */
 export const CaseSchema = CaseShape.describe(
-  "The assumptions a company is valued on. Rules decode enforces beyond this schema: scenario triples are ordered bear <= base <= bull; no scenario multiple exceeds multipleCeiling; overrides and sensitivity apply to dcf only, and sensitivity steps each include 0. excessReturn and bankInsurer go together: each requires the other.",
+  "The assumptions a company is valued on. Rules decode enforces beyond this schema: scenario triples are ordered bear <= base <= bull; no scenario multiple exceeds multipleCeiling; overrides and sensitivity apply to dcf only, and sensitivity steps each include 0; each nav part's triple is ordered bear <= base <= bull. Against the facts, decode requires every holding named by a nav part to exist and every facts holding to be accounted for by exactly one part, a factsFairValue part's holding to carry a fair value, a lookThrough part in a foreign currency to have its spot rate in fx, and at least one part that is not excluded. excessReturn and bankInsurer go together: each requires the other.",
 ).superRefine((c, ctx) => {
   if (c.method.kind === "excessReturn" && c.classification !== "bankInsurer") {
     ctx.addIssue({
@@ -198,8 +278,8 @@ export const CaseSchema = CaseShape.describe(
   }
 
   if (c.method.kind === "normalisedEarnings") {
-    requireOrdered("ebitMargin", c.method.ebitMargin, ctx);
-    requireOrdered("evEbitMultiple", c.method.evEbitMultiple, ctx);
+    requireOrdered(["ebitMargin"], c.method.ebitMargin, ctx);
+    requireOrdered(["evEbitMultiple"], c.method.evEbitMultiple, ctx);
     const ceiling = c.method.multipleCeiling;
     if (ceiling !== null) {
       for (const scenario of ["bear", "base", "bull"] as const) {
@@ -211,6 +291,13 @@ export const CaseSchema = CaseShape.describe(
           });
         }
       }
+    }
+  }
+
+  if (c.method.kind === "nav" && c.method.parts !== null) {
+    for (const [i, part] of c.method.parts.entries()) {
+      const t = partTriple(part);
+      if (t !== null) requireOrdered(["parts", i, t.key], t.triple, ctx);
     }
   }
 

@@ -52,6 +52,7 @@ export function navCase(over: Record<string, unknown> = {}) {
     method: {
       kind: "nav",
       warrantedDiscount: 0.25,
+      parts: null,
       rationale: "listed holdings",
       sourceRefs: ["S1"],
     },
@@ -264,4 +265,25 @@ test("the rote path says the rote is charged on opening tangible book", () => {
 
 test("an excess-return bear case is told to carry a credit-loss cycle", () => {
   assert.match(ExcessReturnMethod.shape.scenarios.description ?? "", /credit-loss cycle/);
+});
+
+test("nav parts parse in every kind, and an inverted triple in any of them is rejected", () => {
+  const parts = loadFixture("holdco-parts-nav.case");
+  assert.ok(CaseSchema.safeParse(parts).success);
+  for (const [path, triple] of [
+    ["method.parts.1.valuePerShare", { bear: 250, base: 200, bull: 150 }],
+    ["method.parts.3.multiple", { bear: 8, base: 6, bull: 10 }],
+    ["method.parts.4.value", { bear: 1000, base: 1500, bull: 1200 }],
+  ] as const) {
+    const r = CaseSchema.safeParse(mutate(parts, path, triple));
+    assert.equal(r.success, false, path);
+    assert.deepEqual(r.error?.issues[0]?.path.map(String), path.split("."));
+  }
+});
+
+test("a look-through stake needs a positive share count", () => {
+  const r = CaseSchema.safeParse(
+    mutate(loadFixture("holdco-parts-nav.case"), "method.parts.1.sharesM", 0),
+  );
+  assert.equal(r.success, false);
 });

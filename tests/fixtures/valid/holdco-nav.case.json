@@ -7,6 +7,7 @@
   "method": {
     "kind": "nav",
     "warrantedDiscount": 0.2,
+    "parts": null,
     "rationale": "Two listed holdings at market, one private at the latest funding round, parent net debt small.",
     "sourceRefs": ["S1"]
   },

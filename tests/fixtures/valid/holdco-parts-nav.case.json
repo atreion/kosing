@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "1.0",
+  "ticker": "HOLD",
+  "factsAsOf": null,
+  "classification": "holdingCompany",
+  "aiExposure": "secondOrderOnly",
+  "method": {
+    "kind": "nav",
+    "warrantedDiscount": 0.2,
+    "parts": [
+      {
+        "kind": "factsFairValue",
+        "holding": "Listed Industrial AB",
+        "rationale": "Listed, at market."
+      },
+      {
+        "kind": "lookThrough",
+        "holding": "Listed Bank AB",
+        "sharesM": 50,
+        "valuePerShare": { "bear": 150, "base": 200, "bull": 250 },
+        "currency": "SEK",
+        "rationale": "The bank's own case values it above market."
+      },
+      {
+        "kind": "excluded",
+        "holding": "Private Software Group",
+        "rationale": "Last funding round is stale; carried at nothing."
+      },
+      {
+        "kind": "segment",
+        "name": "Parent operations",
+        "metric": "EBITDA FY2025",
+        "metricValue": 400,
+        "multiple": { "bear": 6, "base": 8, "bull": 10 },
+        "rationale": "Peer multiples for a small services business."
+      },
+      {
+        "kind": "analystValue",
+        "name": "Head-office property",
+        "holding": null,
+        "value": { "bear": 1000, "base": 1200, "bull": 1500 },
+        "rationale": "Book value with a yield-based range."
+      }
+    ],
+    "rationale": "Sum of the parts: two listed holdings, the private stake left out, the operating parent on a multiple.",
+    "sourceRefs": ["S1"]
+  },
+  "overrides": {
+    "beta": null,
+    "wacc": null,
+    "taxRate": null,
+    "rationale": null
+  },
+  "sensitivity": null
+}

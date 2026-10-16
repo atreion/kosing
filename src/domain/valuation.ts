@@ -1,6 +1,6 @@
 import type { CostOfCapital } from "./company.ts";
 import type { FiscalYear, OperatingFinancials, Period } from "./financials.ts";
-import type { Basis, NonEmpty } from "./types.ts";
+import type { NonEmpty } from "./types.ts";
 
 export type ScenarioTriple = {
   readonly bear: number;
@@ -59,10 +59,15 @@ export type CyclicalRevenueBase =
   | { readonly kind: "ltm"; readonly period: Period }
   | { readonly kind: "averageFy"; readonly window: NonEmpty<FiscalYear> };
 
-export type Holding = {
+export type NavPartKind = "factsFairValue" | "lookThrough" | "segment" | "analystValue";
+
+/** One valued piece of a sum of the parts, in the reporting currency and the facts' unit. */
+export type NavPart = {
   readonly name: string;
-  readonly fairValue: number;
-  readonly basis: Basis;
+  readonly kind: NavPartKind;
+  /** The facts holding it values, or null for a segment or an asset the facts do not list. */
+  readonly holding: string | null;
+  readonly value: ScenarioTriple;
 };
 
 /**
@@ -90,7 +95,9 @@ export type Valuation =
     }
   | {
       readonly method: "nav";
-      readonly holdings: NonEmpty<Holding>;
+      readonly parts: NonEmpty<NavPart>;
+      /** False when every part is flat because the case took the facts' fair values. */
+      readonly hasScenarios: boolean;
       readonly parentNetDebt: number;
       readonly lookThroughNav: number | null;
       readonly assumptions: NavAssumptions;

@@ -111,6 +111,16 @@ test("sensitivity steps including 0 is a dcf-only rule the schema cannot carry e
   assert.equal(validator("case")(bad), true);
 });
 
+test("a nav part's bear <= base <= bull is a rule the schema cannot carry either", () => {
+  const bad = mutate(loadFixture("holdco-parts-nav.case"), "method.parts.3.multiple", {
+    bear: 10,
+    base: 8,
+    bull: 6,
+  });
+  assert.equal(CaseSchema.safeParse(bad).success, false);
+  assert.equal(validator("case")(bad), true);
+});
+
 test("duplicate source ids are a rule the schema cannot carry", () => {
   const doc = loadFixture("acme.facts") as { sources: { id: string }[] };
   const bad = mutate(doc, "sources", [...doc.sources, { ...doc.sources[0], title: "again" }]);

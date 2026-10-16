@@ -14,7 +14,12 @@ import type {
   ReportedPeriod,
 } from "../domain/financials.ts";
 import { isNonEmpty, type NonEmpty } from "../domain/types.ts";
-import type { CyclicalRevenueBase, Holding, Valuation } from "../domain/valuation.ts";
+import type {
+  CyclicalRevenueBase,
+  NavPart,
+  ScenarioTriple,
+  Valuation,
+} from "../domain/valuation.ts";
 import { assertNever } from "../exhaustive.ts";
 import { type Case, DEFAULT_SENSITIVITY_STEPS } from "./case.ts";
 import {
@@ -147,23 +152,37 @@ function resolveRevenueBase(
 }
 
 type NavInputs = {
-  holdings: NonEmpty<Holding>;
+  parts: NonEmpty<NavPart>;
+  hasScenarios: boolean;
   parentNetDebt: number;
   lookThroughNav: number | null;
 };
 
-function toHoldings(company: Company): DecodeResult<NavInputs> {
-  if (company.holdings === null) {
-    return failed([
-      decodeError(
-        "facts",
-        "semantic.navRequiresHoldings",
-        "holdings",
-        "a nav case needs a holdings block",
-      ),
-    ]);
-  }
-  if (!isNonEmpty(company.holdings.items)) {
+type NavCaseParts = NonNullable<Extract<Case["method"], { kind: "nav" }>["parts"]>;
+type NavCasePart = NavCaseParts[number];
+type FactsHoldings = NonNullable<Company["holdings"]>;
+type FactsHolding = FactsHoldings["items"][number];
+
+function flat(value: number): ScenarioTriple {
+  return { bear: value, base: value, bull: value };
+}
+
+function scaled(triple: ScenarioTriple, by: (v: number) => number): ScenarioTriple {
+  return { bear: by(triple.bear), base: by(triple.base), bull: by(triple.bull) };
+}
+
+function withoutValue(i: number, h: FactsHolding): DecodeError {
+  return decodeError(
+    "facts",
+    "semantic.holdingWithoutValue",
+    `holdings.items.${i}.fairValue`,
+    `holding "${h.name}" has no fair value`,
+  );
+}
+
+/** Every facts holding at its fair value, the method's behaviour before parts. */
+function factsHoldingParts(holdings: FactsHoldings): DecodeResult<NavPart[]> {
+  if (!isNonEmpty(holdings.items)) {
     return failed([
       decodeError(
         "facts",
@@ -174,27 +193,215 @@ function toHoldings(company: Company): DecodeResult<NavInputs> {
     ]);
   }
   const errors: DecodeError[] = [];
-  const holdings: Holding[] = [];
-  for (const [i, h] of company.holdings.items.entries()) {
-    if (h.fairValue === null) {
-      errors.push(
-        decodeError(
-          "facts",
-          "semantic.holdingWithoutValue",
-          `holdings.items.${i}.fairValue`,
-          `holding "${h.name}" has no fair value`,
-        ),
-      );
-    } else {
-      holdings.push({ name: h.name, fairValue: h.fairValue, basis: h.basis });
+  const parts: NavPart[] = [];
+  for (const [i, h] of holdings.items.entries()) {
+    if (h.fairValue === null) errors.push(withoutValue(i, h));
+    else {
+      parts.push({
+        name: h.name,
+        kind: "factsFairValue",
+        holding: h.name,
+        value: flat(h.fairValue),
+      });
     }
   }
+  return errors.length > 0 ? failed(errors) : decoded(parts);
+}
+
+/** A per-share value quoted in another currency, into the reporting currency. */
+function toReportingCurrency(
+  company: Company,
+  part: Extract<NavCasePart, { kind: "lookThrough" }>,
+  resolutions: Resolution[],
+): DecodeResult<(value: number) => number> {
+  if (part.currency === company.currency) return decoded((v) => v);
+  const direct = `${part.currency}${company.currency}`;
+  const inverse = `${company.currency}${part.currency}`;
+  const spot = company.fx?.spotRates.find((r) => r.pair === direct || r.pair === inverse);
+  if (spot === undefined) {
+    return failed([
+      decodeError(
+        "facts",
+        "semantic.navPartNeedsSpotRate",
+        "fx.spotRates",
+        `lookThrough part "${part.holding}" is in ${part.currency}; fx needs ${direct} or ${inverse}`,
+      ),
+    ]);
+  }
+  const inverted = spot.pair === inverse;
+  resolutions.push({
+    kind: "navPartConverted",
+    part: part.holding,
+    pair: spot.pair,
+    rate: spot.rate,
+    inverted,
+  });
+  return decoded(inverted ? (v) => v / spot.rate : (v) => v * spot.rate);
+}
+
+/** The facts holding a part accounts for, or null for a part that adds an asset of its own. */
+function referencedHolding(part: NavCasePart): string | null {
+  switch (part.kind) {
+    case "factsFairValue":
+    case "lookThrough":
+    case "excluded":
+    case "analystValue":
+      return part.holding;
+    case "segment":
+      return null;
+    default:
+      return assertNever(part);
+  }
+}
+
+function valuePart(
+  company: Company,
+  part: NavCasePart,
+  held: { readonly index: number; readonly item: FactsHolding } | null,
+  resolutions: Resolution[],
+): DecodeResult<NavPart | null> {
+  switch (part.kind) {
+    case "excluded":
+      resolutions.push({ kind: "navHoldingExcluded", holding: part.holding });
+      return decoded(null);
+    case "factsFairValue": {
+      if (held === null) throw new Error("unreachable: an unknown holding was rejected first");
+      if (held.item.fairValue === null) return failed([withoutValue(held.index, held.item)]);
+      return decoded({
+        name: part.holding,
+        kind: "factsFairValue",
+        holding: part.holding,
+        value: flat(held.item.fairValue),
+      });
+    }
+    case "lookThrough": {
+      const convert = toReportingCurrency(company, part, resolutions);
+      if (!convert.success) return failed(convert.error);
+      return decoded({
+        name: part.holding,
+        kind: "lookThrough",
+        holding: part.holding,
+        value: scaled(part.valuePerShare, (v) => convert.data(v * part.sharesM)),
+      });
+    }
+    case "segment":
+      return decoded({
+        name: part.name,
+        kind: "segment",
+        holding: null,
+        value: scaled(part.multiple, (m) => m * part.metricValue),
+      });
+    case "analystValue":
+      return decoded({
+        name: part.name,
+        kind: "analystValue",
+        holding: part.holding,
+        value: part.value,
+      });
+    default:
+      return assertNever(part);
+  }
+}
+
+/**
+ * The case's sum of the parts against the facts' holdings: each named holding
+ * must exist, and each facts holding is accounted for exactly once, so a stake
+ * cannot be silently dropped or counted twice.
+ */
+function caseParts(
+  company: Company,
+  holdings: FactsHoldings,
+  parts: NavCaseParts,
+  resolutions: Resolution[],
+): DecodeResult<NavPart[]> {
+  const errors: DecodeError[] = [];
+  const valued: NavPart[] = [];
+  const seen = new Set<string>();
+  for (const [i, part] of parts.entries()) {
+    const name = referencedHolding(part);
+    let held: { index: number; item: FactsHolding } | null = null;
+    if (name !== null) {
+      const index = holdings.items.findIndex((h) => h.name === name);
+      const item = holdings.items[index];
+      if (item === undefined) {
+        errors.push(
+          decodeError(
+            "case",
+            "semantic.navPartUnknownHolding",
+            `method.parts.${i}.holding`,
+            `"${name}" is not in the facts' holdings.items`,
+          ),
+        );
+        continue;
+      }
+      if (seen.has(name)) {
+        errors.push(
+          decodeError(
+            "case",
+            "semantic.navHoldingTwice",
+            `method.parts.${i}.holding`,
+            `"${name}" is already accounted for by an earlier part`,
+          ),
+        );
+        continue;
+      }
+      seen.add(name);
+      held = { index, item };
+    }
+    const v = valuePart(company, part, held, resolutions);
+    if (!v.success) errors.push(...v.error);
+    else if (v.data !== null) valued.push(v.data);
+  }
+  const unaccounted = holdings.items.filter((h) => !seen.has(h.name)).map((h) => h.name);
+  if (unaccounted.length > 0) {
+    errors.push(
+      decodeError(
+        "case",
+        "semantic.navHoldingUnaccounted",
+        "method.parts",
+        `no part accounts for ${unaccounted.map((n) => `"${n}"`).join(", ")}; value or exclude each`,
+      ),
+    );
+  }
   if (errors.length > 0) return failed(errors);
-  if (!isNonEmpty(holdings)) throw new Error("unreachable: items was NonEmpty and none failed");
+  if (valued.length === 0) {
+    return failed([
+      decodeError(
+        "case",
+        "semantic.navRequiresParts",
+        "method.parts",
+        "every part is excluded, so nothing is valued",
+      ),
+    ]);
+  }
+  return decoded(valued);
+}
+
+function toNavInputs(
+  company: Company,
+  parts: NavCaseParts | null,
+  resolutions: Resolution[],
+): DecodeResult<NavInputs> {
+  const holdings = company.holdings;
+  if (holdings === null) {
+    return failed([
+      decodeError(
+        "facts",
+        "semantic.navRequiresHoldings",
+        "holdings",
+        "a nav case needs a holdings block",
+      ),
+    ]);
+  }
+  const valued =
+    parts === null ? factsHoldingParts(holdings) : caseParts(company, holdings, parts, resolutions);
+  if (!valued.success) return failed(valued.error);
+  if (!isNonEmpty(valued.data)) throw new Error("unreachable: an empty set of parts was rejected");
   return decoded({
-    holdings,
-    parentNetDebt: company.holdings.parentNetDebt,
-    lookThroughNav: company.holdings.lookThroughNav,
+    parts: valued.data,
+    hasScenarios: parts !== null,
+    parentNetDebt: holdings.parentNetDebt,
+    lookThroughNav: holdings.lookThroughNav,
   });
 }
 
@@ -312,7 +519,7 @@ export function decodeValuation(
       });
     }
     case "nav": {
-      const holdings = toHoldings(company);
+      const holdings = toNavInputs(company, method.parts, resolutions);
       if (!holdings.success) return failed(holdings.error);
       return decoded({
         valuation: {

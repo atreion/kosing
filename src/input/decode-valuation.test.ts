@@ -116,12 +116,147 @@ test("a dcf case against a row with null revenue reports every missing figure", 
   );
 });
 
-test("a nav case decodes into non-null holdings", () => {
+test("a nav case without parts takes every facts holding at its fair value, flat", () => {
   const result = run(holdco(), loadFixture("holdco-nav.case"));
   assert.ok(result.success, JSON.stringify(result.error));
   if (result.data.valuation.method !== "nav") return assert.fail();
-  assert.equal(result.data.valuation.holdings.length, 3);
+  assert.equal(result.data.valuation.parts.length, 3);
+  assert.deepEqual(result.data.valuation.parts[0], {
+    name: "Listed Industrial AB",
+    kind: "factsFairValue",
+    holding: "Listed Industrial AB",
+    value: { bear: 18000, base: 18000, bull: 18000 },
+  });
+  assert.equal(result.data.valuation.hasScenarios, false);
   assert.equal(result.data.valuation.parentNetDebt, 300);
+});
+
+const partsCase = () => loadFixture("holdco-parts-nav.case");
+
+test("nav parts value each kind in the reporting currency and record the exclusion", () => {
+  const result = run(holdco(), partsCase());
+  assert.ok(result.success, JSON.stringify(result.error));
+  if (result.data.valuation.method !== "nav") return assert.fail();
+  assert.equal(result.data.valuation.hasScenarios, true);
+  assert.deepEqual(
+    result.data.valuation.parts.map((p) => [p.name, p.kind, p.value]),
+    [
+      ["Listed Industrial AB", "factsFairValue", { bear: 18000, base: 18000, bull: 18000 }],
+      ["Listed Bank AB", "lookThrough", { bear: 7500, base: 10000, bull: 12500 }],
+      ["Parent operations", "segment", { bear: 2400, base: 3200, bull: 4000 }],
+      ["Head-office property", "analystValue", { bear: 1000, base: 1200, bull: 1500 }],
+    ],
+  );
+  assert.deepEqual(result.data.resolutions, [
+    { kind: "navHoldingExcluded", holding: "Private Software Group" },
+  ]);
+});
+
+test("an excluded holding may have no fair value", () => {
+  const result = run(mutate(holdco(), "holdings.items.2.fairValue", null), partsCase());
+  assert.ok(result.success, JSON.stringify(result.error));
+});
+
+test("a look-through stake in a foreign currency converts through the facts' spot rate either way", () => {
+  const usd = mutate(partsCase(), "method.parts.1.currency", "USD");
+  const withRate = (pair: string, rate: number) =>
+    mutate(holdco(), "fx", {
+      spotRates: [{ pair, rate, asOf: "2026-10-01", sourceRef: "S1" }],
+      exposures: [],
+    });
+  for (const [pair, rate, inverted] of [
+    ["USDSEK", 10, false],
+    ["SEKUSD", 0.1, true],
+  ] as const) {
+    const result = run(withRate(pair, rate), usd);
+    assert.ok(result.success, JSON.stringify(result.error));
+    if (result.data.valuation.method !== "nav") return assert.fail();
+    const bank = result.data.valuation.parts[1];
+    assert.ok(bank);
+    assert.ok(Math.abs(bank.value.base - 100000) < 1e-6, pair);
+    assert.ok(
+      result.data.resolutions.some(
+        (r) =>
+          r.kind === "navPartConverted" &&
+          r.part === "Listed Bank AB" &&
+          r.pair === pair &&
+          r.inverted === inverted,
+      ),
+      pair,
+    );
+  }
+});
+
+test("a look-through stake in a currency the facts carry no spot rate for is rejected", () => {
+  const result = run(holdco(), mutate(partsCase(), "method.parts.1.currency", "USD"));
+  assert.equal(result.success, false);
+  assert.deepEqual(
+    [result.error?.[0]?.file, result.error?.[0]?.rule, result.error?.[0]?.path],
+    ["facts", "semantic.navPartNeedsSpotRate", "fx.spotRates"],
+  );
+});
+
+test("a part naming a holding the facts do not carry is rejected at the part", () => {
+  const result = run(holdco(), mutate(partsCase(), "method.parts.0.holding", "Unknown AB"));
+  assert.equal(result.success, false);
+  const rules = result.error?.map((e) => [e.rule, e.path]);
+  assert.deepEqual(rules?.[0], ["semantic.navPartUnknownHolding", "method.parts.0.holding"]);
+  assert.ok(
+    rules?.some(([rule]) => rule === "semantic.navHoldingUnaccounted"),
+    "Listed Industrial AB is now unaccounted for",
+  );
+});
+
+test("every facts holding is accounted for exactly once", () => {
+  const twice = mutate(partsCase(), "method.parts.2.holding", "Listed Bank AB");
+  const result = run(holdco(), twice);
+  assert.equal(result.success, false);
+  assert.deepEqual(
+    result.error?.map((e) => [e.rule, e.path]),
+    [
+      ["semantic.navHoldingTwice", "method.parts.2.holding"],
+      ["semantic.navHoldingUnaccounted", "method.parts"],
+    ],
+  );
+  assert.ok(result.error?.[1]?.message.includes("Private Software Group"));
+});
+
+test("a factsFairValue part needs the holding's fair value", () => {
+  const result = run(mutate(holdco(), "holdings.items.0.fairValue", null), partsCase());
+  assert.equal(result.success, false);
+  assert.deepEqual(
+    [result.error?.[0]?.rule, result.error?.[0]?.path],
+    ["semantic.holdingWithoutValue", "holdings.items.0.fairValue"],
+  );
+});
+
+test("parts that exclude everything leave nothing to value", () => {
+  const allOut = mutate(partsCase(), "method.parts", [
+    { kind: "excluded", holding: "Listed Industrial AB", rationale: "x" },
+    { kind: "excluded", holding: "Listed Bank AB", rationale: "x" },
+    { kind: "excluded", holding: "Private Software Group", rationale: "x" },
+  ]);
+  const result = run(holdco(), allOut);
+  assert.equal(result.success, false);
+  assert.deepEqual(
+    [result.error?.[0]?.rule, result.error?.[0]?.path],
+    ["semantic.navRequiresParts", "method.parts"],
+  );
+});
+
+test("with parts, a holdings block with no items is enough for segments alone", () => {
+  const segmentsOnly = mutate(partsCase(), "method.parts", [
+    {
+      kind: "segment",
+      name: "Operations",
+      metric: "EBITDA",
+      metricValue: 100,
+      multiple: { bear: 5, base: 6, bull: 7 },
+      rationale: "x",
+    },
+  ]);
+  const result = run(mutate(holdco(), "holdings.items", []), segmentsOnly);
+  assert.ok(result.success, JSON.stringify(result.error));
 });
 
 test("a nav case against empty holdings fails at holdings.items, not on items[0]", () => {

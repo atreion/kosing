@@ -176,7 +176,8 @@ test("a nav case fills its section with the holdings and look-through NAV beside
   assert.equal(r.valuation.grossAssetValue, 31700);
   assert.equal(r.valuation.nav, 31400);
   assert.equal(r.valuation.lookThroughNav, 31400);
-  assert.equal(r.valuation.holdings.length, 3);
+  assert.equal(r.valuation.parts.length, 3);
+  assert.equal(r.valuation.scenarios, null);
   assertClose(r.valuation.valuePerShare, (31400 * 0.8) / 280, 1e-9);
   assertAllFinite(r);
 });
@@ -465,4 +466,34 @@ test("tangible book above reported equity is an advisory warning", () => {
   }
   const unknown = mutate(bank(), "balanceSheet.totalEquity", null);
   assert.ok(!assemble(decoded(unknown)).warnings.some((x) => x.rule === "tangibleBookAboveEquity"));
+});
+
+test("a nav case with parts values bear, base and bull, and the hurdle takes the base", () => {
+  const r = assemble(decoded(loadFixture("holdco.facts"), loadFixture("holdco-parts-nav.case")));
+  if (r.valuation?.method !== "nav") return assert.fail();
+  assert.equal(r.valuation.grossAssetValue, 32400);
+  assert.equal(r.valuation.nav, 32100);
+  assertClose(r.valuation.valuePerShare, 25680 / 280, 1e-9);
+  assertClose(r.valuation.scenarios?.bear.valuePerShare ?? -1, 22880 / 280, 1e-9);
+  assertClose(r.valuation.scenarios?.bull.valuePerShare ?? -1, 28560 / 280, 1e-9);
+  assert.equal(r.valuation.scenarios?.bear.grossAssetValue, 28900);
+  assert.equal(r.valuation.parts.length, 4);
+  assert.equal(r.hurdle?.baseValue, r.valuation.valuePerShare);
+  assert.deepEqual(r.warnings, []);
+});
+
+test("nav scenarios out of order are warned about, like the other methods", () => {
+  const inverted = mutate(loadFixture("holdco-parts-nav.case"), "method.parts.3", {
+    kind: "segment",
+    name: "Parent operations",
+    metric: "EBITDA FY2025",
+    metricValue: -4000,
+    multiple: { bear: 6, base: 8, bull: 10 },
+    rationale: "a loss-making parent on a positive multiple",
+  });
+  const r = assemble(decoded(loadFixture("holdco.facts"), inverted));
+  assert.deepEqual(
+    r.warnings.map((w) => w.rule),
+    ["scenarioOrderInverted"],
+  );
 });

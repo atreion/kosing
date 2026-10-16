@@ -6,7 +6,7 @@
 
 import type { Company } from "../domain/company.ts";
 import type { AiExposure, Classification, Currency, IsoDate } from "../domain/types.ts";
-import type { Holding, Terminal } from "../domain/valuation.ts";
+import type { NavPart, Terminal } from "../domain/valuation.ts";
 import type { Resolution, Warning } from "../input/errors.ts";
 import type { DcfNote, YearRow } from "../math/dcf.ts";
 import type { ExcessReturnSensitivity, ExcessReturnYear } from "../math/excess-return.ts";
@@ -98,6 +98,13 @@ export type NormalisedEarningsSection = {
   readonly ltmEbitMargin: number | null;
 };
 
+export type NavScenarioValue = {
+  readonly grossAssetValue: number;
+  readonly nav: number;
+  readonly equityValue: number;
+  readonly valuePerShare: number;
+};
+
 export type NavSection = {
   readonly method: "nav";
   readonly grossAssetValue: number;
@@ -107,7 +114,12 @@ export type NavSection = {
   readonly equityValue: number;
   readonly valuePerShare: number;
   readonly lookThroughNav: number | null;
-  readonly holdings: readonly Holding[];
+  readonly parts: readonly NavPart[];
+  /** null when the case took the facts' fair values, so every scenario equals the base. */
+  readonly scenarios: {
+    readonly bear: NavScenarioValue;
+    readonly bull: NavScenarioValue;
+  } | null;
 };
 
 export type ExcessReturnScenarioValue = {

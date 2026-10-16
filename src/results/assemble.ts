@@ -41,6 +41,7 @@ import {
   type AlternativeBetaValue,
   DEFAULT_VALUATOR_OPTIONS,
   type ExcessReturnScenarioValue,
+  type NavScenarioValue,
   type Results,
   type ScenarioValue,
   type ValuationSection,
@@ -163,6 +164,39 @@ function valueExcessReturn(
   };
 }
 
+function navScenarioValue(
+  valuation: Extract<Valuation, { method: "nav" }>,
+  company: Company,
+  scenario: "bear" | "bull",
+): NavScenarioValue {
+  const r = computeNav(selectNav(valuation, company, scenario));
+  return {
+    grossAssetValue: r.grossAssetValue,
+    nav: r.nav,
+    equityValue: r.equityValue,
+    valuePerShare: r.valuePerShare,
+  };
+}
+
+function valueNav(valuation: Extract<Valuation, { method: "nav" }>, company: Company): Valued {
+  const nav = computeNav(selectNav(valuation, company));
+  return {
+    ...NOTHING,
+    valuation: {
+      method: "nav",
+      ...nav,
+      lookThroughNav: valuation.lookThroughNav,
+      parts: valuation.parts,
+      scenarios: valuation.hasScenarios
+        ? {
+            bear: navScenarioValue(valuation, company, "bear"),
+            bull: navScenarioValue(valuation, company, "bull"),
+          }
+        : null,
+    },
+  };
+}
+
 function value(valuation: Valuation, company: Company): Valued {
   switch (valuation.method) {
     case "dcf":
@@ -179,18 +213,8 @@ function value(valuation: Valuation, company: Company): Valued {
         },
       };
     }
-    case "nav": {
-      const nav = computeNav(selectNav(valuation, company));
-      return {
-        ...NOTHING,
-        valuation: {
-          method: "nav",
-          ...nav,
-          lookThroughNav: valuation.lookThroughNav,
-          holdings: valuation.holdings,
-        },
-      };
-    }
+    case "nav":
+      return valueNav(valuation, company);
     case "excessReturn":
       return valueExcessReturn(valuation, company);
     default:
@@ -201,7 +225,13 @@ function value(valuation: Valuation, company: Company): Valued {
 function scenarioValues(
   valuation: ValuationSection | null,
 ): { bear: number; base: number; bull: number } | null {
-  if (valuation?.method !== "dcf" && valuation?.method !== "excessReturn") return null;
+  if (
+    valuation?.method !== "dcf" &&
+    valuation?.method !== "excessReturn" &&
+    valuation?.method !== "nav"
+  ) {
+    return null;
+  }
   const s = valuation.scenarios;
   if (s === null || s.bear === null || s.bull === null) return null;
   return { bear: s.bear.valuePerShare, base: valuation.valuePerShare, bull: s.bull.valuePerShare };

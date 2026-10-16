@@ -3,7 +3,13 @@ import { join } from "node:path";
 
 export const VALID_FIXTURES = {
   facts: ["acme.facts", "holdco.facts", "dual.facts", "nordbank.facts", "safeins.facts"],
-  cases: ["acme-dcf.case", "acme-normalised.case", "holdco-nav.case", "nordbank-excess.case"],
+  cases: [
+    "acme-dcf.case",
+    "acme-normalised.case",
+    "holdco-nav.case",
+    "holdco-parts-nav.case",
+    "nordbank-excess.case",
+  ],
 } as const;
 
 export function loadFixture(name: string): unknown {

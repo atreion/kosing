@@ -17,10 +17,18 @@ const period = {
 // A test-only shortcut past the IsoDate brand; a parser is the only production path to one.
 const date = "2025-12-31" as never;
 
-test("a nav valuation carries holdings and nothing operating", () => {
+test("a nav valuation carries parts and nothing operating", () => {
   const nav: Valuation = {
     method: "nav",
-    holdings: [{ name: "Investor AB", fairValue: 1200, basis: "listed" }],
+    parts: [
+      {
+        name: "Investor AB",
+        kind: "factsFairValue",
+        holding: "Investor AB",
+        value: { bear: 1200, base: 1200, bull: 1200 },
+      },
+    ],
+    hasScenarios: false,
     parentNetDebt: -300,
     lookThroughNav: 1500,
     assumptions: { warrantedDiscount: 0.25 },
