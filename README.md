@@ -7,6 +7,9 @@ deterministically: WACC, DCF with bear and bull scenarios, reverse DCF,
 sensitivity, multiples against history and peers, normalised earnings, NAV
 and FX translation, written to `results.json`.
 
+The [guide](docs/README.md) explains the workflow, the documents and the
+finance behind the numbers, for human readers.
+
 ## Use
 
 The company documents live in a separate private data repo. Point `DATA_PATH`
