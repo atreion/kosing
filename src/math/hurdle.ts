@@ -1,7 +1,7 @@
 /**
  * The required discount: how far below base value a price must be before a
  * name may be accumulated. The table is the investor's, stated in the data
- * repo's INVESTOR.md; this module is where it is applied.
+ * repo's lenses/investor.md; this module is where it is applied.
  */
 
 import type { AiExposure, Classification } from "../domain/types.ts";

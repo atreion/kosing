@@ -28,7 +28,7 @@ Run commands from the Kosing repo root.
    arithmetic. If the case rests on the market being wrong, say what the
    market believes instead, why you think it is wrong, and what would show
    that you are the one who is wrong.
-5. **Lenses.** Read `$DATA/standing/*.md`. Say where each bears on this
+5. **Lenses.** Read `$DATA/lenses/*.md`. Say where each bears on this
    company, and where you depart from it and why.
    One rule is hard: the required discount. `results.json`'s `hurdle` gives
    the entry price and whether the price clears it. No `accumulate` unless it
