@@ -6,7 +6,7 @@
 
 import type { Company } from "../domain/company.ts";
 import type { AiExposure, Classification, Currency, IsoDate } from "../domain/types.ts";
-import type { NavPart, Terminal } from "../domain/valuation.ts";
+import type { MineStage, ScenarioTriple, Terminal } from "../domain/valuation.ts";
 import type { Resolution, Warning } from "../input/errors.ts";
 import type { DcfNote, YearRow } from "../math/dcf.ts";
 import type { ExcessReturnSensitivity, ExcessReturnYear } from "../math/excess-return.ts";
@@ -18,6 +18,7 @@ import type { WaccResult } from "../math/wacc.ts";
 import type { BasePeriodRef } from "../select/base-period.ts";
 import type { Derived } from "../select/derived.ts";
 import type { Band } from "../select/multiples.ts";
+import type { NavPartValue } from "../select/nav.ts";
 import type { RevenueBaseSummary } from "../select/normalised-earnings.ts";
 import { DEFAULT_REVERSE_DCF_OPTIONS, type ReverseDcfOptions } from "../select/reverse-dcf.ts";
 
@@ -105,6 +106,42 @@ export type NavScenarioValue = {
   readonly valuePerShare: number;
 };
 
+export type MineValueRow = {
+  readonly name: string;
+  readonly stage: MineStage;
+  readonly ownership: number;
+  readonly riskFactor: number;
+  /** The company's share after risking, USD millions. */
+  readonly valueUsd: ScenarioTriple;
+};
+
+/** Prices in USD per `unit`, today's money; rates as fractions. */
+export type CommoditySection = {
+  readonly name: string;
+  readonly unit: string;
+  readonly priceDeck: ScenarioTriple;
+  readonly usdRiskFree: number;
+  readonly usdInflation: number;
+  /** The company's WACC with usdRiskFree as the risk-free rate. */
+  readonly usdWacc: number;
+  /** What the mines and the contract book are discounted at. */
+  readonly realRate: number;
+  readonly usdToReporting: number;
+  readonly mines: readonly MineValueRow[];
+  /** After-tax premium of the book over the deck, USD millions; null without a book. */
+  readonly contractBookUsd: ScenarioTriple | null;
+  /** Base value per share with the mines at 8% real, the brokers' NAV8. */
+  readonly valuePerShareAt8PctReal: number;
+  /** Price over each scenario's value per share; null where that value is not positive. */
+  readonly priceToNav: {
+    readonly bear: number | null;
+    readonly base: number | null;
+    readonly bull: number | null;
+  };
+  /** The flat price at which base value per share equals the price, on base delays. */
+  readonly impliedPrice: number | null;
+};
+
 export type NavSection = {
   readonly method: "nav";
   readonly grossAssetValue: number;
@@ -114,7 +151,9 @@ export type NavSection = {
   readonly equityValue: number;
   readonly valuePerShare: number;
   readonly lookThroughNav: number | null;
-  readonly parts: readonly NavPart[];
+  readonly parts: readonly NavPartValue[];
+  /** null unless a part is a mine. */
+  readonly commodity: CommoditySection | null;
   /** null when the case took the facts' fair values, so every scenario equals the base. */
   readonly scenarios: {
     readonly bear: NavScenarioValue;

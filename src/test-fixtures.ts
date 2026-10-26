@@ -2,12 +2,20 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 export const VALID_FIXTURES = {
-  facts: ["acme.facts", "holdco.facts", "dual.facts", "nordbank.facts", "safeins.facts"],
+  facts: [
+    "acme.facts",
+    "holdco.facts",
+    "dual.facts",
+    "nordbank.facts",
+    "safeins.facts",
+    "miner.facts",
+  ],
   cases: [
     "acme-dcf.case",
     "acme-normalised.case",
     "holdco-nav.case",
     "holdco-parts-nav.case",
+    "miner-mine-nav.case",
     "nordbank-excess.case",
   ],
 } as const;

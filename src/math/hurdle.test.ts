@@ -40,9 +40,13 @@ test("every valued classification has a discount and the add-ons follow the tabl
 });
 
 test("a classification Kosing cannot value has no required discount", () => {
-  for (const c of ["reitUtility", "saasPreProfit", "commodityProducer"] as const) {
+  for (const c of ["reitUtility", "saasPreProfit"] as const) {
     assert.equal(requiredDiscount(c, "secondOrderOnly"), null);
   }
+});
+
+test("a commodity producer takes the cyclical's 40%", () => {
+  assert.equal(requiredDiscount("commodityProducer", "secondOrderOnly")?.requiredDiscount, 0.4);
 });
 
 test("entry price is base value less the required discount; the price clears at or below it", () => {

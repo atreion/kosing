@@ -32,6 +32,7 @@ test("a nav valuation carries parts and nothing operating", () => {
     parentNetDebt: -300,
     lookThroughNav: 1500,
     assumptions: { warrantedDiscount: 0.25 },
+    commodity: null,
   };
   assert.equal(nav.method, "nav");
   // @ts-expect-error a nav valuation has no financials

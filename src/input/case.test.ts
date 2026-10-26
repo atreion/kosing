@@ -53,6 +53,7 @@ export function navCase(over: Record<string, unknown> = {}) {
       kind: "nav",
       warrantedDiscount: 0.25,
       parts: null,
+      commodity: null,
       rationale: "listed holdings",
       sourceRefs: ["S1"],
     },
@@ -286,4 +287,70 @@ test("a look-through stake needs a positive share count", () => {
     mutate(loadFixture("holdco-parts-nav.case"), "method.parts.1.sharesM", 0),
   );
   assert.equal(r.success, false);
+});
+
+const minerCase = () => loadFixture("miner-mine-nav.case");
+
+function issuePaths(doc: unknown): string[] {
+  const r = CaseSchema.safeParse(doc);
+  return r.success ? [] : r.error.issues.map((i) => i.path.join("."));
+}
+
+test("a mine case parses", () => {
+  assert.deepEqual(issuePaths(minerCase()), []);
+});
+
+test("a mine's risk factor may be lowered below its stage's, never raised", () => {
+  assert.deepEqual(issuePaths(mutate(minerCase(), "method.parts.1.riskFactor", 0.2)), []);
+  assert.deepEqual(issuePaths(mutate(minerCase(), "method.parts.1.riskFactor", 0.5)), [
+    "method.parts.1.riskFactor",
+  ]);
+});
+
+test("a mine's delay is whole years, latest in the bear case", () => {
+  const late = { bear: 0, base: 1, bull: 2 };
+  assert.deepEqual(issuePaths(mutate(minerCase(), "method.parts.1.delayYears", late)), [
+    "method.parts.1.delayYears",
+  ]);
+  const half = { bear: 1.5, base: 1, bull: 0 };
+  assert.deepEqual(issuePaths(mutate(minerCase(), "method.parts.1.delayYears", half)), [
+    "method.parts.1.delayYears",
+  ]);
+});
+
+test("production years increase", () => {
+  const backwards = [
+    { year: 2028, volume: 1 },
+    { year: 2027, volume: 1 },
+  ];
+  assert.deepEqual(issuePaths(mutate(minerCase(), "method.parts.0.production", backwards)), [
+    "method.parts.0.production.1.year",
+  ]);
+});
+
+test("the commodity block comes with a mine part and only then", () => {
+  assert.deepEqual(issuePaths(mutate(minerCase(), "method.commodity", null)), ["method.commodity"]);
+  const holdco = loadFixture("holdco-parts-nav.case");
+  const commodity = (minerCase() as { method: { commodity: unknown } }).method.commodity;
+  assert.deepEqual(issuePaths(mutate(holdco, "method.commodity", commodity)), ["method.commodity"]);
+});
+
+test("a commodity producer takes nav with a mine", () => {
+  const noMine = mutate(
+    loadFixture("holdco-parts-nav.case"),
+    "classification",
+    "commodityProducer",
+  );
+  assert.ok(issuePaths(noMine).includes("method"));
+});
+
+test("the price deck is ordered and a collar's floor is below its ceiling", () => {
+  assert.deepEqual(issuePaths(mutate(minerCase(), "method.commodity.priceDeck.bear", 90)), [
+    "method.commodity.priceDeck",
+  ]);
+  const inverted = { kind: "marketRelated", floor: 90, ceiling: 60 };
+  assert.deepEqual(
+    issuePaths(mutate(minerCase(), "method.commodity.contractBook.blocks.0.pricing", inverted)),
+    ["method.commodity.contractBook.blocks.0.pricing"],
+  );
 });

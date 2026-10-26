@@ -32,9 +32,10 @@ import { selectDerived } from "../select/derived.ts";
 import { selectExcessReturn } from "../select/excess-return.ts";
 import { type FxBase, selectFx } from "../select/fx.ts";
 import { selectMultipleInputs } from "../select/multiples.ts";
-import { selectNav } from "../select/nav.ts";
+import { selectNav, selectNavPartValues } from "../select/nav.ts";
 import { selectNormalisedEarnings } from "../select/normalised-earnings.ts";
 import { selectWacc } from "../select/wacc.ts";
+import { commoditySection } from "./commodity.ts";
 import { hurdleSection } from "./hurdle.ts";
 import { impliedRoteSection, multipleRows, reverseDcfSection } from "./priced-in.ts";
 import {
@@ -180,13 +181,16 @@ function navScenarioValue(
 
 function valueNav(valuation: Extract<Valuation, { method: "nav" }>, company: Company): Valued {
   const nav = computeNav(selectNav(valuation, company));
+  const commodity = commoditySection(valuation, company);
   return {
     ...NOTHING,
+    resolutions: commodity.resolutions,
     valuation: {
       method: "nav",
       ...nav,
       lookThroughNav: valuation.lookThroughNav,
-      parts: valuation.parts,
+      parts: selectNavPartValues(valuation, company),
+      commodity: commodity.section,
       scenarios: valuation.hasScenarios
         ? {
             bear: navScenarioValue(valuation, company, "bear"),

@@ -14,11 +14,14 @@ import type {
   ReportedPeriod,
 } from "../domain/financials.ts";
 import { isNonEmpty, type NonEmpty } from "../domain/types.ts";
-import type {
-  CyclicalRevenueBase,
-  NavPart,
-  ScenarioTriple,
-  Valuation,
+import {
+  type CommodityModel,
+  type CyclicalRevenueBase,
+  type MineNavPart,
+  type NavPart,
+  type ScenarioTriple,
+  STAGE_RISK_FACTOR,
+  type Valuation,
 } from "../domain/valuation.ts";
 import { assertNever } from "../exhaustive.ts";
 import { type Case, DEFAULT_SENSITIVITY_STEPS } from "./case.ts";
@@ -208,15 +211,16 @@ function factsHoldingParts(holdings: FactsHoldings): DecodeResult<NavPart[]> {
   return errors.length > 0 ? failed(errors) : decoded(parts);
 }
 
-/** A per-share value quoted in another currency, into the reporting currency. */
+/** Converts an amount in `currency` into the reporting currency. */
 function toReportingCurrency(
   company: Company,
-  part: Extract<NavCasePart, { kind: "lookThrough" }>,
+  currency: string,
+  part: string,
   resolutions: Resolution[],
 ): DecodeResult<(value: number) => number> {
-  if (part.currency === company.currency) return decoded((v) => v);
-  const direct = `${part.currency}${company.currency}`;
-  const inverse = `${company.currency}${part.currency}`;
+  if (currency === company.currency) return decoded((v) => v);
+  const direct = `${currency}${company.currency}`;
+  const inverse = `${company.currency}${currency}`;
   const spot = company.fx?.spotRates.find((r) => r.pair === direct || r.pair === inverse);
   if (spot === undefined) {
     return failed([
@@ -224,18 +228,12 @@ function toReportingCurrency(
         "facts",
         "semantic.navPartNeedsSpotRate",
         "fx.spotRates",
-        `lookThrough part "${part.holding}" is in ${part.currency}; fx needs ${direct} or ${inverse}`,
+        `nav part "${part}" is in ${currency}; fx needs ${direct} or ${inverse}`,
       ),
     ]);
   }
   const inverted = spot.pair === inverse;
-  resolutions.push({
-    kind: "navPartConverted",
-    part: part.holding,
-    pair: spot.pair,
-    rate: spot.rate,
-    inverted,
-  });
+  resolutions.push({ kind: "navPartConverted", part, pair: spot.pair, rate: spot.rate, inverted });
   return decoded(inverted ? (v) => v / spot.rate : (v) => v * spot.rate);
 }
 
@@ -248,15 +246,96 @@ function referencedHolding(part: NavCasePart): string | null {
     case "analystValue":
       return part.holding;
     case "segment":
+    case "mine":
       return null;
     default:
       return assertNever(part);
   }
 }
 
+function yearOf(date: string): number {
+  return Number(date.slice(0, 4));
+}
+
+type MineCasePart = Extract<NavCasePart, { kind: "mine" }>;
+
+/** A mine as the domain carries it; a year before the facts' year is a stale plan. */
+function toMinePart(
+  part: MineCasePart,
+  index: number,
+  factsYear: number,
+): DecodeResult<MineNavPart> {
+  const stale = [
+    ...part.production.map((r, i) => ({ year: r.year, path: `production.${i}.year` })),
+    ...part.initialCapex.map((r, i) => ({ year: r.year, path: `initialCapex.${i}.year` })),
+  ].filter((r) => r.year < factsYear);
+  if (stale.length > 0) {
+    return failed(
+      stale.map((r) =>
+        decodeError(
+          "case",
+          "semantic.mineYearBeforeFacts",
+          `method.parts.${index}.${r.path}`,
+          `${r.year} is before the facts' year ${factsYear}; carry only what remains`,
+        ),
+      ),
+    );
+  }
+  const [first, ...rest] = part.production;
+  if (first === undefined) throw new Error("unreachable: the schema requires a production year");
+  return decoded({
+    name: part.name,
+    kind: "mine",
+    stage: part.stage,
+    ownership: part.ownership,
+    riskFactor: part.riskFactor ?? STAGE_RISK_FACTOR[part.stage],
+    production: [first, ...rest],
+    cashCostPerUnit: part.cashCostPerUnit,
+    royaltyRate: part.royaltyRate,
+    sustainingCapexPerUnit: part.sustainingCapexPerUnit,
+    initialCapex: part.initialCapex,
+    closureCost: part.closureCost,
+    taxRate: part.taxRate,
+    delayYears: part.delayYears,
+  });
+}
+
+type CaseCommodity = NonNullable<Extract<Case["method"], { kind: "nav" }>["commodity"]>;
+
+function toCommodityModel(
+  company: Company,
+  commodity: CaseCommodity,
+  resolutions: Resolution[],
+): DecodeResult<CommodityModel> {
+  const rate = toReportingCurrency(company, "USD", "mines", resolutions);
+  if (!rate.success) return failed(rate.error);
+  const book = commodity.contractBook;
+  return decoded({
+    name: commodity.name,
+    unit: commodity.unit,
+    priceDeck: commodity.priceDeck,
+    usdRiskFree: commodity.discount.usdRiskFree,
+    usdInflation: commodity.discount.usdInflation,
+    contractBook:
+      book === null
+        ? null
+        : {
+            taxRate: book.taxRate,
+            blocks: book.blocks.map((b) => ({
+              fromYear: b.fromYear,
+              toYear: b.toYear,
+              volumePerYear: b.volumePerYear,
+              pricing: b.pricing,
+            })),
+          },
+    usdToReporting: rate.data(1),
+  });
+}
+
 function valuePart(
   company: Company,
   part: NavCasePart,
+  index: number,
   held: { readonly index: number; readonly item: FactsHolding } | null,
   resolutions: Resolution[],
 ): DecodeResult<NavPart | null> {
@@ -275,7 +354,7 @@ function valuePart(
       });
     }
     case "lookThrough": {
-      const convert = toReportingCurrency(company, part, resolutions);
+      const convert = toReportingCurrency(company, part.currency, part.holding, resolutions);
       if (!convert.success) return failed(convert.error);
       return decoded({
         name: part.holding,
@@ -284,6 +363,8 @@ function valuePart(
         value: scaled(part.valuePerShare, (v) => convert.data(v * part.sharesM)),
       });
     }
+    case "mine":
+      return toMinePart(part, index, yearOf(company.asOf));
     case "segment":
       return decoded({
         name: part.name,
@@ -348,7 +429,7 @@ function caseParts(
       seen.add(name);
       held = { index, item };
     }
-    const v = valuePart(company, part, held, resolutions);
+    const v = valuePart(company, part, i, held, resolutions);
     if (!v.success) errors.push(...v.error);
     else if (v.data !== null) valued.push(v.data);
   }
@@ -377,12 +458,27 @@ function caseParts(
   return decoded(valued);
 }
 
+/**
+ * A company that is not a holding company (a miner valued by its mines) has no
+ * holdings block; its parts then reference no holding and its net debt is the
+ * balance sheet's.
+ */
+function balanceSheetHoldings(
+  company: Company,
+  parts: NavCaseParts | null,
+  resolutions: Resolution[],
+): FactsHoldings | null {
+  if (parts === null || parts.some((p) => referencedHolding(p) !== null)) return null;
+  resolutions.push({ kind: "navNetDebtFromBalanceSheet", netDebt: company.netDebt });
+  return { items: [], parentNetDebt: company.netDebt, lookThroughNav: null };
+}
+
 function toNavInputs(
   company: Company,
   parts: NavCaseParts | null,
   resolutions: Resolution[],
 ): DecodeResult<NavInputs> {
-  const holdings = company.holdings;
+  const holdings = company.holdings ?? balanceSheetHoldings(company, parts, resolutions);
   if (holdings === null) {
     return failed([
       decodeError(
@@ -520,12 +616,19 @@ export function decodeValuation(
     }
     case "nav": {
       const holdings = toNavInputs(company, method.parts, resolutions);
-      if (!holdings.success) return failed(holdings.error);
+      const commodity =
+        method.commodity === null
+          ? decoded(null)
+          : toCommodityModel(company, method.commodity, resolutions);
+      if (!holdings.success || !commodity.success) {
+        return failed([...(holdings.error ?? []), ...(commodity.error ?? [])]);
+      }
       return decoded({
         valuation: {
           method: "nav",
           ...holdings.data,
           assumptions: { warrantedDiscount: method.warrantedDiscount },
+          commodity: commodity.data,
         },
         resolutions,
       });

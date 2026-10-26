@@ -28,16 +28,21 @@ export type {
 } from "./domain/financials.ts";
 export type { Basis, Classification, Currency, IsoDate, NonEmpty, Unit } from "./domain/types.ts";
 export type {
+  CommodityModel,
+  ContractBlock,
   CyclicalAssumptions,
   CyclicalRevenueBase,
   DcfAssumptions,
+  MineNavPart,
+  MineStage,
   NavAssumptions,
   NavPart,
-  NavPartKind,
   ScenarioTriple,
   SensitivityAxes,
   Terminal,
   Valuation,
+  ValuedNavPart,
+  ValuedNavPartKind,
 } from "./domain/valuation.ts";
 export type { Case } from "./input/case.ts";
 export { type Decoded, decode } from "./input/decode.ts";

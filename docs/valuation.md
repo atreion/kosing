@@ -12,6 +12,7 @@ The method depends on the company's classification:
 | [DCF](#discounted-cash-flow-dcf) | Compounders, growth at a reasonable price | Present value of future free cash flow |
 | [Normalised earnings](#cyclicals-normalised-earnings) | Cyclicals | Mid-cycle profit times a fair multiple |
 | [NAV](#holding-companies-nav) | Holding companies | Sum of the parts, less the holding company's own debt |
+| [Mine NAV](#commodity-producers-mine-nav) | Commodity producers | Each mine's remaining cash flow at a stated price, added up as a NAV |
 | [Excess return](#banks-and-insurers-excess-return) | Banks and insurers | Book equity plus the value of earning more on it than shareholders require |
 
 Whatever the method, the valuator also runs a
@@ -330,6 +331,64 @@ deserved. The required discount is then applied on top.
 > warranted discount, gives the base value; less the required discount, the
 > entry price.
 
+## Commodity producers: mine NAV
+
+A mine is a deposit being emptied. It earns for as many years as the ore
+lasts and then costs money to close, so it has no terminal value, and its
+profit is set by a commodity price the company does not control. A miner is
+valued as a NAV whose parts are `mine` parts: each mine's remaining cash flow
+at a stated price, discounted to today.
+
+```
+revenue          = volume × price
+taxable profit   = revenue − royalty − cash cost − sustaining capex − depreciation
+free cash flow   = revenue − royalty − cash cost − sustaining capex − initial capex − tax − closure
+mine value       = Σ free cash flow ÷ (1 + real rate)^t × ownership × risk factor
+```
+
+Everything is in USD and **today's money**: the price, the costs and the
+capex are what they would be at today's prices, so no inflation is projected
+and the discount rate is real. Each calendar year's cash arrives at its end,
+counted from the facts' date. Initial capex is depreciated for tax by units of
+production; a loss year pays no tax and carries nothing forward, which
+understates a developer slightly. Closure is paid the year after the last
+production.
+
+- **The price deck** is one flat price per scenario, held for the life of
+  every mine. The thesis behind a commodity is about a level, not a path, and
+  a curve adds precision nobody has. Bear near the price at which new supply
+  stops being built, base at or below today's long-term contract price, bull
+  with a reason.
+- **The discount rate** is the company's WACC, computed with the US 10-year as
+  the risk-free rate because the cash is in USD, and made real with the US
+  10-year breakeven inflation: `real = (1 + WACC) ÷ (1 + inflation) − 1`. It
+  is the same cost of capital every other company gets, not the mining
+  industry's convention of a flat 8% real ("NAV8"). Results show the value at
+  8% real beside it, so a broker's NAV can be compared.
+- **The risk factor** scales a mine that is not yet producing: producing 1,
+  in construction 0.85, permitted and financed 0.6, at feasibility 0.35. A
+  case may set a lower factor with a reason, never a higher one. A deposit
+  with no feasibility study is not a mine part.
+- **The delay** moves a mine's production and initial capex later by whole
+  years, per scenario. The bear case is the late one. At a price where the
+  mine loses money, a delay raises its value, which is correct.
+- **The contract book** is the company's committed sales, valued as the
+  after-tax difference between what the contracts pay and the deck price on
+  the same volume. A contract with a ceiling below the bull deck is a cost in
+  the bull case; a floor above the bear deck is worth something in the bear
+  case. It is a part of its own in the results.
+
+Mines are converted into the reporting currency at the facts' USD spot rate.
+A miner has no holdings block, so its net debt is the balance sheet's. The
+warranted discount is zero.
+
+The results' `commodity` section also gives the **implied price**: the flat
+price at which the base-case value per share equals the share price, on the
+base case's delays. Read it against the long-term contract price: a market
+pricing USD 70 uranium while contracts sign at USD 96 is the finding a screen
+looks for. When no price between zero and ten times the bull deck matches,
+none is reported.
+
 ## Banks and insurers: excess return
 
 A bank's debt is its stock in trade, so free cash flow and enterprise value do
@@ -404,6 +463,7 @@ entry price       = base value × (1 − required discount)
 | `holdingCompany` | 30% |
 | `specialSituation` | 35% |
 | `valueCyclical` | 40% |
+| `commodityProducer` | 40% |
 
 | AI exposure | Add-on |
 |---|---|

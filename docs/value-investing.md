@@ -125,9 +125,9 @@ explain in a few honest sentences goes on the "too hard" pile, and Kosing has a
 verdict for exactly that: `tooHard`.
 
 Kosing also refuses some kinds of business outright. Real estate trusts and
-utilities, pre-profit software companies and commodity producers have no
-valuation method in Kosing, because the methods it has would give a confident
-number with no real basis.
+utilities and pre-profit software companies have no valuation method in
+Kosing, because the methods it has would give a confident number with no real
+basis.
 
 ## Different businesses, different methods
 
@@ -142,6 +142,9 @@ steady software company. It works badly for:
 - **A bank or insurer**, for which debt is raw material rather than financing,
   so "free cash flow" means little. Kosing values these on how much they earn
   on their book equity above the return shareholders require.
+- **A miner**, whose mines run out and whose profit is set by a commodity
+  price it does not control. Kosing values each mine's remaining cash flow at
+  a stated price and adds the mines up.
 
 The company's **classification** decides the method. See
 [The valuation math](valuation.md).

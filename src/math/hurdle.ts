@@ -16,7 +16,7 @@ const CLASSIFICATION_DISCOUNT: Readonly<Record<Classification, number | null>> =
   bankInsurer: 0.25,
   reitUtility: null,
   saasPreProfit: null,
-  commodityProducer: null,
+  commodityProducer: 0.4,
 };
 
 const AI_EXPOSURE_ADD_ON: Readonly<Record<AiExposure, number>> = {

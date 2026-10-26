@@ -139,7 +139,7 @@ test("nav parts value each kind in the reporting currency and record the exclusi
   if (result.data.valuation.method !== "nav") return assert.fail();
   assert.equal(result.data.valuation.hasScenarios, true);
   assert.deepEqual(
-    result.data.valuation.parts.map((p) => [p.name, p.kind, p.value]),
+    result.data.valuation.parts.map((p) => [p.name, p.kind, p.kind === "mine" ? null : p.value]),
     [
       ["Listed Industrial AB", "factsFairValue", { bear: 18000, base: 18000, bull: 18000 }],
       ["Listed Bank AB", "lookThrough", { bear: 7500, base: 10000, bull: 12500 }],
@@ -172,7 +172,7 @@ test("a look-through stake in a foreign currency converts through the facts' spo
     assert.ok(result.success, JSON.stringify(result.error));
     if (result.data.valuation.method !== "nav") return assert.fail();
     const bank = result.data.valuation.parts[1];
-    assert.ok(bank);
+    assert.ok(bank && bank.kind !== "mine");
     assert.ok(Math.abs(bank.value.base - 100000) < 1e-6, pair);
     assert.ok(
       result.data.resolutions.some(

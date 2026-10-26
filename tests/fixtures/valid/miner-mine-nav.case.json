@@ -1,0 +1,129 @@
+{
+  "schemaVersion": "1.0",
+  "ticker": "MINE",
+  "factsAsOf": null,
+  "classification": "commodityProducer",
+  "aiExposure": "secondOrderOnly",
+  "method": {
+    "kind": "nav",
+    "warrantedDiscount": 0,
+    "parts": [
+      {
+        "kind": "mine",
+        "name": "North pit",
+        "stage": "producing",
+        "ownership": 1,
+        "riskFactor": null,
+        "production": [
+          {
+            "year": 2027,
+            "volume": 10
+          },
+          {
+            "year": 2028,
+            "volume": 10
+          }
+        ],
+        "delayYears": {
+          "bear": 0,
+          "base": 0,
+          "bull": 0
+        },
+        "cashCostPerUnit": 30,
+        "royaltyRate": 0.05,
+        "sustainingCapexPerUnit": 5,
+        "initialCapex": [
+          {
+            "year": 2026,
+            "amount": 100
+          }
+        ],
+        "closureCost": 20,
+        "taxRate": 0.25,
+        "rationale": "The mine plan in the annual report."
+      },
+      {
+        "kind": "mine",
+        "name": "South project",
+        "stage": "feasibility",
+        "ownership": 0.8,
+        "riskFactor": null,
+        "production": [
+          {
+            "year": 2029,
+            "volume": 5
+          },
+          {
+            "year": 2030,
+            "volume": 5
+          },
+          {
+            "year": 2031,
+            "volume": 5
+          }
+        ],
+        "delayYears": {
+          "bear": 2,
+          "base": 1,
+          "bull": 0
+        },
+        "cashCostPerUnit": 40,
+        "royaltyRate": 0.05,
+        "sustainingCapexPerUnit": 5,
+        "initialCapex": [
+          {
+            "year": 2027,
+            "amount": 150
+          },
+          {
+            "year": 2028,
+            "amount": 150
+          }
+        ],
+        "closureCost": 30,
+        "taxRate": 0.25,
+        "rationale": "Definitive feasibility study, not yet financed."
+      }
+    ],
+    "commodity": {
+      "name": "U3O8",
+      "unit": "lb",
+      "priceDeck": {
+        "bear": 65,
+        "base": 80,
+        "bull": 100
+      },
+      "discount": {
+        "usdRiskFree": 0.0519,
+        "usdInflation": 0.0235,
+        "basis": "US Treasury par curves, 2026-10-01."
+      },
+      "contractBook": {
+        "taxRate": 0.25,
+        "blocks": [
+          {
+            "fromYear": 2027,
+            "toYear": 2028,
+            "volumePerYear": 4,
+            "pricing": {
+              "kind": "marketRelated",
+              "floor": 60,
+              "ceiling": 85
+            }
+          }
+        ],
+        "rationale": "Aggregate book as disclosed."
+      },
+      "rationale": "Deck anchored to the term price."
+    },
+    "rationale": "Two mines and a contract book.",
+    "sourceRefs": ["S1"]
+  },
+  "overrides": {
+    "beta": null,
+    "wacc": null,
+    "taxRate": null,
+    "rationale": null
+  },
+  "sensitivity": null
+}

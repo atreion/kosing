@@ -68,6 +68,7 @@ export type Resolution =
       readonly shortTermInvestments: number;
     }
   | { readonly kind: "navHoldingExcluded"; readonly holding: string }
+  | { readonly kind: "navNetDebtFromBalanceSheet"; readonly netDebt: number }
   | {
       readonly kind: "navPartConverted";
       readonly part: string;
@@ -86,6 +87,10 @@ export type Resolution =
         | "terminalGrowthNotBelowWacc"
         | "noGrowthInBracketMatchesPrice"
         | "financialInstitution";
+    }
+  | {
+      readonly kind: "impliedCommodityPriceUnavailable";
+      readonly reason: "noPriceInBracketMatchesValue";
     }
   | {
       readonly kind: "excessReturnUnavailable";

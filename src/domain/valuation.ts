@@ -59,15 +59,97 @@ export type CyclicalRevenueBase =
   | { readonly kind: "ltm"; readonly period: Period }
   | { readonly kind: "averageFy"; readonly window: NonEmpty<FiscalYear> };
 
-export type NavPartKind = "factsFairValue" | "lookThrough" | "segment" | "analystValue";
+export type ValuedNavPartKind = "factsFairValue" | "lookThrough" | "segment" | "analystValue";
 
 /** One valued piece of a sum of the parts, in the reporting currency and the facts' unit. */
-export type NavPart = {
+export type ValuedNavPart = {
   readonly name: string;
-  readonly kind: NavPartKind;
+  readonly kind: ValuedNavPartKind;
   /** The facts holding it values, or null for a segment or an asset the facts do not list. */
   readonly holding: string | null;
   readonly value: ScenarioTriple;
+};
+
+export const MINE_STAGES = [
+  "producing",
+  "construction",
+  "permittedFinanced",
+  "feasibility",
+] as const;
+export type MineStage = (typeof MINE_STAGES)[number];
+
+/**
+ * The investor's risking of a mine's value by stage. A case may lower a
+ * mine's factor with a reason, never raise it.
+ */
+export const STAGE_RISK_FACTOR: Readonly<Record<MineStage, number>> = {
+  producing: 1,
+  construction: 0.85,
+  permittedFinanced: 0.6,
+  feasibility: 0.35,
+};
+
+export type YearVolume = { readonly year: number; readonly volume: number };
+
+export type YearAmount = { readonly year: number; readonly amount: number };
+
+export type ContractPricing =
+  | { readonly kind: "fixed"; readonly price: number }
+  | {
+      readonly kind: "marketRelated";
+      readonly floor: number | null;
+      readonly ceiling: number | null;
+    };
+
+export type ContractBlock = {
+  readonly fromYear: number;
+  readonly toYear: number;
+  readonly volumePerYear: number;
+  readonly pricing: ContractPricing;
+};
+
+/**
+ * A mine on the case's assumptions, valued at the price deck when results are
+ * assembled. USD millions, millions of units, USD per unit, today's money.
+ */
+export type MineNavPart = {
+  readonly name: string;
+  readonly kind: "mine";
+  readonly stage: MineStage;
+  /** The company's share, (0, 1]. */
+  readonly ownership: number;
+  /** The stage's factor, or the case's lower one. */
+  readonly riskFactor: number;
+  /** On a 100% basis, years in increasing order. */
+  readonly production: NonEmpty<YearVolume>;
+  readonly cashCostPerUnit: number;
+  readonly royaltyRate: number;
+  readonly sustainingCapexPerUnit: number;
+  readonly initialCapex: readonly YearAmount[];
+  readonly closureCost: number;
+  readonly taxRate: number;
+  /** Whole years production and initial capex start late; bull <= base <= bear. */
+  readonly delayYears: ScenarioTriple;
+};
+
+export type NavPart = ValuedNavPart | MineNavPart;
+
+/**
+ * What the mine parts share: one commodity, one flat price deck in today's
+ * USD, the inputs of the real discount rate, and the company's contract book.
+ */
+export type CommodityModel = {
+  readonly name: string;
+  readonly unit: string;
+  readonly priceDeck: ScenarioTriple;
+  readonly usdRiskFree: number;
+  readonly usdInflation: number;
+  readonly contractBook: {
+    readonly blocks: readonly ContractBlock[];
+    readonly taxRate: number;
+  } | null;
+  /** Multiplies a USD amount into the reporting currency; 1 when the company reports in USD. */
+  readonly usdToReporting: number;
 };
 
 /**
@@ -101,6 +183,8 @@ export type Valuation =
       readonly parentNetDebt: number;
       readonly lookThroughNav: number | null;
       readonly assumptions: NavAssumptions;
+      /** Non-null exactly when a part is a mine. */
+      readonly commodity: CommodityModel | null;
     }
   | {
       readonly method: "excessReturn";

@@ -42,6 +42,7 @@
         "rationale": "Book value with a yield-based range."
       }
     ],
+    "commodity": null,
     "rationale": "Sum of the parts: two listed holdings, the private stake left out, the operating parent on a multiple.",
     "sourceRefs": ["S1"]
   },

@@ -1,0 +1,91 @@
+/**
+ * What a mine needs from the company and the case: the real USD discount
+ * rate, the valuation date as a decimal year, and the terms one scenario
+ * values the mines on.
+ */
+
+import type { CostOfCapital } from "../domain/company.ts";
+import type { IsoDate } from "../domain/types.ts";
+import type { CommodityModel, MineNavPart } from "../domain/valuation.ts";
+import { computeContractBookValue, computeMineValue, realRate } from "../math/mine.ts";
+import { computeWacc } from "../math/wacc.ts";
+import { selectWacc } from "./wacc.ts";
+
+export type MineScenario = "bear" | "base" | "bull";
+
+export type MineDiscount = {
+  /** The company's WACC with the US 10-year as the risk-free rate. */
+  readonly usdWacc: number;
+  readonly realRate: number;
+};
+
+/** The terms the mines are valued on: a price, whose delay, and the discounting. */
+export type MineTerms = {
+  readonly price: number;
+  readonly delay: MineScenario;
+  readonly realRate: number;
+  readonly valuationYear: number;
+};
+
+export function selectMineDiscount(
+  commodity: CommodityModel,
+  costOfCapital: CostOfCapital,
+): MineDiscount {
+  const usdWacc = computeWacc({
+    ...selectWacc(costOfCapital),
+    riskFree: commodity.usdRiskFree,
+  }).wacc;
+  return { usdWacc, realRate: realRate(usdWacc, commodity.usdInflation) };
+}
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+/** 2026-01-01 is 2026.0; 2026-10-26 is about 2026.82. */
+export function decimalYear(date: IsoDate): number {
+  const year = Number(date.slice(0, 4));
+  const startOfYear = Date.UTC(year, 0, 1);
+  const elapsedDays = (Date.parse(`${date}T00:00:00Z`) - startOfYear) / 86_400_000;
+  return year + elapsedDays / (isLeapYear(year) ? 366 : 365);
+}
+
+export function scenarioTerms(
+  commodity: CommodityModel,
+  costOfCapital: CostOfCapital,
+  asOf: IsoDate,
+  scenario: MineScenario,
+): MineTerms {
+  return {
+    price: commodity.priceDeck[scenario],
+    delay: scenario,
+    realRate: selectMineDiscount(commodity, costOfCapital).realRate,
+    valuationYear: decimalYear(asOf),
+  };
+}
+
+/** The company's share of the mine's value after risking, USD millions. */
+export function mineValueUsd(mine: MineNavPart, terms: MineTerms): number {
+  const value = computeMineValue(
+    {
+      production: mine.production,
+      cashCostPerUnit: mine.cashCostPerUnit,
+      royaltyRate: mine.royaltyRate,
+      sustainingCapexPerUnit: mine.sustainingCapexPerUnit,
+      initialCapex: mine.initialCapex,
+      closureCost: mine.closureCost,
+      taxRate: mine.taxRate,
+      delayYears: mine.delayYears[terms.delay],
+    },
+    terms.price,
+    terms,
+  );
+  return value.npv * mine.ownership * mine.riskFactor;
+}
+
+/** USD millions; null when the case carries no contract book. */
+export function contractBookValueUsd(commodity: CommodityModel, terms: MineTerms): number | null {
+  const book = commodity.contractBook;
+  if (book === null) return null;
+  return computeContractBookValue(book.blocks, book.taxRate, terms.price, terms);
+}

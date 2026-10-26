@@ -116,8 +116,9 @@ schema:
 | `valueCyclical` | `normalisedEarnings` |
 | `holdingCompany` | `nav` |
 | `bankInsurer` | `excessReturn` |
+| `commodityProducer` | `nav` with at least one `mine` part |
 | `specialSituation` | any of `dcf`, `normalisedEarnings`, `nav` |
-| `reitUtility`, `saasPreProfit`, `commodityProducer` | none; no case is written |
+| `reitUtility`, `saasPreProfit` | none; no case is written |
 
 The AI-cycle exposure levels, from most to least exposed: `direct` (revenue
 depends on AI compute or model economics), `picksAndShovels` (a material share
