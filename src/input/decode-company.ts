@@ -208,13 +208,15 @@ export function decodeCompany(
   const totalDebt = scale.required(bs.totalDebt);
   const cash = scale.required(bs.cashAndEquivalents);
   const shortTermInvestments = scale.nullable(bs.shortTermInvestments);
-  const netDebt = totalDebt - cash - (shortTermInvestments ?? 0);
+  const dividendPayable = scale.required(bs.dividendPayable);
+  const netDebt = totalDebt - cash - (shortTermInvestments ?? 0) + dividendPayable;
   if (facts.financialInstitution === null) {
     resolutions.push({
       kind: "netDebtDerived",
       totalDebt,
       cash,
       shortTermInvestments: shortTermInvestments ?? 0,
+      dividendPayable,
     });
   }
 
@@ -233,6 +235,7 @@ export function decodeCompany(
       cashAndEquivalents: cash,
       shortTermInvestments,
       totalDebt,
+      dividendPayable,
       shortTermDebt: scale.nullable(bs.shortTermDebt),
       longTermDebt: scale.nullable(bs.longTermDebt),
       goodwill: scale.nullable(bs.goodwill),
@@ -269,7 +272,7 @@ export function decodeCompany(
             fairValue: scale.nullable(h.fairValue),
             basis: h.basis,
           })),
-          parentNetDebt: scale.required(facts.holdings.parentNetDebt),
+          parentNetDebt: scale.required(facts.holdings.parentNetDebt) + dividendPayable,
           lookThroughNav: scale.nullable(facts.holdings.lookThroughNav),
         }
       : null,

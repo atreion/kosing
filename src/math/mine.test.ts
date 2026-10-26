@@ -4,9 +4,12 @@ import type { ContractBlock } from "../domain/valuation.ts";
 import { assertClose } from "../test-utils.ts";
 import {
   computeContractBookValue,
+  computeInventoryValue,
   computeMineValue,
+  contractPrice,
   type MineInputs,
   realRate,
+  royaltyRateAt,
   solveImpliedPrice,
 } from "./mine.ts";
 
@@ -23,8 +26,10 @@ const mine: MineInputs = {
   ],
   cashCostPerUnit: 30,
   royaltyRate: 0.05,
+  royaltySteps: [],
   sustainingCapexPerUnit: 5,
   initialCapex: [{ year: 2026, amount: 100 }],
+  openingTaxBase: 0,
   closureCost: 20,
   taxRate: 0.25,
   delayYears: 0,
@@ -67,7 +72,7 @@ test("the contract book is the after-tax premium over the market", () => {
   assertClose(computeContractBookValue([fixed], 0.25, 80, timing), 15 / 1.21, 1e-9);
   const capped: ContractBlock = {
     ...fixed,
-    pricing: { kind: "marketRelated", floor: 50, ceiling: 70 },
+    pricing: { kind: "marketRelated", discount: 0, floor: 50, ceiling: 70 },
   };
   assertClose(computeContractBookValue([capped], 0.25, 80, timing), -15 / 1.21, 1e-9);
   assert.equal(computeContractBookValue([capped], 0.25, 60, timing), 0);
@@ -94,4 +99,45 @@ test("the implied price recovers the deck that produced a value", () => {
 
 test("real rate by Fisher", () => {
   assertClose(realRate(0.1, 0.02), 1.1 / 1.02 - 1, 1e-12);
+});
+
+test("an opening tax base is depreciated with the capex and lowers tax", () => {
+  // 40 more of deductions over 20 units: 2 per unit, so tax falls by 0.25 x 20 = 5 a year.
+  const r = computeMineValue({ ...mine, openingTaxBase: 40 }, 80, timing);
+  assert.deepEqual(
+    r.years.map((y) => y.freeCashFlow),
+    [-100, 325, 325, -20],
+  );
+});
+
+test("a royalty step applies at and above its price", () => {
+  const stepped = { ...mine, royaltySteps: [{ fromPrice: 80, extraRate: 0.05 }] };
+  // At 80: royalty 10% of 800 = 80, taxable 320, tax 80, cash 800-80-300-50-80 = 290.
+  assert.equal(computeMineValue(stepped, 80, timing).years[1]?.freeCashFlow, 290);
+  assertClose(
+    computeMineValue(stepped, 79.99, timing).npv,
+    computeMineValue(mine, 79.99, timing).npv,
+    1e-9,
+  );
+  assert.equal(royaltyRateAt(0.05, [{ fromPrice: 60, extraRate: 0.02 }], 100), 0.07);
+});
+
+test("a market-related contract takes its discount before the collar", () => {
+  const pricing = { kind: "marketRelated", discount: 0.03, floor: null, ceiling: null } as const;
+  assertClose(contractPrice(pricing, 100), 97, 1e-12);
+  assert.equal(contractPrice({ ...pricing, floor: 98 }, 100), 98);
+});
+
+test("inventory sells at the price and pays tax on the gain over its tax cost only", () => {
+  assert.equal(computeInventoryValue({ volume: 2, costPerUnit: 60, taxRate: 0.3 }, 80), 160 - 12);
+  assert.equal(computeInventoryValue({ volume: 2, costPerUnit: 90, taxRate: 0.3 }, 80), 160);
+});
+
+test("a floor holds without a ceiling, and a ceiling without a floor", () => {
+  const floorOnly = { kind: "marketRelated", discount: 0, floor: 70, ceiling: null } as const;
+  assert.equal(contractPrice(floorOnly, 50), 70);
+  assert.equal(contractPrice(floorOnly, 90), 90);
+  const ceilingOnly = { kind: "marketRelated", discount: 0, floor: null, ceiling: 70 } as const;
+  assert.equal(contractPrice(ceilingOnly, 90), 70);
+  assert.equal(contractPrice(ceilingOnly, 50), 50);
 });

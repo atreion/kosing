@@ -132,6 +132,12 @@ export const BalanceSheet = z.strictObject({
   operatingLeaseLiabilities: nullableNonNegative.describe(
     "Lease liabilities. Included in enterprise value for the current multiples and deducted in the normalised-earnings bridge. Not deducted in a dcf, so a dcf case carries lease payments in its capex path.",
   ),
+  dividendPayable: z
+    .number()
+    .min(0)
+    .describe(
+      "Dividends that went ex on or before market.asOf and were not yet paid at balanceSheet.asOf, so the cash above still holds them while the price no longer does. Added to net debt in every bridge. 0 when none; always 0 for a financial institution, whose tangibleBookEquity carries the deduction instead.",
+    ),
   pensionObligations: nullableNumber.describe(
     "Net pension deficit. Not deducted as debt; a case says in its rationale when it is material.",
   ),
@@ -230,7 +236,11 @@ export const HoldingItem = z.strictObject({
 
 export const Holdings = z.strictObject({
   items: z.array(HoldingItem),
-  parentNetDebt: z.number(),
+  parentNetDebt: z
+    .number()
+    .describe(
+      "The parent's own net debt as the company reports it, before balanceSheet.dividendPayable, which the valuator adds.",
+    ),
   lookThroughNav: nullableNumber,
   sourceRefs: SourceRefs,
 });
@@ -284,7 +294,7 @@ export const FinancialInstitution = z.strictObject({
   tangibleBookEquity: z
     .number()
     .describe(
-      "Equity attributable to ordinary shareholders less goodwill and other intangibles, excluding AT1 and other hybrid capital.",
+      "Equity attributable to ordinary shareholders less goodwill and other intangibles, excluding AT1 and other hybrid capital, and less any dividend declared after balanceSheet.asOf that went ex on or before market.asOf.",
     ),
   at1Capital: nullableNonNegative.describe(
     "AT1 and other hybrid capital carried in equity; null when none.",
@@ -466,6 +476,7 @@ export const FactsSchema = FactsShape.describe(
   if (fi !== null) {
     const fixed: readonly [readonly (string | number)[], number, number][] = [
       [["balanceSheet", "totalDebt"], facts.balanceSheet.totalDebt, 0],
+      [["balanceSheet", "dividendPayable"], facts.balanceSheet.dividendPayable, 0],
       [["costOfCapital", "debtWeight"], facts.costOfCapital.debtWeight, 0],
       [["costOfCapital", "equityWeight"], facts.costOfCapital.equityWeight, 1],
       [["costOfCapital", "pretaxCostOfDebt"], facts.costOfCapital.pretaxCostOfDebt, 0],

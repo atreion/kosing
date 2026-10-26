@@ -139,6 +139,7 @@ export const balanceSheet = {
   cashAndEquivalents: 4200,
   shortTermInvestments: null,
   totalDebt: 9100,
+  dividendPayable: 0,
   shortTermDebt: 1100,
   longTermDebt: 8000,
   operatingLeaseLiabilities: 600,

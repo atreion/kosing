@@ -36,8 +36,10 @@ test("a producing mine is its own NPV at the deck, valued from the facts' date",
       ],
       cashCostPerUnit: 30,
       royaltyRate: 0.05,
+      royaltySteps: [],
       sustainingCapexPerUnit: 5,
       initialCapex: [{ year: 2026, amount: 100 }],
+      openingTaxBase: 0,
       closureCost: 20,
       taxRate: 0.25,
       delayYears: 0,
@@ -125,4 +127,34 @@ test("a mine year before the facts' year is a stale plan", () => {
   const r = valuate(facts(), mutate(minerCase(), "method.parts.0.initialCapex.0.year", 2025));
   assert.equal(r.success, false);
   assert.equal(r.error?.[0]?.path, "method.parts.0.initialCapex.0.year");
+});
+
+const inventory = {
+  kind: "inventory",
+  name: "Drummed U3O8",
+  volume: 1,
+  costPerUnit: 50,
+  taxRate: 0.25,
+  rationale: "Held at the converter.",
+};
+
+test("inventory reprices with the deck in every scenario and in the implied price", () => {
+  const doc = minerCase() as { method: { parts: unknown[] } };
+  const withInventory = mutate(doc, "method.parts", [...doc.method.parts, inventory]);
+  const { nav } = run(facts(), withInventory);
+  const part = nav.parts.find((p) => p.kind === "inventory");
+  // At 85-less-5: 80 x 1 - 0.25 x 30 = 72.5 USD m, in AUD at 0.65.
+  assertClose(part?.value.base ?? Number.NaN, 72.5 / 0.65, 1e-9);
+  assert.ok((part?.value.bull ?? 0) > (part?.value.base ?? 0));
+  const atBase = run(mutate(facts(), "market.price", nav.valuePerShare), withInventory);
+  assertClose(atBase.commodity.impliedPrice ?? Number.NaN, 80, 1e-6);
+});
+
+test("the rate-stress rows bracket the base value", () => {
+  const { nav, commodity } = run();
+  const [lower, same, higher] = commodity.realRateSensitivity;
+  assertClose(same?.valuePerShare ?? Number.NaN, nav.valuePerShare, 1e-9);
+  assertClose(lower?.realRate ?? Number.NaN, commodity.realRate - 0.01, 1e-12);
+  assert.ok((lower?.valuePerShare ?? 0) > nav.valuePerShare);
+  assert.ok((higher?.valuePerShare ?? Infinity) < nav.valuePerShare);
 });

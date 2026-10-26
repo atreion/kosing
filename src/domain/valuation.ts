@@ -97,9 +97,14 @@ export type ContractPricing =
   | { readonly kind: "fixed"; readonly price: number }
   | {
       readonly kind: "marketRelated";
+      /** Taken off the market price before the floor and ceiling, as a fraction. */
+      readonly discount: number;
       readonly floor: number | null;
       readonly ceiling: number | null;
     };
+
+/** An extra royalty rate that applies when the price is at or above fromPrice. */
+export type RoyaltyStep = { readonly fromPrice: number; readonly extraRate: number };
 
 export type ContractBlock = {
   readonly fromYear: number;
@@ -124,15 +129,28 @@ export type MineNavPart = {
   readonly production: NonEmpty<YearVolume>;
   readonly cashCostPerUnit: number;
   readonly royaltyRate: number;
+  readonly royaltySteps: readonly RoyaltyStep[];
   readonly sustainingCapexPerUnit: number;
   readonly initialCapex: readonly YearAmount[];
+  /** Undepreciated tax value of capital already spent, USD millions. */
+  readonly openingTaxBase: number;
   readonly closureCost: number;
   readonly taxRate: number;
   /** Whole years production and initial capex start late; bull <= base <= bear. */
   readonly delayYears: ScenarioTriple;
 };
 
-export type NavPart = ValuedNavPart | MineNavPart;
+/** Product held for sale, valued at the deck less tax on the gain over its tax cost. */
+export type InventoryNavPart = {
+  readonly name: string;
+  readonly kind: "inventory";
+  /** Millions of units, the company's own. */
+  readonly volume: number;
+  readonly costPerUnit: number;
+  readonly taxRate: number;
+};
+
+export type NavPart = ValuedNavPart | MineNavPart | InventoryNavPart;
 
 /**
  * What the mine parts share: one commodity, one flat price deck in today's
@@ -183,7 +201,7 @@ export type Valuation =
       readonly parentNetDebt: number;
       readonly lookThroughNav: number | null;
       readonly assumptions: NavAssumptions;
-      /** Non-null exactly when a part is a mine. */
+      /** Non-null exactly when a part is a mine or inventory. */
       readonly commodity: CommodityModel | null;
     }
   | {

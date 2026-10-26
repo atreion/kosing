@@ -31,6 +31,7 @@
         },
         "cashCostPerUnit": 30,
         "royaltyRate": 0.05,
+        "royaltySteps": [],
         "sustainingCapexPerUnit": 5,
         "initialCapex": [
           {
@@ -38,6 +39,7 @@
             "amount": 100
           }
         ],
+        "openingTaxBase": 0,
         "closureCost": 20,
         "taxRate": 0.25,
         "rationale": "The mine plan in the annual report."
@@ -69,6 +71,7 @@
         },
         "cashCostPerUnit": 40,
         "royaltyRate": 0.05,
+        "royaltySteps": [],
         "sustainingCapexPerUnit": 5,
         "initialCapex": [
           {
@@ -80,6 +83,7 @@
             "amount": 150
           }
         ],
+        "openingTaxBase": 0,
         "closureCost": 30,
         "taxRate": 0.25,
         "rationale": "Definitive feasibility study, not yet financed."
@@ -107,6 +111,7 @@
             "volumePerYear": 4,
             "pricing": {
               "kind": "marketRelated",
+              "discount": 0,
               "floor": 60,
               "ceiling": 85
             }

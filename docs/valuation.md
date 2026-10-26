@@ -136,6 +136,12 @@ short-term investments; it is the lenders' claim, so it is subtracted to leave
 the shareholders' part. A company with more cash than debt has negative net
 debt, which adds to equity value.
 
+A dividend that has gone ex but is not yet paid is added to net debt. Between
+the ex-date and the payment the price no longer includes the dividend while
+the reported cash still does, so without it every method would count the
+dividend twice. The same applies to a holding company's parent net debt. A
+bank or insurer takes it off tangible book instead.
+
 Shares are diluted shares when the facts give them (counting options and
 convertibles that would become shares), else shares outstanding.
 
@@ -372,22 +378,40 @@ production.
 - **The delay** moves a mine's production and initial capex later by whole
   years, per scenario. The bear case is the late one. At a price where the
   mine loses money, a delay raises its value, which is correct.
-- **The contract book** is the company's committed sales, valued as the
-  after-tax difference between what the contracts pay and the deck price on
-  the same volume. A contract with a ceiling below the bull deck is a cost in
-  the bull case; a floor above the bear deck is worth something in the bear
-  case. It is a part of its own in the results.
+- **The royalty** is a base rate on revenue plus optional steps that apply at
+  and above a price, for an extraction tax that rises with the price (as
+  Kazakhstan's does).
+- **The opening tax base** is the tax value of capital already spent and not
+  yet deducted. It is depreciated with any remaining capex, so a producing
+  mine keeps the deductions of its construction.
+- **The contract book** is the company's own committed sales at the volumes
+  it reports, valued as the after-tax difference between what the contracts
+  pay and the deck price on the same volume. A market-related contract can
+  take a discount off the market price ("spot less 3%") before its floor and
+  ceiling. A contract with a ceiling below the bull deck is a cost in the bull
+  case; a floor above the bear deck is worth something in the bear case. It
+  is a part of its own in the results.
+- **Inventory** of the commodity is an `inventory` part: the volume at the
+  deck price, less tax on the gain over its tax cost.
 
 Mines are converted into the reporting currency at the facts' USD spot rate.
 A miner has no holdings block, so its net debt is the balance sheet's. The
-warranted discount is zero.
+warranted discount is zero. Two things the method does not model are written
+as `analystValue` parts with their working: partners' share of the net cash
+of subsidiaries the company consolidates at 100% (a negative part), and a
+loan structure that changes what the company receives from a mine, such as
+priority repayment of its own loans.
 
 The results' `commodity` section also gives the **implied price**: the flat
 price at which the base-case value per share equals the share price, on the
-base case's delays. Read it against the long-term contract price: a market
-pricing USD 70 uranium while contracts sign at USD 96 is the finding a screen
-looks for. When no price between zero and ten times the bull deck matches,
-none is reported.
+base case's delays. Mines, inventory and the contract book reprice with it;
+`analystValue` parts do not. Read it against the long-term contract price: a
+market pricing USD 70 uranium while contracts sign at USD 96 is the finding a
+screen looks for. When no price between zero and ten times the bull deck
+matches, none is reported.
+
+`realRateSensitivity` gives the base value per share with the real rate a
+point lower and a point higher, the long-rate risk in the market lens.
 
 ## Banks and insurers: excess return
 

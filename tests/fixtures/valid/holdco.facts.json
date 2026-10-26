@@ -73,6 +73,7 @@
     "cashAndEquivalents": 900,
     "shortTermInvestments": null,
     "totalDebt": 1200,
+    "dividendPayable": 0,
     "shortTermDebt": null,
     "longTermDebt": 1200,
     "operatingLeaseLiabilities": null,

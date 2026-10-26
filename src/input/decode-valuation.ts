@@ -247,6 +247,7 @@ function referencedHolding(part: NavCasePart): string | null {
       return part.holding;
     case "segment":
     case "mine":
+    case "inventory":
       return null;
     default:
       return assertNever(part);
@@ -292,8 +293,10 @@ function toMinePart(
     production: [first, ...rest],
     cashCostPerUnit: part.cashCostPerUnit,
     royaltyRate: part.royaltyRate,
+    royaltySteps: part.royaltySteps,
     sustainingCapexPerUnit: part.sustainingCapexPerUnit,
     initialCapex: part.initialCapex,
+    openingTaxBase: part.openingTaxBase,
     closureCost: part.closureCost,
     taxRate: part.taxRate,
     delayYears: part.delayYears,
@@ -365,6 +368,14 @@ function valuePart(
     }
     case "mine":
       return toMinePart(part, index, yearOf(company.asOf));
+    case "inventory":
+      return decoded({
+        name: part.name,
+        kind: "inventory",
+        volume: part.volume,
+        costPerUnit: part.costPerUnit,
+        taxRate: part.taxRate,
+      });
     case "segment":
       return decoded({
         name: part.name,

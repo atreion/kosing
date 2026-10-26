@@ -155,6 +155,7 @@
     "cashAndEquivalents": 300,
     "shortTermInvestments": 0,
     "totalDebt": 100,
+    "dividendPayable": 0,
     "shortTermDebt": 0,
     "longTermDebt": 100,
     "operatingLeaseLiabilities": null,

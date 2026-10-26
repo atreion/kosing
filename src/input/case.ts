@@ -110,12 +110,27 @@ export const MinePart = z.strictObject({
     .number()
     .min(0)
     .describe("Site cash cost in today's USD per unit, before royalty and sustaining capex."),
-  royaltyRate: z.number().min(0).lt(1).describe("Royalties as a fraction of revenue."),
+  royaltyRate: z
+    .number()
+    .min(0)
+    .lt(1)
+    .describe("Royalties and revenue-based extraction taxes as a fraction of revenue."),
+  royaltySteps: z
+    .array(z.strictObject({ fromPrice: z.number().min(0), extraRate: z.number().gt(0).lt(1) }))
+    .describe(
+      "Extra rates added to royaltyRate when the price is at or above fromPrice in today's USD, for a price-linked royalty or extraction tax. Empty when the rate is flat.",
+    ),
   sustainingCapexPerUnit: z.number().min(0).describe("Sustaining capex in today's USD per unit."),
   initialCapex: z
     .array(z.strictObject({ year: Year, amount: z.number().min(0) }))
     .describe(
       "Remaining construction or expansion capex, USD millions in today's money, by year. Empty when none remains.",
+    ),
+  openingTaxBase: z
+    .number()
+    .min(0)
+    .describe(
+      "Tax value of capital already spent and not yet deducted (undepreciated cost and unused losses tied to the mine), USD millions. Depreciated with initialCapex by units of production. 0 for a mine not yet built.",
     ),
   closureCost: z.number().min(0).describe("USD millions, paid the year after the last production."),
   taxRate: z.number().min(0).lt(1).describe("Income tax on the mine's profit, as a fraction."),
@@ -129,6 +144,11 @@ const ContractPricingSchema = z.discriminatedUnion("kind", [
   }),
   z.strictObject({
     kind: z.literal("marketRelated"),
+    discount: z
+      .number()
+      .min(0)
+      .lt(1)
+      .describe("Taken off the market price before floor and ceiling, e.g. 0.03 for spot less 3%."),
     floor: z.number().min(0).nullable(),
     ceiling: z.number().min(0).nullable(),
   }),
@@ -166,8 +186,20 @@ export const Commodity = z.strictObject({
     })
     .nullable()
     .describe(
-      "The company's committed sales in aggregate, as disclosed. Valued as the after-tax premium or discount to selling the same volume at the deck. Null when the company sells at market or does not disclose a book; say which in rationale.",
+      "The company's own committed sales in aggregate, at the volumes it reports (its attributable sales, not a joint venture's at 100%). Valued as the after-tax premium or discount to selling the same volume at the deck. Null when the company sells at market or does not disclose a book; say which in rationale.",
     ),
+  rationale: z.string().min(1),
+});
+
+export const InventoryPart = z.strictObject({
+  kind: z.literal("inventory"),
+  name: z.string().min(1),
+  volume: z.number().gt(0).describe("Millions of units held, the company's own."),
+  costPerUnit: z
+    .number()
+    .min(0)
+    .describe("Tax cost per unit in USD; the gain above it is taxed when sold."),
+  taxRate: z.number().min(0).lt(1),
   rationale: z.string().min(1),
 });
 
@@ -218,6 +250,7 @@ export const NavPart = z.discriminatedUnion("kind", [
     rationale: z.string().min(1),
   }),
   MinePart,
+  InventoryPart,
 ]);
 
 export const NavMethod = z.strictObject({
@@ -231,7 +264,7 @@ export const NavMethod = z.strictObject({
       "Null to take every facts holding at its fair value. Otherwise the sum of the parts: every facts holding appears in exactly one part (factsFairValue, lookThrough, analystValue or excluded), and segment, analystValue or mine parts add what the facts do not list, such as an operating business or a mine. Bear, base and bull NAV come from the parts' triples and, for mines, the price deck; parentNetDebt (net debt from the balance sheet when the facts have no holdings) and the warranted discount are shared.",
     ),
   commodity: Commodity.nullable().describe(
-    "Required when a part is a mine, null otherwise. A commodity producer takes a warrantedDiscount of 0.",
+    "Required when a part is a mine or inventory, null otherwise. A commodity producer takes a warrantedDiscount of 0. Partners' share of the net cash of subsidiaries consolidated at 100% is a negative analystValue part (positive for their share of net debt). A loan structure that changes what the company receives from a mine, such as a priority repayment waterfall, is an analystValue part with its working in rationale.",
   ),
   rationale: z.string().min(1),
   sourceRefs: SourceRefs,
@@ -344,6 +377,7 @@ function partTriple(
     case "analystValue":
       return { key: "value", triple: part.value };
     case "mine":
+    case "inventory":
     case "factsFairValue":
     case "excluded":
       return null;
@@ -388,6 +422,14 @@ function checkMine(
       });
     }
   }
+  const topRate = mine.royaltyRate + mine.royaltySteps.reduce((sum, s) => sum + s.extraRate, 0);
+  if (topRate >= 1) {
+    ctx.addIssue({
+      code: "custom",
+      path: [...path, "royaltySteps"],
+      message: `royaltyRate and every step together reach ${topRate}; they must stay below 1`,
+    });
+  }
   const stageFactor = STAGE_RISK_FACTOR[mine.stage];
   if (mine.riskFactor !== null && mine.riskFactor > stageFactor) {
     ctx.addIssue({
@@ -398,20 +440,25 @@ function checkMine(
   }
 }
 
+/** A part valued at the price deck: a mine or inventory. */
+function hasDeckPart(method: NavMethodShape): boolean {
+  return (method.parts ?? []).some((p) => p.kind === "mine" || p.kind === "inventory");
+}
+
 function checkCommodity(method: NavMethodShape, ctx: z.RefinementCtx): void {
-  const mines = hasMine(method);
+  const mines = hasDeckPart(method);
   if (mines && method.commodity === null) {
     ctx.addIssue({
       code: "custom",
       path: ["method", "commodity"],
-      message: "a mine part needs the commodity block",
+      message: "a mine or inventory part needs the commodity block",
     });
   }
   if (!mines && method.commodity !== null) {
     ctx.addIssue({
       code: "custom",
       path: ["method", "commodity"],
-      message: "commodity is for a case with a mine part; set it to null",
+      message: "commodity is for a case with a mine or inventory part; set it to null",
     });
   }
   if (method.commodity === null) return;
@@ -447,7 +494,7 @@ function checkCommodity(method: NavMethodShape, ctx: z.RefinementCtx): void {
  * in English for the analyst.
  */
 export const CaseSchema = CaseShape.describe(
-  "The assumptions a company is valued on. Rules decode enforces beyond this schema: scenario triples are ordered bear <= base <= bull; no scenario multiple exceeds multipleCeiling; overrides and sensitivity apply to dcf only, and sensitivity steps each include 0; each nav part's triple is ordered bear <= base <= bull, except a mine's delayYears, whole years ordered bull <= base <= bear; a mine's production years increase and its riskFactor is at most its stage's; a contract block's fromYear <= toYear and floor <= ceiling; commodity is set exactly when a part is a mine; commodityProducer takes nav with a mine part. Against the facts, decode requires every holding named by a nav part to exist and every facts holding to be accounted for by exactly one part, a factsFairValue part's holding to carry a fair value, a lookThrough part in a foreign currency to have its spot rate in fx, a mine valued for a company not reporting in USD to have its USD spot rate in fx, no mine year before the facts' year, and at least one part that is not excluded. excessReturn and bankInsurer go together: each requires the other.",
+  "The assumptions a company is valued on. Rules decode enforces beyond this schema: scenario triples are ordered bear <= base <= bull; no scenario multiple exceeds multipleCeiling; overrides and sensitivity apply to dcf only, and sensitivity steps each include 0; each nav part's triple is ordered bear <= base <= bull, except a mine's delayYears, whole years ordered bull <= base <= bear; a mine's production years increase and its riskFactor is at most its stage's; a contract block's fromYear <= toYear and floor <= ceiling; royaltyRate plus its steps stays below 1; commodity is set exactly when a part is a mine or inventory; commodityProducer takes nav with a mine part. Against the facts, decode requires every holding named by a nav part to exist and every facts holding to be accounted for by exactly one part, a factsFairValue part's holding to carry a fair value, a lookThrough part in a foreign currency to have its spot rate in fx, a mine valued for a company not reporting in USD to have its USD spot rate in fx, no mine year before the facts' year, and at least one part that is not excluded. excessReturn and bankInsurer go together: each requires the other.",
 ).superRefine((c, ctx) => {
   if (c.method.kind === "excessReturn" && c.classification !== "bankInsurer") {
     ctx.addIssue({

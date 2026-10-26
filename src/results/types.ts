@@ -132,6 +132,11 @@ export type CommoditySection = {
   readonly contractBookUsd: ScenarioTriple | null;
   /** Base value per share with the mines at 8% real, the brokers' NAV8. */
   readonly valuePerShareAt8PctReal: number;
+  /** Base value per share with the real rate a point lower, as set, and a point higher. */
+  readonly realRateSensitivity: readonly {
+    readonly realRate: number;
+    readonly valuePerShare: number;
+  }[];
   /** Price over each scenario's value per share; null where that value is not positive. */
   readonly priceToNav: {
     readonly bear: number | null;

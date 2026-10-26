@@ -23,6 +23,8 @@ export type BalanceSheet = {
   readonly cashAndEquivalents: number;
   readonly shortTermInvestments: number | null;
   readonly totalDebt: number;
+  /** Gone ex, still in cash; added to net debt. */
+  readonly dividendPayable: number;
   readonly shortTermDebt: number | null;
   readonly longTermDebt: number | null;
   readonly goodwill: number | null;
@@ -146,7 +148,7 @@ export type Company = {
   readonly market: Market;
   readonly financials: Financials;
   readonly balanceSheet: BalanceSheet;
-  /** totalDebt - cashAndEquivalents - shortTermInvestments, recorded as a resolution. */
+  /** totalDebt - cashAndEquivalents - shortTermInvestments + dividendPayable, recorded as a resolution. */
   readonly netDebt: number;
   readonly otherClaims: OtherClaims;
   readonly costOfCapital: CostOfCapital;

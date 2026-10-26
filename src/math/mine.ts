@@ -4,8 +4,9 @@
  * depletes, so there is no terminal value. Amounts are USD millions, volumes
  * millions of units, prices and costs USD per unit.
  *
- * Each calendar year's cash arrives at its end. Initial capex is depreciated
- * for tax by units of production; sustaining capex is expensed in its year.
+ * Each calendar year's cash arrives at its end. Initial capex and the opening
+ * tax base of capital already spent are depreciated for tax by units of
+ * production; sustaining capex is expensed in its year.
  * Tax is never negative: a loss year earns no shield and nothing carries
  * forward, which understates a developer slightly. Closure is paid the year
  * after the last production, without a tax deduction.
@@ -14,6 +15,7 @@
 import type {
   ContractBlock,
   ContractPricing,
+  RoyaltyStep,
   YearAmount,
   YearVolume,
 } from "../domain/valuation.ts";
@@ -24,8 +26,10 @@ export type MineInputs = {
   readonly production: readonly YearVolume[];
   readonly cashCostPerUnit: number;
   readonly royaltyRate: number;
+  readonly royaltySteps: readonly RoyaltyStep[];
   readonly sustainingCapexPerUnit: number;
   readonly initialCapex: readonly YearAmount[];
+  readonly openingTaxBase: number;
   readonly closureCost: number;
   readonly taxRate: number;
   /** Shifts production and initial capex later by whole years. */
@@ -86,6 +90,17 @@ function yearSpan(first: number, last: number): number[] {
   return Array.from({ length: last - first + 1 }, (_, i) => first + i);
 }
 
+/** The base rate plus every step the price has reached. */
+export function royaltyRateAt(base: number, steps: readonly RoyaltyStep[], price: number): number {
+  return (
+    base +
+    sumBy(
+      steps.filter((s) => price >= s.fromPrice),
+      (s) => s.extraRate,
+    )
+  );
+}
+
 export function computeMineValue(
   mine: MineInputs,
   price: number,
@@ -93,17 +108,18 @@ export function computeMineValue(
 ): MineValue {
   const production = shifted(mine.production, mine.delayYears);
   const capex = shifted(mine.initialCapex, mine.delayYears);
+  const royaltyRate = royaltyRateAt(mine.royaltyRate, mine.royaltySteps, price);
   const totalVolume = sumBy(production, (p) => p.volume);
-  const totalCapex = sumBy(capex, (c) => c.amount);
+  const depreciable = sumBy(capex, (c) => c.amount) + mine.openingTaxBase;
   const allYears = [...production, ...capex].map((r) => r.year);
   const lastProduction = Math.max(...production.map((p) => p.year));
   const years = yearSpan(Math.min(...allYears), lastProduction + 1).map((year) => {
     const volume = volumeIn(production, year);
     const revenue = volume * price;
-    const royalty = revenue * mine.royaltyRate;
+    const royalty = revenue * royaltyRate;
     const operating = volume * mine.cashCostPerUnit;
     const sustaining = volume * mine.sustainingCapexPerUnit;
-    const depreciation = totalVolume > 0 ? (totalCapex * volume) / totalVolume : 0;
+    const depreciation = totalVolume > 0 ? (depreciable * volume) / totalVolume : 0;
     const taxable = revenue - royalty - operating - sustaining - depreciation;
     const tax = Math.max(0, taxable) * mine.taxRate;
     const closure = year === lastProduction + 1 ? mine.closureCost : 0;
@@ -119,8 +135,13 @@ export function contractPrice(pricing: ContractPricing, market: number): number 
   switch (pricing.kind) {
     case "fixed":
       return pricing.price;
-    case "marketRelated":
-      return Math.min(Math.max(market, pricing.floor ?? market), pricing.ceiling ?? market);
+    case "marketRelated": {
+      const discounted = market * (1 - pricing.discount);
+      return Math.min(
+        Math.max(discounted, pricing.floor ?? Number.NEGATIVE_INFINITY),
+        pricing.ceiling ?? Number.POSITIVE_INFINITY,
+      );
+    }
     default:
       return assertNever(pricing);
   }
@@ -144,6 +165,15 @@ export function computeContractBookValue(
       return premium * (1 - taxRate) * discountFactor(year, timing);
     }),
   );
+}
+
+/** Sold at the price, taxed on the gain over its tax cost; a loss earns no shield. USD millions. */
+export function computeInventoryValue(
+  inventory: { readonly volume: number; readonly costPerUnit: number; readonly taxRate: number },
+  price: number,
+): number {
+  const gain = Math.max(0, price - inventory.costPerUnit) * inventory.volume;
+  return price * inventory.volume - gain * inventory.taxRate;
 }
 
 export type ImpliedPriceOutcome =

@@ -6,6 +6,7 @@ import type {
   Valuation,
   ValuedNavPartKind,
 } from "../domain/valuation.ts";
+import { computeInventoryValue } from "../math/mine.ts";
 import type { NavInputs } from "../math/nav.ts";
 import { contractBookValueUsd, type MineTerms, mineValueUsd, scenarioTerms } from "./mine.ts";
 
@@ -18,7 +19,7 @@ export const CONTRACT_BOOK_PART = "Contract book";
 /** A part as results report it: every kind valued, in the reporting currency. */
 export type NavPartValue = {
   readonly name: string;
-  readonly kind: ValuedNavPartKind | "mine" | "contractBook";
+  readonly kind: ValuedNavPartKind | "mine" | "inventory" | "contractBook";
   readonly holding: string | null;
   readonly value: ScenarioTriple;
 };
@@ -34,9 +35,13 @@ function minesOn(valuation: NavValuation, terms: MineTerms | null): MinesOn {
 }
 
 function partValue(part: NavPart, scenario: NavScenario, mines: MinesOn): number {
-  if (part.kind !== "mine") return part.value[scenario];
-  if (mines === null) throw new Error("unreachable: decode requires commodity with a mine part");
-  return mineValueUsd(part, mines.terms) * mines.commodity.usdToReporting;
+  if (part.kind !== "mine" && part.kind !== "inventory") return part.value[scenario];
+  if (mines === null) throw new Error("unreachable: decode requires commodity with a deck part");
+  const usd =
+    part.kind === "mine"
+      ? mineValueUsd(part, mines.terms)
+      : computeInventoryValue(part, mines.terms.price);
+  return usd * mines.commodity.usdToReporting;
 }
 
 /** In the reporting currency; null when the case carries no contract book. */
@@ -100,7 +105,7 @@ export function selectNavPartValues(valuation: NavValuation, company: Company): 
     (p): NavPartValue => ({
       name: p.name,
       kind: p.kind,
-      holding: p.kind === "mine" ? null : p.holding,
+      holding: p.kind === "mine" || p.kind === "inventory" ? null : p.holding,
       value: {
         bear: partValue(p, "bear", mines.bear),
         base: partValue(p, "base", mines.base),

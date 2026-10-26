@@ -202,3 +202,18 @@ test("a bank's block is decoded with aggregates scaled to millions", () => {
   assert.ok(acmeResult.success);
   assert.equal(acmeResult.data.company.financialInstitution, null);
 });
+
+test("a dividend gone ex but unpaid is net debt, for the company and a holding company's parent", () => {
+  const result = decodeCompany(parse(mutate(acme(), "balanceSheet.dividendPayable", 300)));
+  assert.ok(result.success);
+  assert.equal(result.data.company.netDebt, 4100 - 1900 - 200 + 300);
+  const holdco = loadFixture("holdco.facts");
+  const parent = decodeCompany(parse(mutate(holdco, "balanceSheet.dividendPayable", 50)));
+  assert.ok(parent.success);
+  assert.equal(parent.data.company.holdings?.parentNetDebt, 300 + 50);
+});
+
+test("a financial institution carries its dividend in tangible book, not as payable", () => {
+  const bank = mutate(loadFixture("nordbank.facts"), "balanceSheet.dividendPayable", 10);
+  assert.equal(FactsSchema.safeParse(bank).success, false);
+});

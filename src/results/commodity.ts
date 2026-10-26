@@ -1,7 +1,9 @@
 /**
  * The commodity section of a nav valuation with mines: the deck and the
  * discount rate it ran on, each mine's value, what the price implies for the
- * commodity, and the base value at the brokers' 8% real for comparison.
+ * commodity, the base value a point either side of the real rate, and at the
+ * brokers' 8% real for comparison. Every part tied to the deck (mines,
+ * inventory, the contract book) reprices with it; analyst values do not.
  */
 
 import type { Company } from "../domain/company.ts";
@@ -21,6 +23,9 @@ import type { CommoditySection, MineValueRow } from "./types.ts";
 
 /** The convention broker notes quote NAV at, "NAV8". */
 export const BROKER_REAL_RATE = 0.08;
+
+/** Moves to the real rate for the rate-stress rows, the market lens's long-rate risk. */
+const REAL_RATE_STEPS = [-0.01, 0, 0.01] as const;
 
 /** The implied price is searched between zero and this multiple of the bull deck. */
 const IMPLIED_PRICE_CEILING_X_BULL = 10;
@@ -65,6 +70,12 @@ export function commoditySection(
   const atBrokerRate = computeNav(
     selectNav(valuation, company, "base", { ...base, realRate: BROKER_REAL_RATE }),
   ).valuePerShare;
+  const realRateSensitivity = REAL_RATE_STEPS.map((step) => ({
+    realRate: base.realRate + step,
+    valuePerShare: computeNav(
+      selectNav(valuation, company, "base", { ...base, realRate: base.realRate + step }),
+    ).valuePerShare,
+  }));
   const implied = solveImpliedPrice(
     (price) => computeNav(selectNav(valuation, company, "base", { ...base, price })).valuePerShare,
     company.market.price,
@@ -84,6 +95,7 @@ export function commoditySection(
       mines,
       contractBookUsd: book,
       valuePerShareAt8PctReal: atBrokerRate,
+      realRateSensitivity,
       priceToNav: {
         bear: priceToNav(price, valuePerShare("bear")),
         base: priceToNav(price, valuePerShare("base")),

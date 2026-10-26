@@ -348,9 +348,30 @@ test("the price deck is ordered and a collar's floor is below its ceiling", () =
   assert.deepEqual(issuePaths(mutate(minerCase(), "method.commodity.priceDeck.bear", 90)), [
     "method.commodity.priceDeck",
   ]);
-  const inverted = { kind: "marketRelated", floor: 90, ceiling: 60 };
+  const inverted = { kind: "marketRelated", discount: 0, floor: 90, ceiling: 60 };
   assert.deepEqual(
     issuePaths(mutate(minerCase(), "method.commodity.contractBook.blocks.0.pricing", inverted)),
     ["method.commodity.contractBook.blocks.0.pricing"],
   );
+});
+
+test("a royalty and its price steps stay below 100% of revenue", () => {
+  const steps = [{ fromPrice: 50, extraRate: 0.96 }];
+  assert.deepEqual(issuePaths(mutate(minerCase(), "method.parts.0.royaltySteps", steps)), [
+    "method.parts.0.royaltySteps",
+  ]);
+});
+
+test("an inventory part needs the commodity block", () => {
+  const holdco = loadFixture("holdco-parts-nav.case") as { method: { parts: unknown[] } };
+  const inventory = {
+    kind: "inventory",
+    name: "Stock",
+    volume: 1,
+    costPerUnit: 0,
+    taxRate: 0.2,
+    rationale: "x",
+  };
+  const withInventory = mutate(holdco, "method.parts", [...holdco.method.parts, inventory]);
+  assert.deepEqual(issuePaths(withInventory), ["method.commodity"]);
 });
