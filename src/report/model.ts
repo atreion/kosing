@@ -66,14 +66,22 @@ export type ReportModel = {
   readonly adviceMarkdown: string | null;
 };
 
-/** The skill writes the verdict as the first bold line: **Verdict: `watching`, conviction medium. */
+const VERDICTS = ["watching", "accumulate", "pass", "tooHard"] as const;
+
+/**
+ * The skill leads advice.md with a bold verdict line, worded freely:
+ * **Verdict: `watching`, conviction medium.** or **Verdict: accumulate.
+ * Conviction in the base value: medium-high.** The conviction is kept as
+ * written, up to the end of its sentence.
+ */
 export function parseVerdict(advice: string): Verdict | null {
   const line = advice.split("\n").find((l) => /\*\*Verdict:/.test(l));
   if (line === undefined) return null;
-  const label = /Verdict:\s*`([^`]+)`/.exec(line)?.[1];
+  const word = /Verdict:\s*`?([A-Za-z]+)/.exec(line)?.[1];
+  const label = VERDICTS.find((v) => v === word);
   if (label === undefined) return null;
-  const conviction = /conviction:?\s+([a-z]+)/i.exec(line)?.[1]?.toLowerCase() ?? null;
-  return { label, conviction };
+  const conviction = /conviction(?: in the base value)?:?\s+([^.*;]+)/i.exec(line)?.[1];
+  return { label, conviction: conviction?.trim().toLowerCase() ?? null };
 }
 
 export function valueRange(valuation: ValuationSection): ValueRange {

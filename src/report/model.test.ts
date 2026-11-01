@@ -19,9 +19,26 @@ test("the verdict and conviction come from the first bold verdict line", () => {
   });
   assert.deepEqual(parseVerdict("**Verdict: `pass`.** Conviction: high on the business"), {
     label: "pass",
-    conviction: "high",
+    conviction: "high on the business",
   });
+  assert.deepEqual(parseVerdict("**Verdict: accumulate. Conviction: medium-high. Entry price**"), {
+    label: "accumulate",
+    conviction: "medium-high",
+  });
+  assert.deepEqual(
+    parseVerdict("**Verdict: watching.** Conviction in the base value: medium. Entry price SEK"),
+    { label: "watching", conviction: "medium" },
+  );
+  assert.deepEqual(
+    parseVerdict("**Verdict: watching (held: starter). Conviction: medium.** Entry"),
+    { label: "watching", conviction: "medium" },
+  );
+  assert.deepEqual(
+    parseVerdict("**Verdict: `watching`. Conviction: medium on the business, low on the value.**"),
+    { label: "watching", conviction: "medium on the business, low on the value" },
+  );
   assert.equal(parseVerdict("no verdict here"), null);
+  assert.equal(parseVerdict("**Verdict: maybe.**"), null);
 });
 
 test("a dcf report carries the projection after the reported years with growth from the base", () => {
