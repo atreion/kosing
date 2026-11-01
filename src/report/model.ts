@@ -3,8 +3,9 @@
  * here is read or derived from results; nothing is re-valued.
  */
 
-import type { ReportedPeriod } from "../domain/financials.ts";
+import type { BasisChange, ReportedPeriod } from "../domain/financials.ts";
 import { assertNever } from "../exhaustive.ts";
+import type { DcfNote } from "../math/dcf.ts";
 import type { Metric } from "../math/multiples.ts";
 import type { SensitivityResult } from "../math/sensitivity.ts";
 import type { HurdleSection, Results, ValuationSection } from "../results/types.ts";
@@ -78,6 +79,25 @@ export type ReportModel = {
   readonly sensitivity: SensitivityResult | null;
   readonly multiples: readonly MultipleView[];
   readonly adviceMarkdown: string | null;
+  /** The method's own working, for the method sections. */
+  readonly valuation: ValuationSection | null;
+  readonly checks: readonly Check[];
+  readonly discountRate: DiscountRate;
+  readonly basisChanges: readonly BasisChange[];
+};
+
+/** A warning or a valuation note, in words. */
+export type Check = { readonly rule: string; readonly message: string };
+
+export type DiscountRate = {
+  readonly riskFree: number;
+  readonly beta: number;
+  readonly erp: number;
+  readonly countryPremium: number;
+  readonly costOfEquity: number;
+  readonly wacc: number;
+  /** The value on the other credible beta, when the results carry one. */
+  readonly alternativeBeta: { readonly beta: number; readonly valuePerShare: number | null } | null;
 };
 
 const VERDICTS = ["watching", "accumulate", "pass", "tooHard"] as const;
@@ -238,6 +258,43 @@ export function impliedByPrice(results: Results, price: number): Implied | null 
   return growthImplied(results);
 }
 
+function noteText(note: DcfNote): Check {
+  switch (note.kind) {
+    case "terminalValueDominates":
+      return {
+        rule: note.kind,
+        message: `the terminal value is ${(note.pctOfEv * 100).toFixed(0)}% of enterprise value`,
+      };
+    case "depreciationAboveCapex":
+      return {
+        rule: note.kind,
+        message: `final-year D&A ${(note.daPctRevenue * 100).toFixed(1)}% of revenue exceeds capex ${(note.capexPctRevenue * 100).toFixed(1)}%, so the terminal value adds back more than the business reinvests`,
+      };
+    default:
+      return assertNever(note);
+  }
+}
+
+function checks(results: Results): readonly Check[] {
+  const notes = results.valuation?.method === "dcf" ? results.valuation.notes.map(noteText) : [];
+  return [...results.warnings.map(({ rule, message }) => ({ rule, message })), ...notes];
+}
+
+function discountRate(results: Results): DiscountRate {
+  const c = results.inputs.company.costOfCapital;
+  const w = results.valuation?.method === "dcf" ? results.valuation.wacc : results.derived.wacc;
+  const alt = results.valuation?.method === "dcf" ? results.valuation.alternativeBeta : null;
+  return {
+    riskFree: c.riskFree,
+    beta: c.beta,
+    erp: c.erp,
+    countryPremium: c.countryPremium,
+    costOfEquity: w.costOfEquity,
+    wacc: w.wacc,
+    alternativeBeta: alt === null ? null : { beta: alt.beta, valuePerShare: alt.valuePerShare },
+  };
+}
+
 function trading(hurdle: HurdleSection | null): ReportModel["trading"] {
   const t = hurdle?.trading ?? null;
   return t === null ? null : { currency: t.currency, price: t.price, entry: t.entryPrice };
@@ -269,5 +326,9 @@ export function buildReportModel(results: Results, advice: string | null): Repor
     sensitivity: results.sensitivity,
     multiples: multiples(results),
     adviceMarkdown: advice,
+    valuation: results.valuation,
+    checks: checks(results),
+    discountRate: discountRate(results),
+    basisChanges: company.financials.basisChanges,
   };
 }

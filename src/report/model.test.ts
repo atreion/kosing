@@ -127,3 +127,19 @@ test("what the price implies follows the method", () => {
     "commodityPrice",
   );
 });
+
+test("each method renders its own working, and the checks section lists warnings", () => {
+  const page = (facts: string, c: string) =>
+    renderReport(buildReportModel(resultsOf(facts, c), null));
+  assert.match(page("acme.facts", "acme-normalised.case"), /<h2>Normalised earnings<\/h2>/);
+  assert.match(
+    page("nordbank.facts", "nordbank-excess.case"),
+    /<h2>Excess return on tangible book<\/h2>/,
+  );
+  const nav = page("holdco.facts", "holdco-parts-nav.case");
+  assert.match(nav, /<h2>Sum of the parts<\/h2>/);
+  assert.match(nav, /<code>scenariosNarrow<\/code>/);
+  assert.doesNotMatch(nav, /\d{4,}%/, "no amount printed as a percentage");
+  assert.match(page("miner.facts", "miner-mine-nav.case"), /Price the market implies/);
+  assert.doesNotMatch(page("acme.facts", "acme-dcf.case"), /<h2>Checks<\/h2>/);
+});

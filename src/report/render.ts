@@ -21,6 +21,7 @@ import {
 } from "./format.ts";
 import { renderMarkdown } from "./markdown.ts";
 import type { Implied, MultipleView, ReportModel } from "./model.ts";
+import { checksBody, discountRateBody, methodSection } from "./sections.ts";
 
 const METRIC_LABELS: Readonly<Record<MultipleView["metric"], string>> = {
   peTrailing: "P/E, trailing",
@@ -110,12 +111,20 @@ function tiles(model: ReportModel): string {
   return `<div class="tiles">${items.filter((t) => t !== null).join("")}</div>`;
 }
 
+/** A price that clears but a verdict that does not buy is explained in the advice, so say where. */
+function hurdleLabel(clears: boolean, verdict: ReportModel["verdict"]): string {
+  if (!clears) return "Above the entry price";
+  return verdict !== null && verdict.label !== "accumulate"
+    ? "Clears the hurdle; the advice says why it is not a buy"
+    : "Clears the hurdle";
+}
+
 function verdictBadge(model: ReportModel): string {
   const clears = model.hurdle?.clears;
   const hurdle =
     clears === undefined
       ? ""
-      : `<span class="pill ${clears ? "pill-good" : "pill-muted"}">${clears ? "Clears the hurdle" : "Above the entry price"}</span>`;
+      : `<span class="pill ${clears ? "pill-good" : "pill-muted"}">${hurdleLabel(clears, model.verdict)}</span>`;
   const verdict =
     model.verdict === null
       ? ""
@@ -195,6 +204,14 @@ function section(title: string, subtitle: string | null, body: string): string {
 }
 
 const LEGEND_HISTORY = `<div class="legend"><span><i class="key key-reported"></i>Reported</span><span><i class="key key-case"></i>Case</span></div>`;
+
+function basisChangesNote(model: ReportModel): string {
+  if (model.basisChanges.length === 0) return "";
+  const items = model.basisChanges.map(
+    (b) => `<li>From ${escapeHtml(b.asOf)}: ${escapeHtml(b.description)}</li>`,
+  );
+  return `<h3>Breaks in the reporting basis</h3><ul class="checks">${items.join("")}</ul>`;
+}
 
 function compositionBlock(model: ReportModel): string {
   const c = model.composition;
@@ -278,10 +295,17 @@ h3 { font-size: 14px; margin: 18px 0 6px; font-weight: 600; color: var(--ink-2);
 .key-entry { background: var(--s2); }
 .key-price { background: var(--ink); }
 .bridge { font-size: 13px; color: var(--ink-2); margin: 8px 0 0; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px 16px; margin: 0 0 12px; }
+.facts dt { font-size: 12px; color: var(--ink-2); }
+.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.checks { margin: 0; padding-left: 18px; font-size: 14px; }
+.checks li { margin: 4px 0; }
+.checks code { font-size: 12px; background: var(--div-mid); padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { padding: 6px 10px; border-bottom: 1px solid var(--grid); text-align: left; vertical-align: top; }
 thead th { color: var(--ink-2); font-weight: 500; font-size: 12px; }
-table.num td, table.heat td { text-align: right; font-variant-numeric: tabular-nums; }
+table.num td, table.heat td { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.method { overflow-x: auto; }
 table.heat th { white-space: nowrap; }
 table.heat td { border: 2px solid var(--surface); border-radius: 4px; }
 table.heat td.base { font-weight: 700; }
@@ -306,21 +330,35 @@ export function renderReport(model: ReportModel): string {
           "Base value per share. Blue is above the price, red below it. Outlined cells clear the hurdle; bold is the case.",
           sensitivityTable(model, s),
         );
+  const hasCase = model.history.some((p) => p.kind === "case");
   const history =
     model.history.length === 0
       ? ""
       : section(
-          "Track record and the case",
-          "Reported years, then the case's projection.",
-          `${LEGEND_HISTORY}<h3>Revenue</h3>${revenueChart(model)}<h3>Revenue growth</h3>${growthChart(model)}<h3>EBIT margin</h3>${marginChart(model)}`,
+          hasCase ? "Track record and the case" : "Track record",
+          hasCase ? "Reported years, then the case's projection." : "Reported years.",
+          `${hasCase ? LEGEND_HISTORY : ""}<h3>Revenue</h3>${revenueChart(model)}<h3>Revenue growth</h3>${growthChart(model)}<h3>EBIT margin</h3>${marginChart(model)}${basisChangesNote(model)}`,
         );
+  const method = methodSection(model);
   const body = [
     `<header><h1>${escapeHtml(model.name)} <span class="id">${escapeHtml(model.id)}</span></h1><p class="meta">${meta(model)}</p>${verdictBadge(model)}${tiles(model)}</header>`,
+    section(
+      "Checks",
+      "Warnings and notes from the valuator. Each is advisory; the advice says what it means here.",
+      checksBody(model.checks),
+    ),
     section(
       "Value against price",
       `Per share, ${escapeHtml(model.currency)}.`,
       valueLegend + valueRangeChart(model),
     ),
+    method === null
+      ? ""
+      : section(
+          method.title,
+          `${escapeHtml(model.currency)}, millions unless per share.`,
+          method.body,
+        ),
     history,
     section(
       "Where the value comes from",
@@ -328,6 +366,7 @@ export function renderReport(model: ReportModel): string {
       compositionBlock(model),
     ),
     sensitivity,
+    section("Cost of capital", null, discountRateBody(model.discountRate, model.currency)),
     model.multiples.length === 0 ? "" : section("Multiples", null, multiplesTable(model.multiples)),
     model.adviceMarkdown === null
       ? ""
