@@ -47,7 +47,9 @@ Keeping them apart does four things:
 Both input documents have a JSON Schema, printed by `kosing schema facts` and
 `kosing schema case`. The schema is the contract: the researcher and analyst
 read it before writing, and the descriptions in it carry the conventions
-(which beta, which tax rate, how to sign a cash outflow).
+(which beta, which tax rate, how to sign a cash outflow). `--flat` prints the
+same contract as one line per field (`path: type -- description`), about a
+third of the size, which is what the skills read.
 
 Some rules cannot be expressed in JSON Schema, so the valuator enforces them
 when it decodes: source ids are unique and every reference resolves; fiscal

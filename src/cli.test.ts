@@ -285,3 +285,16 @@ test("value records today's date as the valuation date", () => {
   assert.equal(runCli(["value", "--facts", "/f.json"], c.io), 0);
   assert.equal(JSON.parse(c.out.join("")).inputs.valuedOn, "2026-10-14");
 });
+
+test("schema facts --flat prints one line per field and exits 0", () => {
+  const { io, out, err } = capture();
+  assert.equal(runCli(["schema", "facts", "--flat"], io), 0);
+  assert.deepEqual(err, []);
+  assert.ok(out.join("").includes("\nmarket.price: number >0 -- "));
+});
+
+test("schema with an unknown flag prints usage and exits 2", () => {
+  const { io, out } = capture();
+  assert.equal(runCli(["schema", "facts", "--brief"], io), 2);
+  assert.deepEqual(out, []);
+});

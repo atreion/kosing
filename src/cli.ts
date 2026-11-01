@@ -10,7 +10,7 @@ import { pathToFileURL } from "node:url";
 import { type CompanyId, companyDir, parseCompanyId, resolveDataPath } from "./data-path.ts";
 import type { DecodeError } from "./input/errors.ts";
 import { IsoDateString } from "./input/primitives.ts";
-import { emitJsonSchema } from "./input/schema.ts";
+import { emitJsonSchema, flattenJsonSchema } from "./input/schema.ts";
 import { DEFAULT_VALUATOR_OPTIONS, type Results } from "./results/types.ts";
 import { valuate } from "./valuate.ts";
 
@@ -39,6 +39,7 @@ const USAGE = `usage:
   kosing value --facts F [--case C]   results.json on stdout, exit 0; DecodeError[] on stderr, exit 1
   kosing where [TICKER.EXCHANGE]      print DATA_PATH, or one company's directory in it
   kosing schema facts | case          print the JSON Schema for that document
+  kosing schema facts | case --flat   the same contract as one line per field
 `;
 
 function isDocument(name: string | undefined): name is "facts" | "case" {
@@ -202,6 +203,10 @@ export function runCli(argv: readonly string[], io: CliIo): number {
   const [command, ...rest] = argv;
   if (command === "schema" && isDocument(rest[0]) && rest.length === 1) {
     io.stdout(`${JSON.stringify(emitJsonSchema(rest[0]), null, 2)}\n`);
+    return 0;
+  }
+  if (command === "schema" && isDocument(rest[0]) && rest[1] === "--flat" && rest.length === 2) {
+    io.stdout(`${flattenJsonSchema(emitJsonSchema(rest[0]))}\n`);
     return 0;
   }
   if (command === "value") return runValue(rest, io);

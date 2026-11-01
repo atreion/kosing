@@ -5,7 +5,7 @@ import addFormats from "ajv-formats";
 import { loadFixture, mutate, VALID_FIXTURES } from "../test-fixtures.ts";
 import { CaseSchema } from "./case.ts";
 import { FactsSchema } from "./facts.ts";
-import { emitJsonSchema } from "./schema.ts";
+import { emitJsonSchema, flattenJsonSchema } from "./schema.ts";
 
 function validator(doc: "facts" | "case") {
   const ajv = new Ajv2020({ strict: false, allErrors: true });
@@ -231,4 +231,65 @@ test("excessReturn for bankInsurer only is a rule the schema cannot carry", () =
   const bad = mutate(loadFixture("nordbank-excess.case"), "classification", "garp");
   assert.equal(CaseSchema.safeParse(bad).success, false);
   assert.equal(validator("case")(bad), true);
+});
+
+function distinctDescriptions(node: unknown): Set<string> {
+  if (Array.isArray(node)) return new Set(node.flatMap((n) => [...distinctDescriptions(n)]));
+  if (node === null || typeof node !== "object") return new Set();
+  const own = (node as { description?: unknown }).description;
+  const nested = Object.values(node).flatMap((n) => [...distinctDescriptions(n)]);
+  return new Set(typeof own === "string" ? [own, ...nested] : nested);
+}
+
+for (const doc of ["facts", "case"] as const) {
+  test(`${doc}: the flat schema keeps every description, each once, at the end of a line`, () => {
+    const lines = flattenJsonSchema(emitJsonSchema(doc)).split("\n");
+    for (const description of distinctDescriptions(emitJsonSchema(doc))) {
+      const holders = lines.filter((line) => line.endsWith(` -- ${description}`));
+      assert.equal(holders.length, 1, description);
+    }
+  });
+
+  test(`${doc}: the flat schema is a third of the JSON Schema or less`, () => {
+    const json = JSON.stringify(emitJsonSchema(doc), null, 2);
+    assert.ok(flattenJsonSchema(emitJsonSchema(doc)).length * 3 <= json.length);
+  });
+}
+
+test("the flat facts schema addresses array items, nullability and optional fields", () => {
+  const lines = flattenJsonSchema(emitJsonSchema("facts")).split("\n");
+  assert.ok(lines.includes("financials.quarters[].sourceRef: string ^S[0-9]+$"));
+  assert.ok(lines.includes("peers[].ticker: string | null"));
+  assert.ok(lines.some((line) => line.startsWith("market.price: number >0 -- ")));
+  assert.ok(lines.some((line) => line.startsWith('unit: "millions" | "thousands" | "ones"')));
+});
+
+test("the flat case schema labels each union variant by its discriminator", () => {
+  const lines = flattenJsonSchema(emitJsonSchema("case")).split("\n");
+  assert.ok(
+    lines.some((line) =>
+      line.startsWith("method: one of kind = dcf | normalisedEarnings | nav | excessReturn"),
+    ),
+  );
+  assert.ok(lines.includes("method{kind=dcf}.terminal{kind=exitMultiple}.multiple: number >0"));
+  assert.ok(lines.some((line) => line.startsWith("method{kind=nav}.parts[]{kind=mine}.stage: ")));
+  assert.ok(!lines.some((line) => line.includes("}.kind:")), "the discriminator is in the label");
+});
+
+test("flattening a hand-made schema", () => {
+  const schema = {
+    type: "object",
+    properties: {
+      a: { anyOf: [{ type: "string", format: "date" }, { type: "null" }], description: "When." },
+      b: { type: "array", items: { type: "integer", minimum: -9007199254740991 } },
+      c: { type: "number", description: "When." },
+    },
+    required: ["a", "b"],
+  };
+  assert.equal(
+    flattenJsonSchema(schema),
+    ["(document): object", "a: date | null -- When.", "b: integer[]", "c: number (optional)"].join(
+      "\n",
+    ),
+  );
 });

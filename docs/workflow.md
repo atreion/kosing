@@ -59,7 +59,7 @@ contain dots.
 
 You ask Claude to research a company. The researcher:
 
-1. Reads `kosing schema facts`, the contract for the facts document (see
+1. Reads `kosing schema facts --flat`, the contract for the facts document (see
    [The documents](documents.md)).
 2. Fills `facts.json` from the company's own filings first, then from
    regulators, brokers and data aggregators. Every figure cites a source. A
@@ -166,6 +166,7 @@ npm run kosing -- where [ID]                    the data repo, or one company's 
 npm run kosing -- value <ID>                    value one company; writes its results.json
 npm run kosing -- value --facts F [--case C]    value given files; results on stdout
 npm run kosing -- schema facts | case           the JSON Schema for a document
+npm run kosing -- schema facts | case --flat    the same, one line per field
 ```
 
 Exit codes: 0 success, 1 the documents do not decode (errors as JSON on

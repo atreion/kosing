@@ -20,6 +20,7 @@ npm run kosing -- where [TICKER.EXCHANGE]      the data repo, or one company's d
 npm run kosing -- value <TICKER.EXCHANGE>      value one company; writes its results.json
 npm run kosing -- value --facts F [--case C]   value given files; results.json on stdout
 npm run kosing -- schema facts | case          the JSON Schema for a document
+npm run kosing -- schema facts | case --flat   the same, one line per field
 ```
 
 Exit codes: 0 success, 1 the documents do not decode (errors as JSON on

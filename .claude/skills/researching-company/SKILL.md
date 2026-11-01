@@ -10,10 +10,10 @@ Run commands from the Kosing repo root.
 1. The id is `TICKER.EXCHANGE` as the exchange quotes it, for example
    `SAP.ETR`. `D="$(npm run --silent kosing -- where <ID>)"` prints the
    company's directory; create it if it does not exist.
-2. `npm run --silent kosing -- schema facts` is the contract, conventions
-   included. Read it once. Fill `$D/facts.json` from the company's own filings
-   first. Every figure cites a source; what you cannot source is null with a
-   gap.
+2. `npm run --silent kosing -- schema facts --flat` is the contract,
+   conventions included, one line per field. Read it once. Fill
+   `$D/facts.json` from the company's own filings first. Every figure cites a
+   source; what you cannot source is null with a gap.
 
    Do not read documents yourself. Dispatch `extracting-filing` agents in
    parallel, in one message: one per filing (the latest annual report, the

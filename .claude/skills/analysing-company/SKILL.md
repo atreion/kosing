@@ -14,7 +14,7 @@ Run commands from the Kosing repo root.
    `$D/advice.md` if there is one for the tests written before a report. When
    the user states a new position, update `positions.md` with the date. When that report has
    landed, check those tests first and say which passed and which failed.
-2. **Case.** Write `$D/case.json` against `npm run --silent kosing -- schema case`,
+2. **Case.** Write `$D/case.json` against `npm run --silent kosing -- schema case --flat`,
    with bear and bull scenarios and the company's AI-cycle exposure. The base
    case is what you believe, not a number discounted for safety: the margin
    of safety is applied separately. For a bank or insurer (classification bankInsurer, method excessReturn) the base ROTE path spans the rate regimes the company has lived through, using the net interest income history and sensitivity in the facts. For a holding company or a group whose value sits in listed stakes (method nav), list the parts in `method.parts`: a stake researched in Kosing goes in as `lookThrough` with that company's bear, base and bull values per share, an operating business as a `segment` on a cited metric, and every facts holding is valued or explicitly excluded. For a miner (classification commodityProducer), each mine is a `mine` part from the company's latest mine plan and `method.commodity` carries the price deck, the US 10-year yield and breakeven, and the contract book as disclosed; read `commodity.impliedPrice` against the current long-term contract price.
