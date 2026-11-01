@@ -40,6 +40,9 @@ export const Market = z.strictObject({
   sharesDilutedM: nullableNonNegative,
   week52High: nullableNonNegative,
   week52Low: nullableNonNegative,
+  dividendPerShareRunRate: nullableNonNegative.describe(
+    "The ordinary dividend per share for the latest full year as declared, in priceCurrency, when dividends paid in the trailing twelve months misstate it (a switch to semi-annual or quarterly payments, a special dividend). Replaces trailing dividends paid in the dividend yield. Null to use them.",
+  ),
   sourceRefs: SourceRefs,
 });
 
@@ -68,6 +71,9 @@ const periodFigures = {
     "Free cash flow as the company defines and reports it; when it reports none, ocf plus capex.",
   ),
   dividendsPaid: nullableNumber.describe("Negative when an outflow."),
+  leasePayments: nullableNumber.describe(
+    "Lease principal repaid in the period, from financing cash flows, negative as an outflow. Under IFRS 16 the repayment of lease liabilities; under US GAAP finance-lease principal only, because operating-lease cost is already inside EBIT and operating cash flow.",
+  ),
   sharesBasicM: nullableNonNegative,
   sharesDilutedM: nullableNonNegative,
   sourceRef: SourceId,
@@ -104,8 +110,24 @@ export const QuarterRow = z.strictObject({
   sourceRef: SourceId,
 });
 
+export const BasisChange = z.strictObject({
+  asOf: IsoDateString.describe("The first reporting date on the new basis."),
+  description: z
+    .string()
+    .min(1)
+    .describe(
+      "What changed: a business reclassified as discontinued, a restatement, a new segment or accounting policy. Periods before asOf are on the old basis.",
+    ),
+  sourceRef: SourceId,
+});
+
 export const Financials = z.strictObject({
   fiscalYears: z.array(FiscalYearRow).min(1),
+  basisChanges: z
+    .array(BasisChange)
+    .describe(
+      "Breaks in the reporting basis inside the periods above, newest last; empty when there are none. Growth and margins across a break compare different businesses.",
+    ),
   ltm: LtmRow.nullable().describe(
     "Trailing twelve months to the latest reported quarter or half, citing every document it is built from. Null when the company reports neither.",
   ),
@@ -138,6 +160,14 @@ export const BalanceSheet = z.strictObject({
     .describe(
       "Dividends that went ex on or before market.asOf and were not yet paid at balanceSheet.asOf, so the cash above still holds them while the price no longer does. Added to net debt in every bridge. 0 when none; always 0 for a financial institution, whose tangibleBookEquity carries the deduction instead.",
     ),
+  cashAfterBalanceSheet: z
+    .number()
+    .describe(
+      "Cash raised or received after balanceSheet.asOf and on or before market.asOf, net of fees: a placement whose shares are already in market.sharesOutstandingM, or disposal proceeds received. Subtracted from net debt in every bridge and from a holding company's parent net debt. 0 when none; always 0 for a financial institution.",
+    ),
+  nonControllingInterests: nullableNonNegative.describe(
+    "Non-controlling interests in equity at book value. Consolidated cash flows include the minorities' share, so this is deducted in the dcf and normalised-earnings bridges and added to enterprise value for the current multiples. Null for a financial institution.",
+  ),
   pensionObligations: nullableNumber.describe(
     "Net pension deficit. Not deducted as debt; a case says in its rationale when it is material.",
   ),
@@ -239,7 +269,7 @@ export const Holdings = z.strictObject({
   parentNetDebt: z
     .number()
     .describe(
-      "The parent's own net debt as the company reports it, before balanceSheet.dividendPayable, which the valuator adds.",
+      "The parent's own net debt as the company reports it, before balanceSheet.dividendPayable, which the valuator adds, and balanceSheet.cashAfterBalanceSheet, which it subtracts.",
     ),
   lookThroughNav: nullableNumber,
   sourceRefs: SourceRefs,
@@ -477,6 +507,7 @@ export const FactsSchema = FactsShape.describe(
     const fixed: readonly [readonly (string | number)[], number, number][] = [
       [["balanceSheet", "totalDebt"], facts.balanceSheet.totalDebt, 0],
       [["balanceSheet", "dividendPayable"], facts.balanceSheet.dividendPayable, 0],
+      [["balanceSheet", "cashAfterBalanceSheet"], facts.balanceSheet.cashAfterBalanceSheet, 0],
       [["costOfCapital", "debtWeight"], facts.costOfCapital.debtWeight, 0],
       [["costOfCapital", "equityWeight"], facts.costOfCapital.equityWeight, 1],
       [["costOfCapital", "pretaxCostOfDebt"], facts.costOfCapital.pretaxCostOfDebt, 0],
@@ -490,7 +521,7 @@ export const FactsSchema = FactsShape.describe(
         });
       }
     }
-    for (const key of ["shortTermDebt", "longTermDebt"] as const) {
+    for (const key of ["shortTermDebt", "longTermDebt", "nonControllingInterests"] as const) {
       if (facts.balanceSheet[key] !== null) {
         ctx.addIssue({
           code: "custom",

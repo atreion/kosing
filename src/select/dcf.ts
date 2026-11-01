@@ -14,6 +14,7 @@ import type { DcfInputs, YearAssumptions } from "../math/dcf.ts";
 import type { SensitivityInputs } from "../math/sensitivity.ts";
 import { computeWacc, type WaccResult } from "../math/wacc.ts";
 import { type BasePeriodRef, selectOperatingBasePeriod } from "./base-period.ts";
+import { bridgeNetDebt } from "./derived.ts";
 import { selectWacc } from "./wacc.ts";
 
 export type DcfValuation = Extract<Valuation, { method: "dcf" }>;
@@ -59,7 +60,7 @@ export function selectDcf(valuation: DcfValuation, company: Company): DcfSelecti
       revenueBase: base.period.revenue,
       taxRate: valuation.costOfCapital.taxRateForCashFlows,
       wacc: wacc.wacc,
-      netDebt: company.netDebt,
+      netDebt: bridgeNetDebt(company),
       shares: company.market.shares,
       years: zipYears(valuation.assumptions),
       workingCapitalPctRevenue: valuation.assumptions.workingCapitalPctRevenue,

@@ -28,8 +28,15 @@ export function selectMultipleInputs(
     revenue: period.revenue,
     bookValue: company.balanceSheet.totalEquity,
     tangibleBook: company.financialInstitution?.tangibleBookEquity ?? null,
-    dividends: period.dividendsPaid === null ? null : Math.abs(period.dividendsPaid),
+    dividends: dividends(period, company),
   };
+}
+
+/** A declared run rate beats trailing payments when the payment schedule changed. */
+function dividends(period: ReportedPeriod, company: Company): number | null {
+  const runRate = company.market.dividendPerShareRunRate;
+  if (runRate !== null) return runRate * company.market.shares;
+  return period.dividendsPaid === null ? null : Math.abs(period.dividendsPaid);
 }
 
 /** Facts carry bands for P/E, EV/EBIT, EV/EBITDA and P/B only. */

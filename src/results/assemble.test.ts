@@ -505,3 +505,27 @@ test("with an excess-return case, implied ROTE uses the case's terminal growth",
   assert.equal(ir.terminalGrowth, 0.03);
   assertClose(ir.impliedRote, 0.03 + ir.priceToTangibleBook * (ir.costOfEquity - 0.03), 1e-12);
 });
+
+test("non-controlling interests come off a dcf's equity and go into enterprise value", () => {
+  const plain = assemble(decoded(acme(), loadFixture("acme-dcf.case")));
+  const minority = assemble(
+    decoded(
+      mutate(acme(), "balanceSheet.nonControllingInterests", 500),
+      loadFixture("acme-dcf.case"),
+    ),
+  );
+  if (plain.valuation?.method !== "dcf" || minority.valuation?.method !== "dcf") {
+    throw new Error("unreachable");
+  }
+  assertClose(minority.valuation.equityValue, plain.valuation.equityValue - 500, 1e-6);
+  assertClose(
+    minority.derived.enterpriseValue ?? 0,
+    (plain.derived.enterpriseValue ?? 0) + 500,
+    1e-6,
+  );
+});
+
+test("a run-rate dividend replaces trailing dividends paid in the yield", () => {
+  const r = assemble(decoded(mutate(acme(), "market.dividendPerShareRunRate", 5)));
+  assertClose(r.derived.multiples.dividendYield ?? 0, 5 / r.inputs.company.market.price, 1e-9);
+});

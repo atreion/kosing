@@ -43,7 +43,7 @@ export const DcfMethod = z.strictObject({
     "EBIT margins as fractions. An adjusted margin is allowed when daPctRevenuePath is on the same basis; say so in rationale.",
   ),
   capexPctRevenuePath: TenNumberPath.describe(
-    "Capex as a positive fraction of revenue, including lease payments, since leases are not deducted as debt.",
+    "Capex as a positive fraction of revenue, including the facts' leasePayments, since leases are not deducted as debt. Under US GAAP that is finance-lease principal only: operating-lease cost is already in EBIT. A business that buys spectrum or licences includes those purchases.",
   ),
   daPctRevenuePath: TenNumberPath,
   workingCapitalPctRevenue: z

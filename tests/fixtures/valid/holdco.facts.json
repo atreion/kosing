@@ -18,6 +18,7 @@
     "sharesDilutedM": null,
     "week52High": 120,
     "week52Low": 85,
+    "dividendPerShareRunRate": null,
     "sourceRefs": ["S2"]
   },
   "financials": {
@@ -39,6 +40,7 @@
         "capex": null,
         "fcf": null,
         "dividendsPaid": -560,
+        "leasePayments": null,
         "sharesBasicM": 280,
         "sharesDilutedM": null,
         "sourceRef": "S1"
@@ -60,11 +62,13 @@
         "capex": null,
         "fcf": null,
         "dividendsPaid": -600,
+        "leasePayments": null,
         "sharesBasicM": 280,
         "sharesDilutedM": null,
         "sourceRef": "S1"
       }
     ],
+    "basisChanges": [],
     "ltm": null,
     "quarters": null
   },
@@ -74,6 +78,8 @@
     "shortTermInvestments": null,
     "totalDebt": 1200,
     "dividendPayable": 0,
+    "cashAfterBalanceSheet": 0,
+    "nonControllingInterests": null,
     "shortTermDebt": null,
     "longTermDebt": 1200,
     "operatingLeaseLiabilities": null,
@@ -170,6 +176,14 @@
     {
       "field": "financials.ltm",
       "reason": "no trailing-twelve-month figures published"
+    },
+    {
+      "field": "financials.*.leasePayments",
+      "reason": "Field added 2026-11-01; filled at the company's next report refresh."
+    },
+    {
+      "field": "balanceSheet.nonControllingInterests",
+      "reason": "Field added 2026-11-01; filled at the company's next report refresh."
     }
   ],
   "financialInstitution": null

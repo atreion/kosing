@@ -2,6 +2,7 @@ import type { Company } from "../domain/company.ts";
 import type { Valuation } from "../domain/valuation.ts";
 import { assertNever } from "../exhaustive.ts";
 import type { NormalisedEarningsInputs } from "../math/normalised-earnings.ts";
+import { bridgeNetDebt } from "./derived.ts";
 
 export type NormalisedValuation = Extract<Valuation, { method: "normalisedEarnings" }>;
 
@@ -43,7 +44,7 @@ export function selectNormalisedEarnings(
   return {
     inputs: {
       revenueBase: revenueBase.value,
-      netDebt: company.netDebt,
+      netDebt: bridgeNetDebt(company),
       leaseLiabilities: company.otherClaims.operatingLeaseLiabilities ?? 0,
       shares: company.market.shares,
       ebitMargin: valuation.assumptions.ebitMargin,

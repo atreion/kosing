@@ -21,6 +21,7 @@ export const market = {
   sharesDilutedM: 115,
   week52High: 260,
   week52Low: 150,
+  dividendPerShareRunRate: null,
   sourceRefs: ["S2"],
 };
 
@@ -53,6 +54,7 @@ export function fiscalYear(fy: number, over: Record<string, unknown> = {}) {
     capex: -40,
     fcf: 100,
     dividendsPaid: null,
+    leasePayments: null,
     sharesBasicM: 113,
     sharesDilutedM: 115,
     sourceRef: "S1",
@@ -69,7 +71,7 @@ test("a fiscal-year row parses with nulls and rejects a non-integer or out-of-ra
 test("an ltm row is a fiscal-year row without fy, citing every document it was built from", () => {
   const { fy: _fy, sourceRef: _s, ...figures } = fiscalYear(2026, { endDate: "2026-06-30" });
   const ltm = { ...figures, sourceRefs: ["S1", "S2"] };
-  const financials = { fiscalYears: [fiscalYear(2025)], ltm, quarters: null };
+  const financials = { fiscalYears: [fiscalYear(2025)], basisChanges: [], ltm, quarters: null };
   assert.equal(Financials.safeParse(financials).success, true);
   assert.equal(Financials.safeParse({ ...financials, ltm: { ...ltm, fy: 2026 } }).success, false);
   assert.equal(
@@ -111,7 +113,10 @@ test("an estimate states its basis and cites one or more sources", () => {
 });
 
 test("financials require at least one fiscal year", () => {
-  assert.equal(Financials.safeParse({ fiscalYears: [], ltm: null, quarters: null }).success, false);
+  assert.equal(
+    Financials.safeParse({ fiscalYears: [], basisChanges: [], ltm: null, quarters: null }).success,
+    false,
+  );
 });
 
 test("a quarter's fq is YYYYQn", () => {
@@ -126,7 +131,12 @@ test("a quarter's fq is YYYYQn", () => {
     fcf: null,
     sourceRef: "S1",
   };
-  const financials = { fiscalYears: [fiscalYear(2025)], ltm: null, quarters: [quarter] };
+  const financials = {
+    fiscalYears: [fiscalYear(2025)],
+    basisChanges: [],
+    ltm: null,
+    quarters: [quarter],
+  };
   assert.equal(Financials.safeParse(financials).success, true);
   assert.equal(
     Financials.safeParse({ ...financials, quarters: [{ ...quarter, fq: "2026-Q2" }] }).success,
@@ -140,6 +150,8 @@ export const balanceSheet = {
   shortTermInvestments: null,
   totalDebt: 9100,
   dividendPayable: 0,
+  cashAfterBalanceSheet: 0,
+  nonControllingInterests: null,
   shortTermDebt: 1100,
   longTermDebt: 8000,
   operatingLeaseLiabilities: 600,
@@ -275,6 +287,7 @@ export function facts(over: Record<string, unknown> = {}) {
     market,
     financials: {
       fiscalYears: [fiscalYear(2024), fiscalYear(2025)],
+      basisChanges: [],
       ltm: null,
       quarters: null,
     },
@@ -309,6 +322,7 @@ test("a duplicate fiscal year is rejected at the second occurrence", () => {
     facts({
       financials: {
         fiscalYears: [fiscalYear(2025), fiscalYear(2024), fiscalYear(2025)],
+        basisChanges: [],
         ltm: null,
         quarters: null,
       },

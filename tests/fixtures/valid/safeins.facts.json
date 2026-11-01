@@ -18,6 +18,7 @@
     "sharesDilutedM": 115,
     "week52High": 260,
     "week52Low": 150,
+    "dividendPerShareRunRate": null,
     "sourceRefs": ["S2"]
   },
   "financials": {
@@ -39,6 +40,7 @@
         "capex": -330,
         "fcf": 620,
         "dividendsPaid": -300,
+        "leasePayments": null,
         "sharesBasicM": 113,
         "sharesDilutedM": 115,
         "sourceRef": "S1"
@@ -60,6 +62,7 @@
         "capex": -360,
         "fcf": 690,
         "dividendsPaid": -330,
+        "leasePayments": null,
         "sharesBasicM": 113,
         "sharesDilutedM": 115,
         "sourceRef": "S1"
@@ -81,6 +84,7 @@
         "capex": -390,
         "fcf": 790,
         "dividendsPaid": -360,
+        "leasePayments": null,
         "sharesBasicM": 113,
         "sharesDilutedM": 115,
         "sourceRef": "S1"
@@ -102,6 +106,7 @@
         "capex": -420,
         "fcf": 870,
         "dividendsPaid": -400,
+        "leasePayments": null,
         "sharesBasicM": 113,
         "sharesDilutedM": 115,
         "sourceRef": "S1"
@@ -123,11 +128,13 @@
         "capex": -440,
         "fcf": 960,
         "dividendsPaid": -430,
+        "leasePayments": null,
         "sharesBasicM": 113,
         "sharesDilutedM": 115,
         "sourceRef": "S1"
       }
     ],
+    "basisChanges": [],
     "ltm": {
       "endDate": "2026-06-30",
       "revenue": 11400,
@@ -144,6 +151,7 @@
       "capex": -450,
       "fcf": 1000,
       "dividendsPaid": null,
+      "leasePayments": null,
       "sharesBasicM": 113.2,
       "sharesDilutedM": 115,
       "sourceRefs": ["S4"]
@@ -156,6 +164,8 @@
     "shortTermInvestments": 200,
     "totalDebt": 0,
     "dividendPayable": 0,
+    "cashAfterBalanceSheet": 0,
+    "nonControllingInterests": null,
     "shortTermDebt": null,
     "longTermDebt": null,
     "operatingLeaseLiabilities": 700,
@@ -291,7 +301,12 @@
       "tier": "primary"
     }
   ],
-  "gaps": [],
+  "gaps": [
+    {
+      "field": "financials.*.leasePayments",
+      "reason": "Field added 2026-11-01; filled at the company's next report refresh."
+    }
+  ],
   "financialInstitution": {
     "kind": "insurer",
     "tangibleBookEquity": 5200,

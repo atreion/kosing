@@ -67,6 +67,7 @@ export type Resolution =
       readonly cash: number;
       readonly shortTermInvestments: number;
       readonly dividendPayable: number;
+      readonly cashAfterBalanceSheet: number;
     }
   | { readonly kind: "navHoldingExcluded"; readonly holding: string }
   | { readonly kind: "navNetDebtFromBalanceSheet"; readonly netDebt: number }

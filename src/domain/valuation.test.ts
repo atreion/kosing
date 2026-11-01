@@ -9,6 +9,7 @@ const period = {
   ebitda: 150,
   depreciationAmortization: 30,
   dividendsPaid: null,
+  leasePayments: null,
   ocf: 140,
   capex: -40,
   fcf: 100,

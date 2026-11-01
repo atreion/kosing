@@ -10,7 +10,16 @@ export type Derived = {
 };
 
 /**
- * Enterprise value includes lease liabilities: EBIT and EBITDA are reported
+ * What a valuation of the consolidated business deducts before ordinary
+ * equity: net debt and the minorities' share. Leases stay out: a dcf carries
+ * them in its capex path and the normalised bridge deducts them itself.
+ */
+export function bridgeNetDebt(company: Company): number {
+  return company.netDebt + (company.otherClaims.nonControllingInterests ?? 0);
+}
+
+/**
+ * Enterprise value includes lease liabilities and non-controlling interests: EBIT and EBITDA are reported
  * after IFRS 16, so the current multiples compare like with like, as peer
  * figures usually do. A bank or insurer has no enterprise value: its
  * debt is its raw material.
@@ -21,7 +30,7 @@ export function selectDerived(company: Company): Derived {
   return {
     marketCap,
     enterpriseValue:
-      company.financialInstitution === null ? marketCap + company.netDebt + leases : null,
+      company.financialInstitution === null ? marketCap + bridgeNetDebt(company) + leases : null,
     netDebt: company.financialInstitution === null ? company.netDebt : null,
     otherClaims: company.otherClaims,
   };

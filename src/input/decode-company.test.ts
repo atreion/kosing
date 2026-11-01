@@ -22,6 +22,7 @@ test("acme decodes with the sector beta and derived net debt recorded", () => {
   assert.deepEqual(company.otherClaims, {
     operatingLeaseLiabilities: 700,
     pensionObligations: 450,
+    nonControllingInterests: null,
   });
   assert.deepEqual(resolutions.map((r) => r.kind).sort(), ["betaFromSector", "netDebtDerived"]);
 });
@@ -216,4 +217,34 @@ test("a dividend gone ex but unpaid is net debt, for the company and a holding c
 test("a financial institution carries its dividend in tangible book, not as payable", () => {
   const bank = mutate(loadFixture("nordbank.facts"), "balanceSheet.dividendPayable", 10);
   assert.equal(FactsSchema.safeParse(bank).success, false);
+});
+
+test("cash raised after the balance sheet comes off net debt, for the company and a parent", () => {
+  const result = decodeCompany(parse(mutate(acme(), "balanceSheet.cashAfterBalanceSheet", 250)));
+  assert.ok(result.success);
+  assert.equal(result.data.company.netDebt, 4100 - 1900 - 200 - 250);
+  const holdco = loadFixture("holdco.facts");
+  const parent = decodeCompany(parse(mutate(holdco, "balanceSheet.cashAfterBalanceSheet", 40)));
+  assert.ok(parent.success);
+  assert.equal(parent.data.company.holdings?.parentNetDebt, 300 - 40);
+  const bank = mutate(loadFixture("nordbank.facts"), "balanceSheet.cashAfterBalanceSheet", 10);
+  assert.equal(FactsSchema.safeParse(bank).success, false, "a financial institution keeps it at 0");
+});
+
+test("lease payments, basis changes and a run-rate dividend are decoded", () => {
+  const edited = mutate(
+    mutate(mutate(acme(), "financials.ltm.leasePayments", -120), "financials.basisChanges", [
+      { asOf: "2026-03-31", description: "Robotics discontinued", sourceRef: "S1" },
+    ]),
+    "market.dividendPerShareRunRate",
+    4,
+  );
+  const result = decodeCompany(parse(edited));
+  assert.ok(result.success);
+  const { company } = result.data;
+  assert.equal(company.financials.ltm?.leasePayments, -120);
+  assert.deepEqual(company.financials.basisChanges, [
+    { asOf: "2026-03-31", description: "Robotics discontinued" },
+  ]);
+  assert.equal(company.market.dividendPerShareRunRate, 4);
 });

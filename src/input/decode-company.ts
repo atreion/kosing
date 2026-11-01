@@ -87,6 +87,7 @@ function toReportedPeriod(
     capex: scale.nullable(row.capex),
     fcf: scale.nullable(row.fcf),
     dividendsPaid: scale.nullable(row.dividendsPaid),
+    leasePayments: scale.nullable(row.leasePayments),
   };
 }
 
@@ -98,7 +99,11 @@ function decodeFinancials(financials: Facts["financials"], scale: Scale): Financ
   const ltm = financials.ltm
     ? { ...toReportedPeriod(financials.ltm, scale), endDate: financials.ltm.endDate }
     : null;
-  return { ltm, fiscalYears: years };
+  const basisChanges = financials.basisChanges.map(({ asOf, description }) => ({
+    asOf,
+    description,
+  }));
+  return { ltm, fiscalYears: years, basisChanges };
 }
 
 /**
@@ -133,6 +138,7 @@ function decodeMarket(
     shares,
     week52High: convertNullable(convert, market.week52High),
     week52Low: convertNullable(convert, market.week52Low),
+    dividendPerShareRunRate: convertNullable(convert, market.dividendPerShareRunRate),
     asOf: market.asOf,
   });
 }
@@ -209,7 +215,9 @@ export function decodeCompany(
   const cash = scale.required(bs.cashAndEquivalents);
   const shortTermInvestments = scale.nullable(bs.shortTermInvestments);
   const dividendPayable = scale.required(bs.dividendPayable);
-  const netDebt = totalDebt - cash - (shortTermInvestments ?? 0) + dividendPayable;
+  const cashAfterBalanceSheet = scale.required(bs.cashAfterBalanceSheet);
+  const netDebt =
+    totalDebt - cash - (shortTermInvestments ?? 0) + dividendPayable - cashAfterBalanceSheet;
   if (facts.financialInstitution === null) {
     resolutions.push({
       kind: "netDebtDerived",
@@ -217,6 +225,7 @@ export function decodeCompany(
       cash,
       shortTermInvestments: shortTermInvestments ?? 0,
       dividendPayable,
+      cashAfterBalanceSheet,
     });
   }
 
@@ -236,6 +245,7 @@ export function decodeCompany(
       shortTermInvestments,
       totalDebt,
       dividendPayable,
+      cashAfterBalanceSheet,
       shortTermDebt: scale.nullable(bs.shortTermDebt),
       longTermDebt: scale.nullable(bs.longTermDebt),
       goodwill: scale.nullable(bs.goodwill),
@@ -246,6 +256,7 @@ export function decodeCompany(
     otherClaims: {
       operatingLeaseLiabilities: scale.nullable(bs.operatingLeaseLiabilities),
       pensionObligations: scale.nullable(bs.pensionObligations),
+      nonControllingInterests: scale.nullable(bs.nonControllingInterests),
     },
     costOfCapital: costOfCapital.data,
     historicalRanges: facts.historicalRanges
@@ -272,7 +283,8 @@ export function decodeCompany(
             fairValue: scale.nullable(h.fairValue),
             basis: h.basis,
           })),
-          parentNetDebt: scale.required(facts.holdings.parentNetDebt) + dividendPayable,
+          parentNetDebt:
+            scale.required(facts.holdings.parentNetDebt) + dividendPayable - cashAfterBalanceSheet,
           lookThroughNav: scale.nullable(facts.holdings.lookThroughNav),
         }
       : null,

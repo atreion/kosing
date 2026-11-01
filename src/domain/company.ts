@@ -15,6 +15,8 @@ export type Market = {
   readonly shares: number;
   readonly week52High: number | null;
   readonly week52Low: number | null;
+  /** Per share in the reporting currency; null to use trailing dividends paid. */
+  readonly dividendPerShareRunRate: number | null;
   readonly asOf: IsoDate;
 };
 
@@ -25,6 +27,8 @@ export type BalanceSheet = {
   readonly totalDebt: number;
   /** Gone ex, still in cash; added to net debt. */
   readonly dividendPayable: number;
+  /** Raised or received after the balance sheet; subtracted from net debt. */
+  readonly cashAfterBalanceSheet: number;
   readonly shortTermDebt: number | null;
   readonly longTermDebt: number | null;
   readonly goodwill: number | null;
@@ -37,6 +41,8 @@ export type BalanceSheet = {
 export type OtherClaims = {
   readonly operatingLeaseLiabilities: number | null;
   readonly pensionObligations: number | null;
+  /** Minorities' share of consolidated equity, at book; deducted in the dcf and normalised bridges. */
+  readonly nonControllingInterests: number | null;
 };
 
 /** From facts alone: beta resolved, both tax rates, no overrides. */
@@ -148,7 +154,7 @@ export type Company = {
   readonly market: Market;
   readonly financials: Financials;
   readonly balanceSheet: BalanceSheet;
-  /** totalDebt - cashAndEquivalents - shortTermInvestments + dividendPayable, recorded as a resolution. */
+  /** totalDebt - cashAndEquivalents - shortTermInvestments + dividendPayable - cashAfterBalanceSheet, recorded as a resolution. */
   readonly netDebt: number;
   readonly otherClaims: OtherClaims;
   readonly costOfCapital: CostOfCapital;

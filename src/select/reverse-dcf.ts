@@ -12,6 +12,7 @@ import type { Company } from "../domain/company.ts";
 import type { ReportedPeriod } from "../domain/financials.ts";
 import type { ReverseDcfInputs } from "../math/reverse-dcf.ts";
 import { type BasePeriodRef, selectUsableReportedPeriod } from "./base-period.ts";
+import { bridgeNetDebt } from "./derived.ts";
 
 export type ReverseDcfOptions = {
   readonly horizonYears: number;
@@ -73,7 +74,7 @@ export function selectReverseDcf(
       daPctRevenue: Math.min(da, capex) / p.revenue,
       taxRate: company.costOfCapital.taxRateForCashFlows,
       wacc,
-      netDebt: company.netDebt,
+      netDebt: bridgeNetDebt(company),
       shares: company.market.shares,
       horizonYears: options.horizonYears,
       terminalGrowth: options.terminalGrowth,

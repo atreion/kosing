@@ -45,7 +45,11 @@ test("derived figures: market cap is price x shares in millions, EV adds net deb
   assert.equal(d.marketCap, 212 * 115);
   assert.equal(d.netDebt, 2000);
   assert.equal(d.enterpriseValue, 212 * 115 + 2000 + 700);
-  assert.deepEqual(d.otherClaims, { operatingLeaseLiabilities: 700, pensionObligations: 450 });
+  assert.deepEqual(d.otherClaims, {
+    operatingLeaseLiabilities: 700,
+    pensionObligations: 450,
+    nonControllingInterests: null,
+  });
 });
 
 test("multiple inputs come from the base period and book value", () => {

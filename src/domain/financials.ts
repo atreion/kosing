@@ -12,6 +12,8 @@ export type ReportedPeriod = {
   readonly fcf: number | null;
   /** Signed as reported: negative when an outflow. */
   readonly dividendsPaid: number | null;
+  /** Lease principal repaid, signed as reported: negative when an outflow. */
+  readonly leasePayments: number | null;
 };
 
 export type ReportedFiscalYear = ReportedPeriod & {
@@ -22,8 +24,11 @@ export type ReportedFiscalYear = ReportedPeriod & {
 /** The LTM row keeps its end date so the staleness warning can compare it. */
 export type ReportedLtm = ReportedPeriod & { readonly endDate: IsoDate };
 
+export type BasisChange = { readonly asOf: IsoDate; readonly description: string };
+
 export type Financials = {
   readonly ltm: ReportedLtm | null;
+  readonly basisChanges: readonly BasisChange[];
   readonly fiscalYears: NonEmpty<ReportedFiscalYear>; // sorted oldest to newest
 };
 

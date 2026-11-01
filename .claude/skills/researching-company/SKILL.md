@@ -25,6 +25,13 @@ Run commands from the Kosing repo root.
    topics. Agents report values as printed; you apply the schema's signs and
    `unit`.
 
+   Fill the fields backtests found missing: `leasePayments` on every period
+   (IFRS 16 repayment of lease liabilities; US GAAP finance-lease principal
+   only), `nonControllingInterests`, `cashAfterBalanceSheet` for a placement
+   or proceeds received after the balance-sheet date, `basisChanges` when a
+   business is reclassified or results are restated, and
+   `dividendPerShareRunRate` when the payment schedule changed.
+
    Two cost-of-capital rules are where facts have gone wrong. A company beta
    is a published five-year beta with its provider and window, never a
    regression you or an agent ran; without one, use the sector beta.
