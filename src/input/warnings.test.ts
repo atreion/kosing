@@ -28,3 +28,23 @@ test("an ltm row older than the latest fiscal year warns", () => {
     ["ltmOlderThanFiscalYear"],
   );
 });
+
+test("a company beta far from its sector's warns, inside the band it does not", () => {
+  const facts = mutate(
+    mutate(loadFixture("acme.facts"), "costOfCapital.betaSector", 1.0),
+    "costOfCapital.betaCompany",
+    0.5,
+  );
+  const low = decode(facts);
+  assert.ok(low.success);
+  assert.deepEqual(
+    low.data.warnings.map((w) => [w.rule, w.path]),
+    [["betaFarFromSector", "costOfCapital.betaCompany"]],
+  );
+  const near = decode(mutate(facts, "costOfCapital.betaCompany", 1.3));
+  assert.ok(near.success);
+  assert.deepEqual(near.data.warnings, []);
+  const noCompany = decode(mutate(facts, "costOfCapital.betaCompany", null));
+  assert.ok(noCompany.success);
+  assert.deepEqual(noCompany.data.warnings, []);
+});

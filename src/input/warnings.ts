@@ -89,6 +89,23 @@ function tangibleBookAboveEquity(facts: Facts): Warning[] {
   ];
 }
 
+/** A company beta this far from its sector's is more likely a bad source than a different business. */
+export const BETA_SECTOR_BAND = { low: 0.6, high: 1 / 0.6 } as const;
+
+function betaFarFromSector(facts: Facts): Warning[] {
+  const { betaCompany, betaSector } = facts.costOfCapital;
+  if (betaCompany === null || betaSector === null || betaSector <= 0) return [];
+  const ratio = betaCompany / betaSector;
+  if (ratio >= BETA_SECTOR_BAND.low && ratio <= BETA_SECTOR_BAND.high) return [];
+  return [
+    {
+      rule: "betaFarFromSector",
+      path: "costOfCapital.betaCompany",
+      message: `company beta ${betaCompany} is ${ratio.toFixed(2)} times the sector's ${betaSector}; check the source, and read the value on the sector beta`,
+    },
+  ];
+}
+
 export function collectWarnings(
   facts: Facts,
   investmentCase: Case | null,
@@ -99,5 +116,6 @@ export function collectWarnings(
     ...ltmOlderThanFiscalYear(company),
     ...capitalNearRequirement(facts),
     ...tangibleBookAboveEquity(facts),
+    ...betaFarFromSector(facts),
   ];
 }

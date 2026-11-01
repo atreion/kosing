@@ -25,6 +25,12 @@ Run commands from the Kosing repo root.
    topics. Agents report values as printed; you apply the schema's signs and
    `unit`.
 
+   Two cost-of-capital rules are where facts have gone wrong. A company beta
+   is a published five-year beta with its provider and window, never a
+   regression you or an agent ran; without one, use the sector beta.
+   Damodaran's tables come from `$DATA/reference/damodaran`, never a guess
+   when his site is slow.
+
    Each returns JSON with a verbatim quote per statement line, misses and
    flags. Read every flag. Check each value against its quote (period,
    group versus segment). Give each document the next `S` id. Re-dispatch for

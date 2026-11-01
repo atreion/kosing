@@ -161,13 +161,13 @@ export const CostOfCapital = z.strictObject({
     .min(0)
     .describe("Equity risk premium from Damodaran's current country table, as a fraction."),
   countryPremium: nullableNumber.describe(
-    "Damodaran's country risk premium, weighted by revenue by country (his operations-weighted approach), not the domicile's premium alone; 0 when every country's premium in the table is 0. research.md shows the weights.",
+    "Damodaran's country risk premium, weighted by revenue by country (his operations-weighted approach), not the domicile's premium alone; 0 when every country's premium in the table is 0. research.md shows the weights. The cost of equity multiplies it by beta together with the ERP: riskFree + beta x (erp + countryPremium).",
   ),
   betaCompany: nullableNumber.describe(
-    "Five-year beta as published by a named data provider; never computed by the researcher. Null when none is published or it is implausible (for example, it prices the cost of equity below the company's own bond coupon); betaSector is then used.",
+    "Five-year beta as published by a named data provider, cited with its window; never computed by the researcher, not even as a regression on published prices. Null when none is published or it is implausible (for example, it prices the cost of equity below the company's own bond coupon); betaSector is then used. Outside 0.6 to 1.67 times betaSector it is valued but warned about.",
   ),
   betaSector: nullableNumber.describe(
-    "Damodaran's levered sector beta from the table for the company's region (Europe for a European company).",
+    "Damodaran's levered sector beta from the table for the company's region (Europe for a European company), read from the kosing-data Damodaran cache.",
   ),
   taxRateEffective: unitInterval,
   taxRateStatutory: unitInterval

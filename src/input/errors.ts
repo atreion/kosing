@@ -119,7 +119,8 @@ export type Warning = {
     | "scenarioOrderInverted"
     | "priceStale"
     | "capitalNearRequirement"
-    | "tangibleBookAboveEquity";
+    | "tangibleBookAboveEquity"
+    | "betaFarFromSector";
   readonly path: string;
   readonly message: string;
 };
