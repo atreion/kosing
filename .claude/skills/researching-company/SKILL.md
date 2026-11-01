@@ -39,7 +39,9 @@ Run commands from the Kosing repo root.
    stock is the analyst's job.
 4. Run `npm run --silent kosing -- value --facts "$D/facts.json" >/dev/null` and fix what
    it reports until it exits 0.
-5. `git -C "$D" add facts.json research.md && git -C "$D" commit -m "research(<ID>): <created|price|quarterly|annual> as of <asOf>"`
+5. `git -C "$D" add facts.json research.md && git -C "$D" commit -m "research(<ID>): <created|price|quarterly|annual> as of <asOf>"`.
+   If an agent added a Damodaran edition to `reference/damodaran`, commit
+   that separately as its README says.
 
 A refresh keeps every value it does not touch. A price refresh changes
 `market` and `fx.spotRates` and moves only `market.asOf`; a report refresh

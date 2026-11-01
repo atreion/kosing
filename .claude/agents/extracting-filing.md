@@ -50,8 +50,13 @@ once, then report a miss. Do not wait in a loop.
   (query1 rate-limits). Compute closes, highs and lows with a script; never
   print the series.
 - US Treasury par yields: the daily CSV at home.treasury.gov.
-- Damodaran (ctryprem.xlsx, betas.xls): read only the rows you need with
-  `python3 -I`.
+- Damodaran: read the cache, not his site.
+  `"$(npm run --silent kosing -- where)/reference/damodaran"` holds each
+  edition by month as CSV (`country-risk.csv`, `betas-<region>.csv`); its
+  README gives the header values, the regions and the URL to cite. Grep the
+  rows you need from the latest month holding that table. Check his data page
+  (`New_Home_Page/datacurrent.html`) for a dated edition newer than the cache;
+  if there is one, add it as the README says and flag that the cache changed.
 
 ## Output
 

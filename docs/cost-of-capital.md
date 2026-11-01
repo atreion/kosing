@@ -66,7 +66,8 @@ How much more than the risk-free rate investors demand for holding the stock
 market as a whole. Historically it has been somewhere around 4% to 6%. Kosing
 takes it from Aswath Damodaran's current country table, which he updates
 regularly from what market prices imply, rather than from a long-run average
-that might no longer apply.
+that might no longer apply. The data repo keeps each edition of his tables
+under `reference/damodaran/<YYYY-MM>/`; the latest month is the current one.
 
 **Why it matters:** it is multiplied by beta and applies to every company, so
 it moves every valuation in the same direction. Kosing does not let the
