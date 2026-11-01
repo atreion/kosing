@@ -271,6 +271,11 @@ function fxSection(
   return { fx: computeFxSensitivity(s.exposures, moves, s.revalue), resolutions: s.resolutions };
 }
 
+/** The case's own terminal growth when it values the bank, so price and value use one g. */
+function impliedRoteGrowth(valuation: ValuationSection | null, fallback: number): number {
+  return valuation?.method === "excessReturn" ? valuation.terminalGrowth : fallback;
+}
+
 export function assemble(
   decoded: Decoded,
   options: ValuatorOptions = DEFAULT_VALUATOR_OPTIONS,
@@ -301,7 +306,7 @@ export function assemble(
         company,
         derived.marketCap,
         wacc.costOfEquity,
-        options.reverseDcf.terminalGrowth,
+        impliedRoteGrowth(valued.valuation, options.reverseDcf.terminalGrowth),
       ),
       multiples: multipleRows(company, multiples),
     },

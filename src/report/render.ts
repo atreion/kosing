@@ -1,5 +1,6 @@
 /** ReportModel to one self-contained HTML page: inline CSS, inline SVG, no scripts. */
 
+import { assertNever } from "../exhaustive.ts";
 import type { SensitivityResult } from "../math/sensitivity.ts";
 import {
   compositionChart,
@@ -10,6 +11,7 @@ import {
 } from "./charts.ts";
 import {
   escapeHtml,
+  fixed,
   formatMillions,
   formatMultiple,
   formatPercent,
@@ -18,7 +20,7 @@ import {
   humanise,
 } from "./format.ts";
 import { renderMarkdown } from "./markdown.ts";
-import type { MultipleView, ReportModel } from "./model.ts";
+import type { Implied, MultipleView, ReportModel } from "./model.ts";
 
 const METRIC_LABELS: Readonly<Record<MultipleView["metric"], string>> = {
   peTrailing: "P/E, trailing",
@@ -38,18 +40,57 @@ function tile(label: string, value: string, note: string | null): string {
   return `<div class="tile"><div class="tile-label">${escapeHtml(label)}</div><div class="tile-value">${escapeHtml(value)}</div>${note === null ? "" : `<div class="tile-note">${escapeHtml(note)}</div>`}</div>`;
 }
 
+function impliedTile(implied: Implied | null): string | null {
+  if (implied === null) return null;
+  switch (implied.kind) {
+    case "growth":
+      return tile("Price implies", `${formatPercent(implied.value)} growth`, "a year for 10 years");
+    case "growthBeyondRange":
+      return tile("Price implies", "Beyond range", "more growth than the reverse DCF searches");
+    case "rote":
+      return tile(
+        "Price implies",
+        `${formatPercent(implied.value)} ROTE`,
+        "steady state, on tangible book",
+      );
+    case "priceToNav":
+      return tile("Price to NAV", formatMultiple(implied.value), "price over base NAV per share");
+    case "commodityPrice":
+      return tile(
+        "Price implies",
+        `USD ${fixed(implied.value, 2)}/${implied.unit}`,
+        "flat, for base NAV to equal the price",
+      );
+    default:
+      return assertNever(implied);
+  }
+}
+
+/** In the quote currency when it differs: that is the price an order is placed at. */
+function priceTiles(model: ReportModel): readonly (string | null)[] {
+  const money = (v: number) => formatPerShare(model.currency, v);
+  const h = model.hurdle;
+  const t = model.trading;
+  const gap =
+    h === null ? "" : `price is ${formatSignedPercent(model.price / h.entryPrice - 1)} from it`;
+  if (t === null) {
+    return [
+      tile("Price", money(model.price), `as of ${model.priceAsOf}`),
+      h === null ? null : tile("Entry price", money(h.entryPrice), gap),
+    ];
+  }
+  const quoted = (v: number) => formatPerShare(t.currency, v);
+  return [
+    tile("Price", quoted(t.price), `${money(model.price)}, as of ${model.priceAsOf}`),
+    tile("Entry price", quoted(t.entry), `${h === null ? "" : `${money(h.entryPrice)}; `}${gap}`),
+  ];
+}
+
 function tiles(model: ReportModel): string {
   const money = (v: number) => formatPerShare(model.currency, v);
   const h = model.hurdle;
   const items = [
-    tile("Price", money(model.price), `as of ${model.priceAsOf}`),
-    h === null
-      ? null
-      : tile(
-          "Entry price",
-          money(h.entryPrice),
-          `price is ${formatSignedPercent(model.price / h.entryPrice - 1)} from it`,
-        ),
+    ...priceTiles(model),
     model.values === null
       ? null
       : tile(
@@ -64,13 +105,7 @@ function tiles(model: ReportModel): string {
           formatPercent(h.requiredDiscount, 0),
           `${formatPercent(h.classificationDiscount, 0)} class + ${formatPercent(h.aiExposureAddOn, 0)} AI`,
         ),
-    model.impliedGrowth === null
-      ? null
-      : tile(
-          "Price implies",
-          `${formatPercent(model.impliedGrowth)} growth`,
-          "a year for 10 years",
-        ),
+    impliedTile(model.implied),
   ];
   return `<div class="tiles">${items.filter((t) => t !== null).join("")}</div>`;
 }
@@ -123,7 +158,7 @@ function sensitivityTable(model: ReportModel, s: SensitivityResult): string {
           const isBase = i === s.base[0] && j === s.base[1];
           const clears = discount !== null && v * (1 - discount) >= model.price;
           const cls = [isBase ? "base" : "", clears ? "clears" : ""].join(" ").trim();
-          return `<td class="${cls}" style="background:${cellColour(v, model.price)}" title="WACC ${formatPercent(w, 2)}: ${formatPerShare(model.currency, v)}">${v.toFixed(0)}</td>`;
+          return `<td class="${cls}" style="background:${cellColour(v, model.price)}" title="WACC ${formatPercent(w, 2)}: ${formatPerShare(model.currency, v)}">${fixed(v, 0)}</td>`;
         })
         .join("");
       return `<tr><th>WACC ${formatPercent(w)}</th>${cells}</tr>`;

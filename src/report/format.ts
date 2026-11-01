@@ -1,7 +1,13 @@
 /** Text for the report. Every function here returns a plain string; escaping is the caller's. */
 
+/** toFixed without "-0": a value that rounds to zero prints as zero. */
+export function fixed(value: number, digits: number): string {
+  const text = value.toFixed(digits);
+  return Number(text) === 0 ? (0).toFixed(digits) : text;
+}
+
 export function formatPerShare(currency: string, value: number): string {
-  return `${currency} ${value.toLocaleString("en-US", {
+  return `${currency} ${Number(fixed(value, 2)).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -19,11 +25,11 @@ export function formatMillions(currency: string, millions: number): string {
 export function formatMillionsTick(millions: number): string {
   const abs = Math.abs(millions);
   if (abs >= 1000) return `${(millions / 1000).toFixed(abs >= 10000 ? 0 : 1)}bn`;
-  return millions === 0 ? "0" : `${millions.toFixed(0)}m`;
+  return Number(fixed(millions, 0)) === 0 ? "0" : `${fixed(millions, 0)}m`;
 }
 
 export function formatPercent(fraction: number, digits = 1): string {
-  return `${(fraction * 100).toFixed(digits)}%`;
+  return `${fixed(fraction * 100, digits)}%`;
 }
 
 export function formatSignedPercent(fraction: number, digits = 0): string {
@@ -32,7 +38,7 @@ export function formatSignedPercent(fraction: number, digits = 0): string {
 }
 
 export function formatMultiple(value: number): string {
-  return `${value.toFixed(1)}x`;
+  return `${fixed(value, 1)}x`;
 }
 
 /** camelCase vocabulary from the documents, for display: qualityCompounder -> quality compounder. */

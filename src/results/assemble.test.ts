@@ -497,3 +497,11 @@ test("nav scenarios out of order are warned about, like the other methods", () =
     ["scenarioOrderInverted"],
   );
 });
+
+test("with an excess-return case, implied ROTE uses the case's terminal growth", () => {
+  const c = mutate(bankCase(), "method.terminal.growth", 0.03);
+  const ir = assemble(decoded(bank(), c)).pricedIn.impliedRote;
+  assert.ok(ir);
+  assert.equal(ir.terminalGrowth, 0.03);
+  assertClose(ir.impliedRote, 0.03 + ir.priceToTangibleBook * (ir.costOfEquity - 0.03), 1e-12);
+});

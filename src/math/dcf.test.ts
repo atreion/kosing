@@ -245,3 +245,21 @@ test("a Gordon spread lost in float rounding is undefined, not a 1e17 value", ()
   });
   assert.deepEqual(r, { kind: "undefined", reason: "terminalGrowthNotBelowWacc" });
 });
+
+test("a note fires when the final year's D&A exceeds its capex", () => {
+  const years = flat(3, { ...unit, capexPctRevenue: 0.03, daPctRevenue: 0.05 });
+  const r = computeDcf({ ...base, years });
+  assert.equal(r.kind, "value");
+  if (r.kind !== "value") return;
+  const note = r.notes.find((n) => n.kind === "depreciationAboveCapex");
+  assert.ok(note && note.kind === "depreciationAboveCapex");
+  assertClose(note.daPctRevenue, 0.05, 1e-12);
+  assertClose(note.capexPctRevenue, 0.03, 1e-12);
+  const balanced = computeDcf({
+    ...base,
+    years: flat(3, { ...unit, capexPctRevenue: 0.05, daPctRevenue: 0.05 }),
+  });
+  assert.ok(
+    balanced.kind === "value" && !balanced.notes.some((n) => n.kind === "depreciationAboveCapex"),
+  );
+});

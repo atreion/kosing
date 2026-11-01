@@ -54,7 +54,19 @@ export type YearRow = {
   readonly pvFcff: number;
 };
 
-export type DcfNote = { readonly kind: "terminalValueDominates"; readonly pctOfEv: number };
+/**
+ * depreciationAboveCapex: the final year's D&A exceeds its capex, so the
+ * terminal FCFF adds back more than the business reinvests, forever. The
+ * reverse DCF caps D&A at capex for that reason; a case that means it (a run
+ * of acquired-intangible amortisation) says so in its rationale.
+ */
+export type DcfNote =
+  | { readonly kind: "terminalValueDominates"; readonly pctOfEv: number }
+  | {
+      readonly kind: "depreciationAboveCapex";
+      readonly daPctRevenue: number;
+      readonly capexPctRevenue: number;
+    };
 
 export type DcfValue = {
   readonly kind: "value";
@@ -168,6 +180,24 @@ const TERMINAL_DOMINANCE = 0.75;
  */
 const GORDON_MIN_SPREAD = 1e-9;
 
+function finalYearNotes(finalYear: YearRow, terminalValuePctOfEv: number): DcfNote[] {
+  const dominates: DcfNote[] =
+    terminalValuePctOfEv > TERMINAL_DOMINANCE
+      ? [{ kind: "terminalValueDominates", pctOfEv: terminalValuePctOfEv }]
+      : [];
+  const depreciation: DcfNote[] =
+    finalYear.da > finalYear.capex && finalYear.revenue > 0
+      ? [
+          {
+            kind: "depreciationAboveCapex",
+            daPctRevenue: finalYear.da / finalYear.revenue,
+            capexPctRevenue: finalYear.capex / finalYear.revenue,
+          },
+        ]
+      : [];
+  return [...dominates, ...depreciation];
+}
+
 function gordonIsDefined(wacc: number, terminal: Terminal): boolean {
   return terminal.kind !== "perpetuityGrowth" || wacc - terminal.growth > GORDON_MIN_SPREAD;
 }
@@ -195,9 +225,6 @@ export function computeDcf(inputs: DcfInputs): DcfOutcome {
     terminalValuePctOfEv,
     pvExplicitPeriod,
     projection,
-    notes:
-      terminalValuePctOfEv > TERMINAL_DOMINANCE
-        ? [{ kind: "terminalValueDominates", pctOfEv: terminalValuePctOfEv }]
-        : [],
+    notes: finalYearNotes(finalYear, terminalValuePctOfEv),
   };
 }

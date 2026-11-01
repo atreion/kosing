@@ -1,6 +1,12 @@
 /** The report's charts, each a pure function from part of the model to an SVG string. */
 
-import { formatMillions, formatMillionsTick, formatPercent, formatPerShare } from "./format.ts";
+import {
+  fixed,
+  formatMillions,
+  formatMillionsTick,
+  formatPercent,
+  formatPerShare,
+} from "./format.ts";
 import type { HistoryPoint, ReportModel, ValueComposition } from "./model.ts";
 import {
   columnPath,
@@ -83,7 +89,7 @@ export function valueRangeChart(model: ReportModel): string {
         : [
             `<g class="hit"><circle cx="${x(v).toFixed(1)}" cy="${bandY}" r="${r}" class="dot"/>${tooltip(`${name} ${money(v)}`)}</g>` +
               text(x(v), bandY + 30, name, { anchor: "middle", cls: "dot-label" }) +
-              text(x(v), bandY + 44, v.toFixed(0), { anchor: "middle", cls: "dot-value" }),
+              text(x(v), bandY + 44, fixed(v, 0), { anchor: "middle", cls: "dot-value" }),
           ],
     )
     .join("");
@@ -99,7 +105,7 @@ export function valueRangeChart(model: ReportModel): string {
 
   const priceMarker = {
     x: x(model.price),
-    label: `Price ${model.price.toFixed(2)}`,
+    label: `Price ${fixed(model.price, 2)}`,
     cls: "marker-label",
   };
   const markers =
@@ -109,13 +115,13 @@ export function valueRangeChart(model: ReportModel): string {
       : line(x(entry), top - 6, x(entry), axisY, "entry-line") +
         (entry <= model.price
           ? markerLabels(
-              { x: x(entry), label: `Entry ${entry.toFixed(2)}`, cls: "marker-label" },
+              { x: x(entry), label: `Entry ${fixed(entry, 2)}`, cls: "marker-label" },
               priceMarker,
               top - 10,
             )
           : markerLabels(
               priceMarker,
-              { x: x(entry), label: `Entry ${entry.toFixed(2)}`, cls: "marker-label" },
+              { x: x(entry), label: `Entry ${fixed(entry, 2)}`, cls: "marker-label" },
               top - 10,
             )));
 
@@ -257,12 +263,12 @@ export function marginChart(model: ReportModel): string {
 export function growthChart(model: ReportModel): string {
   const firstCase = model.history.findIndex((p) => p.kind === "case");
   const reference =
-    model.impliedGrowth === null || firstCase < 0
+    model.implied?.kind !== "growth" || firstCase < 0
       ? null
       : {
-          value: model.impliedGrowth,
+          value: model.implied.value,
           from: firstCase,
-          label: `Price implies ${formatPercent(model.impliedGrowth)} a year`,
+          label: `Price implies ${formatPercent(model.implied.value)} a year`,
         };
   return percentLineChart(model.history, (p) => p.growth, "Revenue growth", reference);
 }

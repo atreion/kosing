@@ -84,3 +84,46 @@ test("the page renders the advice and escapes the company name", () => {
   assert.match(html, /<h2>Why<\/h2>/);
   assert.doesNotMatch(html, /NaN|undefined/);
 });
+
+function resultsOf(factsName: string, caseName: string | null): Results {
+  const r = valuate(loadFixture(factsName), caseName === null ? undefined : loadFixture(caseName));
+  if (!r.success) throw new Error(JSON.stringify(r.error));
+  return r.data;
+}
+
+test("revenue growth is null across a gap in the fiscal years", () => {
+  const results = acmeResults("acme-dcf.case");
+  const years = results.inputs.company.financials.fiscalYears;
+  const gapped: Results = {
+    ...results,
+    inputs: {
+      ...results.inputs,
+      company: {
+        ...results.inputs.company,
+        financials: {
+          ...results.inputs.company.financials,
+          fiscalYears: [{ ...years[0], fy: years[0].fy - 5 }, ...years.slice(1)],
+        },
+      },
+    },
+  };
+  const reported = buildReportModel(gapped, null).history.filter((p) => p.kind === "reported");
+  assert.equal(reported[1]?.growth, null);
+  assert.notEqual(reported[2]?.growth ?? null, null);
+});
+
+test("what the price implies follows the method", () => {
+  assert.equal(buildReportModel(acmeResults("acme-dcf.case"), null).implied?.kind, "growth");
+  assert.equal(
+    buildReportModel(resultsOf("nordbank.facts", "nordbank-excess.case"), null).implied?.kind,
+    "rote",
+  );
+  assert.equal(
+    buildReportModel(resultsOf("holdco.facts", "holdco-nav.case"), null).implied?.kind,
+    "priceToNav",
+  );
+  assert.equal(
+    buildReportModel(resultsOf("miner.facts", "miner-mine-nav.case"), null).implied?.kind,
+    "commodityPrice",
+  );
+});

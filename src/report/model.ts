@@ -43,6 +43,14 @@ export type MultipleView = {
   readonly band5y: Band;
 };
 
+/** What today's price implies, on the method's own terms. */
+export type Implied =
+  | { readonly kind: "growth"; readonly value: number }
+  | { readonly kind: "growthBeyondRange" }
+  | { readonly kind: "rote"; readonly value: number }
+  | { readonly kind: "priceToNav"; readonly value: number }
+  | { readonly kind: "commodityPrice"; readonly value: number; readonly unit: string };
+
 export type ReportModel = {
   readonly name: string;
   readonly id: string;
@@ -59,7 +67,13 @@ export type ReportModel = {
   readonly values: ValueRange | null;
   readonly hurdle: HurdleSection | null;
   readonly history: readonly HistoryPoint[];
-  readonly impliedGrowth: number | null;
+  readonly implied: Implied | null;
+  /** The quote currency's price and entry, when the exchange quotes outside the reporting currency. */
+  readonly trading: {
+    readonly currency: string;
+    readonly price: number;
+    readonly entry: number;
+  } | null;
   readonly composition: ValueComposition | null;
   readonly sensitivity: SensitivityResult | null;
   readonly multiples: readonly MultipleView[];
@@ -124,7 +138,8 @@ function reportedHistory(results: Results): readonly HistoryPoint[] {
   const { fiscalYears, ltm } = results.inputs.company.financials;
   const years = fiscalYears.flatMap((fy, i) => {
     if (fy.revenue === null) return [];
-    const previous = fiscalYears[i - 1]?.revenue ?? null;
+    const before = fiscalYears[i - 1];
+    const previous = before !== undefined && before.fy === fy.fy - 1 ? before.revenue : null;
     return [
       {
         label: `FY${String(fy.fy).slice(2)}`,
@@ -194,9 +209,44 @@ function multiples(results: Results): readonly MultipleView[] {
   );
 }
 
+function growthImplied(results: Results): Implied | null {
+  const reverse = results.pricedIn.reverseDcf;
+  if (reverse !== null) return { kind: "growth", value: reverse.impliedGrowth };
+  const outOfRange = results.resolutions.some(
+    (r) => r.kind === "reverseDcfUnavailable" && r.reason === "noGrowthInBracketMatchesPrice",
+  );
+  return outOfRange ? { kind: "growthBeyondRange" } : null;
+}
+
+/**
+ * A holding company or a miner is valued on its parts, so the reverse DCF on
+ * consolidated flows is the wrong question; a bank is priced on its ROTE.
+ */
+export function impliedByPrice(results: Results, price: number): Implied | null {
+  const valuation = results.valuation;
+  if (valuation?.method === "nav") {
+    const commodity = valuation.commodity;
+    if (commodity !== null && commodity.impliedPrice !== null) {
+      return { kind: "commodityPrice", value: commodity.impliedPrice, unit: commodity.unit };
+    }
+    return valuation.valuePerShare > 0
+      ? { kind: "priceToNav", value: price / valuation.valuePerShare }
+      : null;
+  }
+  const rote = results.pricedIn.impliedRote;
+  if (rote !== null) return { kind: "rote", value: rote.impliedRote };
+  return growthImplied(results);
+}
+
+function trading(hurdle: HurdleSection | null): ReportModel["trading"] {
+  const t = hurdle?.trading ?? null;
+  return t === null ? null : { currency: t.currency, price: t.price, entry: t.entryPrice };
+}
+
 export function buildReportModel(results: Results, advice: string | null): ReportModel {
   const { company } = results.inputs;
   const { identity, market } = company;
+  const price = results.hurdle?.price ?? market.price;
   return {
     name: identity.name,
     id: `${identity.ticker}.${identity.exchange}`,
@@ -208,12 +258,13 @@ export function buildReportModel(results: Results, advice: string | null): Repor
     aiExposure: results.inputs.aiExposure,
     method: results.valuation?.method ?? null,
     verdict: advice === null ? null : parseVerdict(advice),
-    price: results.hurdle?.price ?? market.price,
+    price,
     week52: { low: market.week52Low ?? null, high: market.week52High ?? null },
     values: results.valuation === null ? null : valueRange(results.valuation),
     hurdle: results.hurdle,
     history: [...reportedHistory(results), ...caseProjection(results)],
-    impliedGrowth: results.pricedIn.reverseDcf?.impliedGrowth ?? null,
+    implied: impliedByPrice(results, price),
+    trading: trading(results.hurdle),
     composition: composition(results.valuation),
     sensitivity: results.sensitivity,
     multiples: multiples(results),
