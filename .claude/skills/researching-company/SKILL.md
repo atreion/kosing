@@ -11,11 +11,22 @@ Run commands from the Kosing repo root.
    `SAP.ETR`. `D="$(npm run --silent kosing -- where <ID>)"` prints the
    company's directory; create it if it does not exist.
 2. `npm run --silent kosing -- schema facts` is the contract, conventions
-   included. Fill `$D/facts.json` from the company's own filings first. Every
-   figure cites a source; what you cannot source is null with a gap.
+   included. Read it once. Fill `$D/facts.json` from the company's own filings
+   first. Every figure cites a source; what you cannot source is null with a
+   gap.
+
+   Do not read filings yourself. Dispatch one `extracting-filing` agent per
+   document (annual report, latest interim report, price, FX, peers), in
+   parallel, each with the company id, the document, the facts paths it should
+   fill and any topics for research.md notes. Each returns figures with a
+   verbatim quote and page, and the misses. Check each value against its quote
+   (scale, period, group versus segment), give each document the next `S` id,
+   and convert to the facts `unit` yourself. Re-dispatch for a miss rather
+   than opening the document. Never Read a file under `tool-results/`; grep
+   it.
 3. Write `$D/research.md`: what the business does and how it makes money, its
    moat and competition, management, customers, risks, and its exposure to the
-   AI cycle. Cite the same source ids. Describe what you find; judging the
+   AI cycle, from the agents' notes. Cite the same source ids. Describe what you find; judging the
    stock is the analyst's job.
 4. Run `npm run --silent kosing -- value --facts "$D/facts.json" >/dev/null` and fix what
    it reports until it exits 0.
