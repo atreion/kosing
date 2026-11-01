@@ -7,6 +7,7 @@ holdings or broker data.
 - `researching-company` writes `facts.json` and `research.md`.
 - `analysing-company` writes `case.json`, runs `kosing value` for
   `results.json`, and writes `advice.md` with the investor's lenses applied.
+  Last, `kosing report` renders both into `report.html`.
 
 The documents live in a private data repo located by `DATA_PATH` (environment
 first, then a git-ignored `.env` at the repo root; see `.env.example`).

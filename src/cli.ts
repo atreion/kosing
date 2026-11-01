@@ -11,6 +11,8 @@ import { type CompanyId, companyDir, parseCompanyId, resolveDataPath } from "./d
 import type { DecodeError } from "./input/errors.ts";
 import { IsoDateString } from "./input/primitives.ts";
 import { emitJsonSchema, flattenJsonSchema } from "./input/schema.ts";
+import { buildReportModel } from "./report/model.ts";
+import { renderReport } from "./report/render.ts";
 import { DEFAULT_VALUATOR_OPTIONS, type Results } from "./results/types.ts";
 import { valuate } from "./valuate.ts";
 
@@ -37,6 +39,8 @@ const USAGE = `usage:
   kosing value <TICKER.EXCHANGE>      value one company in DATA_PATH; writes its results.json
                                       (exit 3 when results.json cannot be written)
   kosing value --facts F [--case C]   results.json on stdout, exit 0; DecodeError[] on stderr, exit 1
+  kosing report <TICKER.EXCHANGE>     render results.json and advice.md into report.html
+                                      (exit 3 when report.html cannot be written)
   kosing where [TICKER.EXCHANGE]      print DATA_PATH, or one company's directory in it
   kosing schema facts | case          print the JSON Schema for that document
   kosing schema facts | case --flat   the same contract as one line per field
@@ -158,15 +162,55 @@ function runValueId(id: CompanyId, io: CliIo): number {
   const mismatch = checkCompanyId(id, evaluated.results);
   if (mismatch.length > 0) return reportErrors(io, mismatch);
   const out = join(dir, "results.json");
+  // Not a DecodeError: nothing in facts or case is wrong, so exit 1 would send the reader there.
+  return writeOutput(io, out, `${JSON.stringify(evaluated.results, null, 2)}\n`) ? 0 : 3;
+}
+
+/** Writes and prints the path, or reports why not; false means exit 3. */
+function writeOutput(io: CliIo, path: string, text: string): boolean {
   try {
-    io.writeFile(out, `${JSON.stringify(evaluated.results, null, 2)}\n`);
+    io.writeFile(path, text);
   } catch (e) {
-    // Not a DecodeError: nothing in facts or case is wrong, so exit 1 would send the reader there.
-    io.stderr(`could not write ${out}: ${message(e)}\n`);
-    return 3;
+    io.stderr(`could not write ${path}: ${message(e)}\n`);
+    return false;
   }
-  io.stdout(`${out}\n`);
-  return 0;
+  io.stdout(`${path}\n`);
+  return true;
+}
+
+/** Run after advice.md is written: the report shows the results and the advice together. */
+function writeReport(io: CliIo, dir: string, results: Results): number {
+  const advicePath = join(dir, "advice.md");
+  const advice = io.fileExists(advicePath) ? io.readFile(advicePath) : null;
+  const html = renderReport(buildReportModel(results, advice));
+  return writeOutput(io, join(dir, "report.html"), html) ? 0 : 3;
+}
+
+/** results.json is Kosing's own output, so it is trusted rather than decoded; the version is the guard. */
+function readResults(io: CliIo, path: string): Results | null {
+  const loaded = loadJson(io, "facts", path);
+  if (!loaded.ok) {
+    io.stderr(`${loaded.error.message}\n`);
+    return null;
+  }
+  const json = loaded.json as { readonly schemaVersion?: unknown };
+  if (json.schemaVersion !== "1.0") {
+    io.stderr(
+      `${path}: schemaVersion ${String(json.schemaVersion)} is not 1.0; run kosing value again\n`,
+    );
+    return null;
+  }
+  return loaded.json as Results;
+}
+
+function runReport(rest: readonly string[], io: CliIo): number {
+  const id = rest.length === 1 && rest[0] !== undefined ? parseCompanyId(rest[0]) : null;
+  if (id === null) return usage(io);
+  const data = dataPath(io, true);
+  if (data === null) return 2;
+  const dir = companyDir(data, id);
+  const results = readResults(io, join(dir, "results.json"));
+  return results === null ? 1 : writeReport(io, dir, results);
 }
 
 function usage(io: CliIo): number {
@@ -211,6 +255,7 @@ export function runCli(argv: readonly string[], io: CliIo): number {
   }
   if (command === "value") return runValue(rest, io);
   if (command === "where") return runWhere(rest, io);
+  if (command === "report") return runReport(rest, io);
   return usage(io);
 }
 

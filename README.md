@@ -18,13 +18,14 @@ at it, in the environment or in a `.env` file (see `.env.example`).
 ```
 npm run kosing -- where [TICKER.EXCHANGE]      the data repo, or one company's directory
 npm run kosing -- value <TICKER.EXCHANGE>      value one company; writes its results.json
+npm run kosing -- report <TICKER.EXCHANGE>     results.json and advice.md into report.html
 npm run kosing -- value --facts F [--case C]   value given files; results.json on stdout
 npm run kosing -- schema facts | case          the JSON Schema for a document
 npm run kosing -- schema facts | case --flat   the same, one line per field
 ```
 
 Exit codes: 0 success, 1 the documents do not decode (errors as JSON on
-stderr), 2 usage or `DATA_PATH` error, 3 `results.json` could not be written.
+stderr), 2 usage or `DATA_PATH` error, 3 the output file could not be written.
 
 In Claude Code, the skills `researching-company` and `analysing-company` run
 the workflow.

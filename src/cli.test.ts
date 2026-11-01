@@ -199,6 +199,7 @@ test("value <ID> writes results.json beside the documents and prints its path", 
   assert.ok(written !== undefined);
   assert.equal(JSON.parse(written).valuation.method, "dcf");
   assert.equal(c.out.join(""), `${join(ACME, "results.json")}\n`);
+  assert.equal(c.fs[join(ACME, "report.html")], undefined);
   assert.ok(c.err.join("").includes("DATA_PATH=/data"));
 });
 
@@ -297,4 +298,22 @@ test("schema with an unknown flag prints usage and exits 2", () => {
   const { io, out } = capture();
   assert.equal(runCli(["schema", "facts", "--brief"], io), 2);
   assert.deepEqual(out, []);
+});
+
+test("report <ID> renders results.json and advice.md into report.html", () => {
+  const c = capture(
+    { ...acmeFiles(true), [join(ACME, "advice.md")]: "**Verdict: `watching`**" },
+    withData,
+  );
+  assert.equal(runCli(["value", "ACME.STO"], c.io), 0);
+  assert.equal(runCli(["report", "ACME.STO"], c.io), 0);
+  const html = c.fs[join(ACME, "report.html")];
+  assert.ok(html !== undefined && html.startsWith("<!doctype html>"));
+  assert.ok(html.includes(">watching</span>"));
+});
+
+test("report <ID> without results.json is exit 1 and nothing is written", () => {
+  const c = capture(acmeFiles(true), withData);
+  assert.equal(runCli(["report", "ACME.STO"], c.io), 1);
+  assert.equal(c.fs[join(ACME, "report.html")], undefined);
 });

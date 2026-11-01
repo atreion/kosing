@@ -40,6 +40,8 @@ Run commands from the Kosing repo root.
    verdict. When the next report can confirm or break the case, end with tests
    written before it: the figure, the threshold, its last value, and the
    report date. Only figures the company actually discloses.
-7. `git -C "$D" add case.json results.json advice.md && git -C "$D" commit -m "advice(<ID>): <verdict>"`
+7. `npm run --silent kosing -- report <ID>` writes `$D/report.html` from the results and
+   the advice. Run it last, after every change to `results.json` or `advice.md`.
+8. `git -C "$D" add case.json results.json advice.md report.html && git -C "$D" commit -m "advice(<ID>): <verdict>"`
 
 Nothing is pushed.
