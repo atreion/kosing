@@ -317,3 +317,16 @@ test("report <ID> without results.json is exit 1 and nothing is written", () => 
   assert.equal(runCli(["report", "ACME.STO"], c.io), 1);
   assert.equal(c.fs[join(ACME, "report.html")], undefined);
 });
+
+test("value --as-of values on that date and rejects a later source", () => {
+  const files = { "f.json": fixture("acme.facts"), "c.json": fixture("acme-dcf.case") };
+  const ok = capture(files);
+  const args = ["value", "--facts", "f.json", "--case", "c.json", "--as-of", "2026-10-15"];
+  assert.equal(runCli(args, ok.io), 0);
+  assert.equal(JSON.parse(ok.out.join("")).inputs.valuedOn, "2026-10-15");
+  const early = capture(files);
+  assert.equal(runCli([...args.slice(0, 5), "--as-of", "2026-09-30"], early.io), 1);
+  assert.match(early.err.join(""), /pointInTime\./);
+  const bad = capture(files);
+  assert.equal(runCli([...args.slice(0, 5), "--as-of", "2026-13-01"], bad.io), 2);
+});

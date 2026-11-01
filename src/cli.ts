@@ -38,7 +38,10 @@ export type CliIo = {
 const USAGE = `usage:
   kosing value <TICKER.EXCHANGE>      value one company in DATA_PATH; writes its results.json
                                       (exit 3 when results.json cannot be written)
-  kosing value --facts F [--case C]   results.json on stdout, exit 0; DecodeError[] on stderr, exit 1
+  kosing value --facts F [--case C] [--as-of YYYY-MM-DD]
+                                      results.json on stdout, exit 0; DecodeError[] on stderr, exit 1.
+                                      --as-of values on a past date and rejects any source
+                                      published after it (a backtest)
   kosing report <TICKER.EXCHANGE>     render results.json and advice.md into report.html
                                       (exit 3 when report.html cannot be written)
   kosing where [TICKER.EXCHANGE]      print DATA_PATH, or one company's directory in it
@@ -50,20 +53,26 @@ function isDocument(name: string | undefined): name is "facts" | "case" {
   return name === "facts" || name === "case";
 }
 
-type ValueArgs = { readonly facts: string; readonly investmentCase: string | null };
+type ValueArgs = {
+  readonly facts: string;
+  readonly investmentCase: string | null;
+  readonly asOf: string | null;
+};
 
 function parseValueArgs(rest: readonly string[]): ValueArgs | null {
   let facts: string | null = null;
   let investmentCase: string | null = null;
+  let asOf: string | null = null;
   for (let i = 0; i < rest.length; i += 2) {
     const flag = rest[i];
-    const path = rest[i + 1];
-    if (path === undefined) return null;
-    if (flag === "--facts") facts = path;
-    else if (flag === "--case") investmentCase = path;
+    const value = rest[i + 1];
+    if (value === undefined) return null;
+    if (flag === "--facts") facts = value;
+    else if (flag === "--case") investmentCase = value;
+    else if (flag === "--as-of" && IsoDateString.safeParse(value).success) asOf = value;
     else return null;
   }
-  return facts === null ? null : { facts, investmentCase };
+  return facts === null ? null : { facts, investmentCase, asOf };
 }
 
 type Loaded =
@@ -106,7 +115,8 @@ function evaluate(args: ValueArgs, io: CliIo): Evaluated {
   }
   const result = valuate(facts.json, investmentCase === null ? undefined : investmentCase.json, {
     ...DEFAULT_VALUATOR_OPTIONS,
-    valuedOn: IsoDateString.parse(io.today()),
+    valuedOn: IsoDateString.parse(args.asOf ?? io.today()),
+    pointInTime: args.asOf !== null,
   });
   return result.success ? { ok: true, results: result.data } : { ok: false, errors: result.error };
 }
@@ -155,7 +165,11 @@ function runValueId(id: CompanyId, io: CliIo): number {
   const dir = companyDir(data, id);
   const casePath = join(dir, "case.json");
   const evaluated = evaluate(
-    { facts: join(dir, "facts.json"), investmentCase: io.fileExists(casePath) ? casePath : null },
+    {
+      facts: join(dir, "facts.json"),
+      investmentCase: io.fileExists(casePath) ? casePath : null,
+      asOf: null,
+    },
     io,
   );
   if (!evaluated.ok) return reportErrors(io, evaluated.errors);

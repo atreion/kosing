@@ -20,6 +20,7 @@ import {
   zodIssuesToErrors,
 } from "./errors.ts";
 import { type Facts, FactsSchema } from "./facts.ts";
+import { checkPointInTime } from "./point-in-time.ts";
 import { collectWarnings } from "./warnings.ts";
 
 export type Decoded = {
@@ -52,10 +53,19 @@ function parseBoth(
   return decoded({ facts: facts.data, investmentCase });
 }
 
-export function decode(factsJson: unknown, caseJson?: unknown): DecodeResult<Decoded> {
+/** pointInTime: a past valuation date every source and dated figure must precede, or null. */
+export function decode(
+  factsJson: unknown,
+  caseJson?: unknown,
+  pointInTime: IsoDate | null = null,
+): DecodeResult<Decoded> {
   const parsed = parseBoth(factsJson, caseJson);
   if (!parsed.success) return failed(parsed.error);
   const { facts, investmentCase } = parsed.data;
+  if (pointInTime !== null) {
+    const late = checkPointInTime(facts, pointInTime);
+    if (late.length > 0) return failed(late);
+  }
 
   const company = decodeCompany(facts);
   if (!company.success) return failed(company.error);

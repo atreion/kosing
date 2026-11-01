@@ -20,6 +20,8 @@ npm run kosing -- where [TICKER.EXCHANGE]      the data repo, or one company's d
 npm run kosing -- value <TICKER.EXCHANGE>      value one company; writes its results.json
 npm run kosing -- report <TICKER.EXCHANGE>     results.json and advice.md into report.html
 npm run kosing -- value --facts F [--case C]   value given files; results.json on stdout
+npm run kosing -- value --facts F [--case C] --as-of YYYY-MM-DD
+                                               the same on a past date, rejecting any later source
 npm run kosing -- schema facts | case          the JSON Schema for a document
 npm run kosing -- schema facts | case --flat   the same, one line per field
 ```
@@ -29,6 +31,17 @@ stderr), 2 usage or `DATA_PATH` error, 3 the output file could not be written.
 
 In Claude Code, the skills `researching-company` and `analysing-company` run
 the workflow.
+
+### Backtests
+
+A backtest values a company as it stood on a past date. Build `facts.json`
+and `case.json` for that date outside the data repo, from documents published
+by then, and run `value --facts --case --as-of`. Every source then needs a
+publication date on or before the as-of date (a price feed's is the price's
+own date), and so do the price, the report period and the balance sheet.
+Damodaran's older editions are in the data repo's cache. A backtest of the
+judgement in a case is only clean for dates after the model's knowledge
+cutoff; before it, keep the case mechanical.
 
 ## Requirements
 

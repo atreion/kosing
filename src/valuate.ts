@@ -10,7 +10,7 @@ export function valuate(
   caseJson?: unknown,
   options: ValuatorOptions = DEFAULT_VALUATOR_OPTIONS,
 ): DecodeResult<Results> {
-  const d = decode(factsJson, caseJson);
+  const d = decode(factsJson, caseJson, options.pointInTime ? options.valuedOn : null);
   if (!d.success) return failed(d.error);
   return decoded(assemble(d.data, options));
 }

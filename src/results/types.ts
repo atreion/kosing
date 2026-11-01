@@ -27,12 +27,15 @@ export type ValuatorOptions = {
   readonly fxMoves: readonly number[];
   /** The date of the run, passed in so the valuator stays pure; null skips the price-age check. */
   readonly valuedOn: IsoDate | null;
+  /** A backtest: valuedOn is in the past and no source may postdate it. */
+  readonly pointInTime: boolean;
 };
 
 export const DEFAULT_VALUATOR_OPTIONS: ValuatorOptions = {
   reverseDcf: DEFAULT_REVERSE_DCF_OPTIONS,
   fxMoves: [-0.1, -0.05, 0.05, 0.1],
   valuedOn: null,
+  pointInTime: false,
 };
 
 export type MultipleRow = {

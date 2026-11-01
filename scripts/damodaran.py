@@ -3,6 +3,10 @@
     python3 -I scripts/damodaran.py betas <region> <file.xls> <cache dir>
     python3 -I scripts/damodaran.py country <YYYY-MM> <file.xlsx> <cache dir>
 
+A country edition also writes country-regions.csv: Damodaran's GDP-weighted
+averages by region, for a company that reports revenue by region rather than
+by country.
+
 The cache dir is $DATA_PATH/reference/damodaran. A table lands in the month
 of its edition: a beta table's own "Date updated" cell, or the month a
 country-premium edition is labelled with on his data page (the date cell in
@@ -308,11 +312,40 @@ def country_table(path):
     return [COUNTRY_COLUMNS, *body], summary
 
 
+REGION_COLUMNS = ["region", "equityRiskPremium", "countryRiskPremium", "defaultSpread"]
+
+
+def region_table(path):
+    """The GDP-weighted block of 'Regional Weighted Averages', from its Region header to Global."""
+    rows = xlsx_sheets(path)["Regional Weighted Averages"]
+    header_at = next(i for i, r in enumerate(rows) if r and str(r[0]).strip() == "Region")
+    body = []
+    for row in rows[header_at + 1 :]:
+        if not row or not row[0]:
+            break
+        body.append([text(c) for c in (row + [""] * 4)[:4]])
+        if str(row[0]).strip() == "Global":
+            break
+    return [REGION_COLUMNS, *body]
+
+
+def write_csv(directory, name, table):
+    with open(os.path.join(directory, name + ".csv"), "w", newline="") as out:
+        csv.writer(out, lineterminator="\n").writerows(table)
+    return os.path.join(directory, name + ".csv")
+
+
 def store(cache, month, name, source, extension, table):
     directory = os.path.join(cache, month)
     os.makedirs(directory, exist_ok=True)
-    with open(source, "rb") as original, open(os.path.join(directory, name + extension), "wb") as copy:
-        copy.write(original.read())
+    target = os.path.join(directory, name + extension)
+    # Re-running on a cached file reads and writes one path; opening it for
+    # writing first would empty it.
+    if not os.path.exists(target) or not os.path.samefile(source, target):
+        with open(source, "rb") as original:
+            content = original.read()
+        with open(target, "wb") as copy:
+            copy.write(content)
     with open(os.path.join(directory, name + ".csv"), "w", newline="") as out:
         csv.writer(out, lineterminator="\n").writerows(table)
     return os.path.join(directory, name + ".csv")
@@ -322,6 +355,9 @@ def main(argv):
     if len(argv) != 5 or argv[1] not in ("betas", "country"):
         sys.exit(__doc__)
     kind, label, source, cache = argv[1:]
+    with open(source, "rb") as f:
+        if f.read(512).lstrip().startswith(b"<"):
+            sys.exit("%s is an HTML page, not a spreadsheet: the download failed" % source)
     if kind == "betas":
         month, table = beta_table(source)
         path = store(cache, month, "betas-" + label, source, ".xls", table)
@@ -331,7 +367,9 @@ def main(argv):
             sys.exit("country needs the edition month as YYYY-MM")
         table, summary = country_table(source)
         path = store(cache, label, "country-risk", source, ".xlsx", table)
-        print("%s: %d countries, %s" % (path, len(table) - 1, summary))
+        regions = region_table(source)
+        write_csv(os.path.join(cache, label), "country-regions", regions)
+        print("%s: %d countries, %d regions, %s" % (path, len(table) - 1, len(regions) - 1, summary))
 
 
 if __name__ == "__main__":

@@ -284,7 +284,7 @@
       "issuer": "Riksbanken",
       "title": "Government bond yields",
       "url": "https://riksbank.example/yields",
-      "published": null,
+      "published": "2026-10-01",
       "retrieved": "2026-10-01",
       "pages": null,
       "tier": "primary"
