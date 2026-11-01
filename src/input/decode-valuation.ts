@@ -291,6 +291,7 @@ function toMinePart(
     ownership: part.ownership,
     riskFactor: part.riskFactor ?? STAGE_RISK_FACTOR[part.stage],
     production: [first, ...rest],
+    recoverableReserve: part.recoverableReserve,
     cashCostPerUnit: part.cashCostPerUnit,
     royaltyRate: part.royaltyRate,
     royaltySteps: part.royaltySteps,

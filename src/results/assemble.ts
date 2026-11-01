@@ -35,6 +35,7 @@ import { selectMultipleInputs } from "../select/multiples.ts";
 import { selectNav, selectNavPartValues } from "../select/nav.ts";
 import { selectNormalisedEarnings } from "../select/normalised-earnings.ts";
 import { selectWacc } from "../select/wacc.ts";
+import { caseWarnings } from "./case-checks.ts";
 import { commoditySection } from "./commodity.ts";
 import { hurdleSection } from "./hurdle.ts";
 import { impliedRoteSection, multipleRows, reverseDcfSection } from "./priced-in.ts";
@@ -331,6 +332,7 @@ export function assemble(
       ...decoded.warnings,
       ...priceStale(company.market.asOf, options.valuedOn),
       ...scenarioWarnings(valued.valuation),
+      ...caseWarnings(decoded.valuation, valued.valuation, company),
     ],
   };
 }

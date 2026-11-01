@@ -479,7 +479,11 @@ test("a nav case with parts values bear, base and bull, and the hurdle takes the
   assert.equal(r.valuation.scenarios?.bear.grossAssetValue, 28900);
   assert.equal(r.valuation.parts.length, 4);
   assert.equal(r.hurdle?.baseValue, r.valuation.valuePerShare);
-  assert.deepEqual(r.warnings, []);
+  assert.deepEqual(
+    r.warnings.map((w) => w.rule),
+    ["scenariosNarrow"],
+    "the fixture's bear is 11% below base",
+  );
 });
 
 test("nav scenarios out of order are warned about, like the other methods", () => {

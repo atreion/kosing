@@ -121,7 +121,11 @@ export type Warning = {
     | "priceStale"
     | "capitalNearRequirement"
     | "tangibleBookAboveEquity"
-    | "betaFarFromSector";
+    | "betaFarFromSector"
+    | "bearMarginAboveCurrent"
+    | "scenariosNarrow"
+    | "productionBeyondReserve"
+    | "mineValueNegative";
   readonly path: string;
   readonly message: string;
 };

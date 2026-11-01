@@ -101,7 +101,14 @@ export const MinePart = z.strictObject({
     .array(z.strictObject({ year: Year, volume: z.number().min(0) }))
     .min(1)
     .describe(
-      "Remaining production on a 100% basis, millions of units per calendar year from the company's latest mine plan, years increasing. The current year carries only what is left of it.",
+      "Remaining production on a 100% basis, millions of units per calendar year from the company's latest mine plan, years increasing. The current year carries only what is left of it after the facts' balanceSheet.asOf, so nothing the balance sheet already holds is counted twice. Convert a fiscal-year plan by splitting each fiscal year across the calendar years it spans.",
+    ),
+  recoverableReserve: z
+    .number()
+    .gt(0)
+    .nullable()
+    .describe(
+      "Contained reserve times metallurgical recovery, millions of units on a 100% basis, from the latest reserve statement. Production beyond it is warned about. Null when no reserve is reported.",
     ),
   delayYears: ScenarioTriple.describe(
     "Whole years production and initial capex start later than the plan, per scenario: bull <= base <= bear. 0 throughout for a producing mine.",

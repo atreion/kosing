@@ -127,6 +127,8 @@ export type MineNavPart = {
   readonly riskFactor: number;
   /** On a 100% basis, years in increasing order. */
   readonly production: NonEmpty<YearVolume>;
+  /** Reserve times recovery, millions of units, 100% basis; null when none is reported. */
+  readonly recoverableReserve: number | null;
   readonly cashCostPerUnit: number;
   readonly royaltyRate: number;
   readonly royaltySteps: readonly RoyaltyStep[];

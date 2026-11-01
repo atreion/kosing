@@ -24,6 +24,7 @@
             "volume": 10
           }
         ],
+        "recoverableReserve": null,
         "delayYears": {
           "bear": 0,
           "base": 0,
@@ -64,6 +65,7 @@
             "volume": 5
           }
         ],
+        "recoverableReserve": null,
         "delayYears": {
           "bear": 2,
           "base": 1,
