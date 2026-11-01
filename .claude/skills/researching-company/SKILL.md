@@ -15,14 +15,23 @@ Run commands from the Kosing repo root.
    first. Every figure cites a source; what you cannot source is null with a
    gap.
 
-   Do not read filings yourself. Dispatch one `extracting-filing` agent per
-   document (annual report, latest interim report, price, FX, peers), in
-   parallel, each with the company id, the document, the facts paths it should
-   fill and any topics for research.md notes. Each returns figures with a
-   verbatim quote and page, and the misses. Check each value against its quote
-   (scale, period, group versus segment), give each document the next `S` id,
-   and convert to the facts `unit` yourself. Re-dispatch for a miss rather
-   than opening the document. Never Read a file under `tool-results/`; grep
+   Do not read documents yourself. Dispatch `extracting-filing` agents in
+   parallel, in one message: one per filing (the latest annual report, the
+   annual report three years earlier for the older years, each interim report
+   of the current year, the latest earnings release), and one each for the
+   small-page batches (price and price history; risk-free rate, Damodaran,
+   beta and FX; peers and consensus). A brief names the company id, the
+   document, the facts paths with the periods wanted, and any research.md
+   topics. Agents report values as printed; you apply the schema's signs and
+   `unit`.
+
+   Each returns JSON with a verbatim quote per statement line, misses and
+   flags. Read every flag. Check each value against its quote (period,
+   group versus segment). Give each document the next `S` id. Re-dispatch for
+   a miss rather than opening the document. Write `facts.json` with a script
+   that holds the values, derives the LTM from the annual and year-to-date
+   figures, and lists a gap for every null, so figures are not re-typed
+   through the conversation. Never Read a file under `tool-results/`; grep
    it.
 3. Write `$D/research.md`: what the business does and how it makes money, its
    moat and competition, management, customers, risks, and its exposure to the
