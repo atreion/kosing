@@ -19,9 +19,13 @@ export type MineDiscount = {
   readonly realRate: number;
 };
 
-/** The terms the mines are valued on: a price, whose delay, and the discounting. */
+/**
+ * The terms the mines are valued on: the main commodity's price, every other
+ * product's price by name, whose delay, and the discounting.
+ */
 export type MineTerms = {
   readonly price: number;
+  readonly otherPrices: ReadonlyMap<string, number>;
   readonly delay: MineScenario;
   readonly realRate: number;
   readonly valuationYear: number;
@@ -58,17 +62,34 @@ export function scenarioTerms(
 ): MineTerms {
   return {
     price: commodity.priceDeck[scenario],
+    otherPrices: new Map(commodity.otherProducts.map((p) => [p.name, p.priceDeck[scenario]])),
     delay: scenario,
     realRate: selectMineDiscount(commodity, costOfCapital).realRate,
     valuationYear: decimalYear(asOf),
   };
 }
 
+/** A product's price on the terms: the main commodity's, or another product's by name. */
+function priceOf(product: string, commodity: CommodityModel, terms: MineTerms): number {
+  if (product === commodity.name) return terms.price;
+  const price = terms.otherPrices.get(product);
+  if (price === undefined) throw new Error(`unreachable: decode resolves product ${product}`);
+  return price;
+}
+
 /** The company's share of the mine's value after risking, USD millions. */
-export function mineValueUsd(mine: MineNavPart, terms: MineTerms): number {
+export function mineValueUsd(
+  mine: MineNavPart,
+  commodity: CommodityModel,
+  terms: MineTerms,
+): number {
   const value = computeMineValue(
     {
       production: mine.production,
+      byProducts: mine.byProducts.map((b) => ({
+        production: b.production,
+        price: priceOf(b.product, commodity, terms),
+      })),
       cashCostPerUnit: mine.cashCostPerUnit,
       royaltyRate: mine.royaltyRate,
       royaltySteps: mine.royaltySteps,
@@ -79,7 +100,7 @@ export function mineValueUsd(mine: MineNavPart, terms: MineTerms): number {
       taxRate: mine.taxRate,
       delayYears: mine.delayYears[terms.delay],
     },
-    terms.price,
+    priceOf(mine.product, commodity, terms),
     terms,
   );
   return value.npv * mine.ownership * mine.riskFactor;

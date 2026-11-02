@@ -290,7 +290,9 @@ function toMinePart(
     stage: part.stage,
     ownership: part.ownership,
     riskFactor: part.riskFactor ?? STAGE_RISK_FACTOR[part.stage],
+    product: part.product,
     production: [first, ...rest],
+    byProducts: part.byProducts,
     recoverableReserve: part.recoverableReserve,
     cashCostPerUnit: part.cashCostPerUnit,
     royaltyRate: part.royaltyRate,
@@ -318,6 +320,11 @@ function toCommodityModel(
     name: commodity.name,
     unit: commodity.unit,
     priceDeck: commodity.priceDeck,
+    otherProducts: commodity.otherProducts.map((p) => ({
+      name: p.name,
+      unit: p.unit,
+      priceDeck: p.priceDeck,
+    })),
     usdRiskFree: commodity.discount.usdRiskFree,
     usdInflation: commodity.discount.usdInflation,
     contractBook:

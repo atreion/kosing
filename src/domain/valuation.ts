@@ -125,8 +125,15 @@ export type MineNavPart = {
   readonly ownership: number;
   /** The stage's factor, or the case's lower one. */
   readonly riskFactor: number;
+  /** The commodity's name or one of its otherProducts: what production and unit costs count. */
+  readonly product: string;
   /** On a 100% basis, years in increasing order. */
   readonly production: NonEmpty<YearVolume>;
+  /** Other products' volumes, 100% basis, in years the mine produces; revenue only. */
+  readonly byProducts: readonly {
+    readonly product: string;
+    readonly production: readonly YearVolume[];
+  }[];
   /** Reserve times recovery, millions of units, 100% basis; null when none is reported. */
   readonly recoverableReserve: number | null;
   readonly cashCostPerUnit: number;
@@ -154,14 +161,24 @@ export type InventoryNavPart = {
 
 export type NavPart = ValuedNavPart | MineNavPart | InventoryNavPart;
 
+/** A product other than the main commodity, with its own flat deck in today's USD. */
+export type OtherProduct = {
+  readonly name: string;
+  readonly unit: string;
+  readonly priceDeck: ScenarioTriple;
+};
+
 /**
- * What the mine parts share: one commodity, one flat price deck in today's
- * USD, the inputs of the real discount rate, and the company's contract book.
+ * What the mine parts share: the main commodity and its flat price deck in
+ * today's USD, the other products the mines sell with theirs, the inputs of
+ * the real discount rate, and the company's contract book. The implied price
+ * is the main commodity's; inventory and the contract book are in it.
  */
 export type CommodityModel = {
   readonly name: string;
   readonly unit: string;
   readonly priceDeck: ScenarioTriple;
+  readonly otherProducts: readonly OtherProduct[];
   readonly usdRiskFree: number;
   readonly usdInflation: number;
   readonly contractBook: {

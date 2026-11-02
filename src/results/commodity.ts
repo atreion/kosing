@@ -1,7 +1,7 @@
 /**
  * The commodity section of a nav valuation with mines: the deck and the
  * discount rate it ran on, each mine's value, what the price implies for the
- * commodity, the base value a point either side of the real rate, and at the
+ * main commodity with any other products held at base, the base value a point either side of the real rate, and at the
  * brokers' 8% real for comparison. Every part tied to the deck (mines,
  * inventory, the contract book) reprices with it; analyst values do not.
  */
@@ -57,7 +57,7 @@ export function commoditySection(
             stage: p.stage,
             ownership: p.ownership,
             riskFactor: p.riskFactor,
-            valueUsd: triple((s) => mineValueUsd(p, terms(s))),
+            valueUsd: triple((s) => mineValueUsd(p, commodity, terms(s))),
           },
         ]
       : [],
@@ -87,6 +87,7 @@ export function commoditySection(
       name: commodity.name,
       unit: commodity.unit,
       priceDeck: commodity.priceDeck,
+      otherProducts: commodity.otherProducts,
       usdRiskFree: commodity.usdRiskFree,
       usdInflation: commodity.usdInflation,
       usdWacc: discount.usdWacc,

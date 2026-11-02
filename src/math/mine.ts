@@ -4,6 +4,10 @@
  * depletes, so there is no terminal value. Amounts are USD millions, volumes
  * millions of units, prices and costs USD per unit.
  *
+ * The production, cash cost, sustaining capex and royalty steps are per unit
+ * of the mine's own product; by-products add revenue at their own prices and
+ * bear the royalty rate but no cost of their own.
+ *
  * Each calendar year's cash arrives at its end. Initial capex and the opening
  * tax base of capital already spent are depreciated for tax by units of
  * production; sustaining capex is expensed in its year.
@@ -21,9 +25,16 @@ import type {
 } from "../domain/valuation.ts";
 import { assertNever } from "../exhaustive.ts";
 
+/** Another product the mine sells, at its own flat price; its years are among the mine's. */
+export type ByProductInputs = {
+  readonly production: readonly YearVolume[];
+  readonly price: number;
+};
+
 export type MineInputs = {
   /** On a 100% basis, years in increasing order. */
   readonly production: readonly YearVolume[];
+  readonly byProducts: readonly ByProductInputs[];
   readonly cashCostPerUnit: number;
   readonly royaltyRate: number;
   readonly royaltySteps: readonly RoyaltyStep[];
@@ -107,6 +118,10 @@ export function computeMineValue(
   timing: DiscountTiming,
 ): MineValue {
   const production = shifted(mine.production, mine.delayYears);
+  const byProducts = mine.byProducts.map((b) => ({
+    production: shifted(b.production, mine.delayYears),
+    price: b.price,
+  }));
   const capex = shifted(mine.initialCapex, mine.delayYears);
   const royaltyRate = royaltyRateAt(mine.royaltyRate, mine.royaltySteps, price);
   const totalVolume = sumBy(production, (p) => p.volume);
@@ -115,7 +130,8 @@ export function computeMineValue(
   const lastProduction = Math.max(...production.map((p) => p.year));
   const years = yearSpan(Math.min(...allYears), lastProduction + 1).map((year) => {
     const volume = volumeIn(production, year);
-    const revenue = volume * price;
+    const revenue =
+      volume * price + sumBy(byProducts, (b) => volumeIn(b.production, year) * b.price);
     const royalty = revenue * royaltyRate;
     const operating = volume * mine.cashCostPerUnit;
     const sustaining = volume * mine.sustainingCapexPerUnit;

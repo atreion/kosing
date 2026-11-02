@@ -24,6 +24,7 @@ const mine: MineInputs = {
     { year: 2027, volume: 10 },
     { year: 2028, volume: 10 },
   ],
+  byProducts: [],
   cashCostPerUnit: 30,
   royaltyRate: 0.05,
   royaltySteps: [],
@@ -53,6 +54,21 @@ test("a two-year mine, worked by hand", () => {
 test("a delay moves every cash flow a year later", () => {
   const r = computeMineValue({ ...mine, delayYears: 1 }, 80, timing);
   assertClose(r.npv, 400.314 / 1.1, 0.001);
+});
+
+test("a by-product adds revenue at its own price, bears the royalty and is taxed", () => {
+  // 2027 and 2028 each gain 0.5 x 400 = 200 revenue: royalty 10, tax 25% of 190, so +142.5.
+  const gold = { production: mine.production.map((p) => ({ ...p, volume: 0.5 })), price: 400 };
+  const r = computeMineValue({ ...mine, byProducts: [gold] }, 80, timing);
+  assertClose(r.npv, 400.314 + 142.5 / 1.21 + 142.5 / 1.331, 0.001);
+  assert.equal(r.years.find((y) => y.year === 2027)?.revenue, 1000);
+});
+
+test("a delay moves by-products with the mine", () => {
+  const gold = { production: mine.production.map((p) => ({ ...p, volume: 0.5 })), price: 400 };
+  const onTime = computeMineValue({ ...mine, byProducts: [gold] }, 80, timing);
+  const late = computeMineValue({ ...mine, byProducts: [gold], delayYears: 1 }, 80, timing);
+  assertClose(late.npv, onTime.npv / 1.1, 0.001);
 });
 
 test("a loss year pays no tax and earns no shield", () => {

@@ -149,7 +149,14 @@ function excessReturnBody(v: ExcessReturnSection, currency: string): string {
 }
 
 function commodityBody(c: CommoditySection, currency: string): string {
-  const usd = (x: number) => `USD ${fixed(x, 2)}/${escapeHtml(c.unit)}`;
+  const usdPer = (unit: string) => (x: number) => `USD ${fixed(x, 2)}/${escapeHtml(unit)}`;
+  const usd = usdPer(c.unit);
+  const otherDecks = c.otherProducts.map((p) =>
+    row(
+      `${p.name} deck`,
+      SCENARIOS.map((k) => usdPer(p.unit)(p.priceDeck[k])),
+    ),
+  );
   const ptn = (x: number | null) => (x === null ? "&ndash;" : formatMultiple(x));
   const sensitivity = c.realRateSensitivity
     .map((r) => `${formatPercent(r.realRate)}: ${formatPerShare(currency, r.valuePerShare)}`)
@@ -161,13 +168,19 @@ function commodityBody(c: CommoditySection, currency: string): string {
         "Price deck",
         SCENARIOS.map((k) => usd(c.priceDeck[k])),
       ),
+      ...otherDecks,
       row(
         "Price to NAV",
         SCENARIOS.map((k) => ptn(c.priceToNav[k])),
       ),
     ]) +
     facts([
-      ["Price the market implies", c.impliedPrice === null ? "&ndash;" : usd(c.impliedPrice)],
+      [
+        c.otherProducts.length === 0
+          ? "Price the market implies"
+          : `${c.name} price the market implies, others at base`,
+        c.impliedPrice === null ? "&ndash;" : usd(c.impliedPrice),
+      ],
       ["Real discount rate", formatPercent(c.realRate, 2)],
       ["At 8% real", formatPerShare(currency, c.valuePerShareAt8PctReal)],
       ["Real rate one point either side", sensitivity],

@@ -34,6 +34,7 @@ test("a producing mine is its own NPV at the deck, valued from the facts' date",
         { year: 2027, volume: 10 },
         { year: 2028, volume: 10 },
       ],
+      byProducts: [],
       cashCostPerUnit: 30,
       royaltyRate: 0.05,
       royaltySteps: [],
@@ -127,6 +128,79 @@ test("a mine year before the facts' year is a stale plan", () => {
   const r = valuate(facts(), mutate(minerCase(), "method.parts.0.initialCapex.0.year", 2025));
   assert.equal(r.success, false);
   assert.equal(r.error?.[0]?.path, "method.parts.0.initialCapex.0.year");
+});
+
+const gold = {
+  name: "gold",
+  unit: "oz",
+  priceDeck: { bear: 1000, base: 2000, bull: 3000 },
+  rationale: "Moves with the main deck.",
+};
+
+function withGold(c: unknown = minerCase()): unknown {
+  return mutate(c, "method.commodity.otherProducts", [gold]);
+}
+
+function northGoldByProduct(c: unknown): unknown {
+  return mutate(c, "method.parts.0.byProducts", [
+    {
+      product: "gold",
+      production: [
+        { year: 2027, volume: 0.01 },
+        { year: 2028, volume: 0.01 },
+      ],
+    },
+  ]);
+}
+
+test("a by-product adds its revenue at its own deck in each scenario", () => {
+  const plain = run().commodity.mines[0]?.valueUsd ?? assert.fail();
+  const withCredit = run(facts(), northGoldByProduct(withGold())).commodity.mines[0]?.valueUsd;
+  const gain = (k: "bear" | "base" | "bull") => (withCredit?.[k] ?? Number.NaN) - plain[k];
+  // 0.01 Moz a year at the gold deck: the gain scales with the deck, after royalty and tax.
+  assert.ok(gain("bear") > 0);
+  assertClose(gain("bull") / gain("base"), 1.5, 1e-9);
+  assertClose(gain("base") / gain("bear"), 2, 1e-9);
+});
+
+test("a mine of another product values at that product's deck", () => {
+  const asGold = mutate(withGold(), "method.parts.0.product", "gold");
+  const { commodity } = run(facts(), asGold);
+  const atGold = commodity.mines[0]?.valueUsd.base ?? Number.NaN;
+  const atUranium = run().commodity.mines[0]?.valueUsd.base ?? Number.NaN;
+  assert.ok(atGold > atUranium * 10);
+});
+
+test("the implied price moves the main commodity and holds other products at base", () => {
+  const c = northGoldByProduct(withGold());
+  const { nav } = run(facts(), c);
+  const atBase = mutate(facts(), "market.price", nav.valuePerShare);
+  assertClose(run(atBase, c).commodity.impliedPrice ?? Number.NaN, 80, 1e-6);
+});
+
+test("products must be known, unique, and by-products only in the mine's years", () => {
+  const rejects = (c: unknown, path: string) => {
+    const r = valuate(facts(), c);
+    assert.equal(r.success, false);
+    assert.ok(
+      r.error?.some((e) => e.path === path),
+      JSON.stringify(r.error),
+    );
+  };
+  rejects(mutate(minerCase(), "method.parts.0.product", "gold"), "method.parts.0.product");
+  rejects(northGoldByProduct(minerCase()), "method.parts.0.byProducts.0.product");
+  rejects(
+    mutate(northGoldByProduct(withGold()), "method.parts.0.byProducts.0.production.1.year", 2030),
+    "method.parts.0.byProducts.0.production.1.year",
+  );
+  rejects(
+    mutate(withGold(), "method.commodity.otherProducts", [gold, gold]),
+    "method.commodity.otherProducts.1.name",
+  );
+  rejects(
+    mutate(withGold(), "method.commodity.otherProducts.0.name", "U3O8"),
+    "method.commodity.otherProducts.0.name",
+  );
 });
 
 const inventory = {

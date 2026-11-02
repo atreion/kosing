@@ -123,6 +123,12 @@ export type CommoditySection = {
   readonly name: string;
   readonly unit: string;
   readonly priceDeck: ScenarioTriple;
+  /** The other products' decks, each in USD per its own unit; the implied price holds them at base. */
+  readonly otherProducts: readonly {
+    readonly name: string;
+    readonly unit: string;
+    readonly priceDeck: ScenarioTriple;
+  }[];
   readonly usdRiskFree: number;
   readonly usdInflation: number;
   /** The company's WACC with usdRiskFree as the risk-free rate. */

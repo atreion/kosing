@@ -393,6 +393,17 @@ production.
   is a part of its own in the results.
 - **Inventory** of the commodity is an `inventory` part: the volume at the
   deck price, less tax on the gain over its tax cost.
+- **Other products.** Few mines sell one metal. A silver miner's mines also
+  sell gold, zinc and lead, and some of its mines are gold mines. The
+  commodity block names the main commodity, the one the implied price is
+  for, and lists `otherProducts`, each with its own flat deck that moves with
+  the main one across scenarios. Each mine names its `product`, the one its
+  production, reserve and unit costs are counted in (take the one the
+  company reports the mine's costs on), and lists `byProducts`: payable
+  volumes of other products in the mine's own years. By-products add revenue
+  at their deck and bear the royalty, but carry no cost, because the mine's
+  costs are already per unit of its own product. Inventory and the contract
+  book are in the main commodity.
 
 Mines are converted into the reporting currency at the facts' USD spot rate.
 A miner has no holdings block, so its net debt is the balance sheet's. The
@@ -404,8 +415,8 @@ priority repayment of its own loans.
 
 The results' `commodity` section also gives the **implied price**: the flat
 price at which the base-case value per share equals the share price, on the
-base case's delays. Mines, inventory and the contract book reprice with it;
-`analystValue` parts do not. Read it against the long-term contract price: a
+base case's delays, with any other products held at their base deck. Mines,
+inventory and the contract book reprice with it; `analystValue` parts do not. Read it against the long-term contract price: a
 market pricing USD 70 uranium while contracts sign at USD 96 is the finding a
 screen looks for. When no price between zero and ten times the bull deck
 matches, none is reported.

@@ -97,11 +97,35 @@ export const MinePart = z.strictObject({
     .describe(
       "Null for the stage's factor. A lower factor only, argued in rationale; one above the stage's is rejected.",
     ),
+  product: z
+    .string()
+    .min(1)
+    .describe(
+      "What production, recoverableReserve, cashCostPerUnit, sustainingCapexPerUnit and royaltySteps count: the commodity's name or one of its otherProducts. Take the product the company reports the mine's unit costs on, e.g. gold for a gold mine in a silver company.",
+    ),
   production: z
     .array(z.strictObject({ year: Year, volume: z.number().min(0) }))
     .min(1)
     .describe(
-      "Remaining production on a 100% basis, millions of units per calendar year from the company's latest mine plan, years increasing. The current year carries only what is left of it after the facts' balanceSheet.asOf, so nothing the balance sheet already holds is counted twice. Convert a fiscal-year plan by splitting each fiscal year across the calendar years it spans.",
+      "Remaining production of the mine's product on a 100% basis, millions of units per calendar year from the company's latest mine plan, years increasing. The current year carries only what is left of it after the facts' balanceSheet.asOf, so nothing the balance sheet already holds is counted twice. Convert a fiscal-year plan by splitting each fiscal year across the calendar years it spans.",
+    ),
+  byProducts: z
+    .array(
+      z.strictObject({
+        product: z
+          .string()
+          .min(1)
+          .describe("The commodity's name or one of its otherProducts, not the mine's own."),
+        production: z
+          .array(z.strictObject({ year: Year, volume: z.number().min(0) }))
+          .min(1)
+          .describe(
+            "Payable volumes on a 100% basis, millions of units, only in years the mine produces its own product, from the same plan.",
+          ),
+      }),
+    )
+    .describe(
+      "Other products the mine sells, valued at their own deck. They add revenue and bear royaltyRate; the mine's costs are already per unit of its own product, so they carry none. Use payable volumes after smelter deductions, and lower the deck or the volume for treatment charges in rationale. Empty for a single-product mine.",
     ),
   recoverableReserve: z
     .number()
@@ -161,12 +185,31 @@ const ContractPricingSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
+const OtherProduct = z.strictObject({
+  name: z.string().min(1).describe("e.g. gold, zinc."),
+  unit: z.string().min(1).describe("e.g. oz, lb."),
+  priceDeck: ScenarioTriple.describe(
+    "A flat price per unit in today's USD for each scenario, held for the life of every mine, on the same conventions as the main deck. The scenarios move with the main commodity's: a bear case is a bear case for the metals together.",
+  ),
+  rationale: z.string().min(1),
+});
+
 export const Commodity = z.strictObject({
-  name: z.string().min(1).describe("The commodity, e.g. U3O8."),
+  name: z
+    .string()
+    .min(1)
+    .describe(
+      "The main commodity, e.g. U3O8 or silver: the one the implied price solves for, and the one inventory and the contract book are in.",
+    ),
   unit: z.string().min(1).describe("The unit volumes and prices are in, e.g. lb."),
   priceDeck: ScenarioTriple.describe(
     "A flat price per unit in today's USD for each scenario, held for the life of every mine. Bear near the incentive price for new supply, base at or below the current long-term contract price, bull with a reason.",
   ),
+  otherProducts: z
+    .array(OtherProduct)
+    .describe(
+      "Every other product a mine part names, as its own product or a by-product. Names are unique and differ from the main commodity's. The implied price holds them at base. Empty for a single-commodity company.",
+    ),
   discount: z
     .strictObject({
       usdRiskFree: z.number().describe("The US 10-year Treasury yield, nominal, as a fraction."),
@@ -447,6 +490,60 @@ function checkMine(
   }
 }
 
+type CommodityShape = NonNullable<NavMethodShape["commodity"]>;
+
+/** Other products are unique and ordered; every mine names known products and produces in its by-products' years. */
+function checkProducts(
+  method: NavMethodShape,
+  commodity: CommodityShape,
+  ctx: z.RefinementCtx,
+): void {
+  const known = new Set([commodity.name]);
+  for (const [i, other] of commodity.otherProducts.entries()) {
+    const path = ["commodity", "otherProducts", i];
+    requireOrdered([...path, "priceDeck"], other.priceDeck, ctx);
+    if (known.has(other.name)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["method", ...path, "name"],
+        message: `${other.name} is already a product; names must be unique`,
+      });
+    }
+    known.add(other.name);
+  }
+  for (const [i, part] of (method.parts ?? []).entries()) {
+    if (part.kind !== "mine") continue;
+    const path = ["method", "parts", i];
+    if (!known.has(part.product)) {
+      ctx.addIssue({
+        code: "custom",
+        path: [...path, "product"],
+        message: `${part.product} is neither the commodity nor one of its otherProducts`,
+      });
+    }
+    const years = new Set(part.production.map((r) => r.year));
+    for (const [j, by] of part.byProducts.entries()) {
+      const byPath = [...path, "byProducts", j];
+      if (!known.has(by.product) || by.product === part.product) {
+        ctx.addIssue({
+          code: "custom",
+          path: [...byPath, "product"],
+          message: `${by.product} must be the commodity or one of its otherProducts, other than the mine's own`,
+        });
+      }
+      for (const [k, row] of by.production.entries()) {
+        if (!years.has(row.year)) {
+          ctx.addIssue({
+            code: "custom",
+            path: [...byPath, "production", k, "year"],
+            message: `${row.year} is not a year the mine produces ${part.product}`,
+          });
+        }
+      }
+    }
+  }
+}
+
 /** A part valued at the price deck: a mine or inventory. */
 function hasDeckPart(method: NavMethodShape): boolean {
   return (method.parts ?? []).some((p) => p.kind === "mine" || p.kind === "inventory");
@@ -470,6 +567,7 @@ function checkCommodity(method: NavMethodShape, ctx: z.RefinementCtx): void {
   }
   if (method.commodity === null) return;
   requireOrdered(["commodity", "priceDeck"], method.commodity.priceDeck, ctx);
+  checkProducts(method, method.commodity, ctx);
   for (const [i, block] of (method.commodity.contractBook?.blocks ?? []).entries()) {
     const path = ["method", "commodity", "contractBook", "blocks", i];
     if (block.fromYear > block.toYear) {
@@ -501,7 +599,7 @@ function checkCommodity(method: NavMethodShape, ctx: z.RefinementCtx): void {
  * in English for the analyst.
  */
 export const CaseSchema = CaseShape.describe(
-  "The assumptions a company is valued on. Rules decode enforces beyond this schema: scenario triples are ordered bear <= base <= bull; no scenario multiple exceeds multipleCeiling; overrides and sensitivity apply to dcf only, and sensitivity steps each include 0; each nav part's triple is ordered bear <= base <= bull, except a mine's delayYears, whole years ordered bull <= base <= bear; a mine's production years increase and its riskFactor is at most its stage's; a contract block's fromYear <= toYear and floor <= ceiling; royaltyRate plus its steps stays below 1; commodity is set exactly when a part is a mine or inventory; commodityProducer takes nav with a mine part. Against the facts, decode requires every holding named by a nav part to exist and every facts holding to be accounted for by exactly one part, a factsFairValue part's holding to carry a fair value, a lookThrough part in a foreign currency to have its spot rate in fx, a mine valued for a company not reporting in USD to have its USD spot rate in fx, no mine year before the facts' year, and at least one part that is not excluded. excessReturn and bankInsurer go together: each requires the other.",
+  "The assumptions a company is valued on. Rules decode enforces beyond this schema: scenario triples are ordered bear <= base <= bull; no scenario multiple exceeds multipleCeiling; overrides and sensitivity apply to dcf only, and sensitivity steps each include 0; each nav part's triple is ordered bear <= base <= bull, except a mine's delayYears, whole years ordered bull <= base <= bear; a mine's production years increase and its riskFactor is at most its stage's; a contract block's fromYear <= toYear and floor <= ceiling; royaltyRate plus its steps stays below 1; other products are uniquely named and ordered, a mine's product is the commodity or one of them, its by-products are others of them, in years the mine produces; commodity is set exactly when a part is a mine or inventory; commodityProducer takes nav with a mine part. Against the facts, decode requires every holding named by a nav part to exist and every facts holding to be accounted for by exactly one part, a factsFairValue part's holding to carry a fair value, a lookThrough part in a foreign currency to have its spot rate in fx, a mine valued for a company not reporting in USD to have its USD spot rate in fx, no mine year before the facts' year, and at least one part that is not excluded. excessReturn and bankInsurer go together: each requires the other.",
 ).superRefine((c, ctx) => {
   if (c.method.kind === "excessReturn" && c.classification !== "bankInsurer") {
     ctx.addIssue({

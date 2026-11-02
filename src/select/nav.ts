@@ -39,7 +39,7 @@ function partValue(part: NavPart, scenario: NavScenario, mines: MinesOn): number
   if (mines === null) throw new Error("unreachable: decode requires commodity with a deck part");
   const usd =
     part.kind === "mine"
-      ? mineValueUsd(part, mines.terms)
+      ? mineValueUsd(part, mines.commodity, mines.terms)
       : computeInventoryValue(part, mines.terms.price);
   return usd * mines.commodity.usdToReporting;
 }
